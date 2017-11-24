@@ -1,0 +1,59 @@
+diff --git a/platform/cooja/Makefile.cooja b/platform/cooja/Makefile.cooja
+index d10979c..8c989da 100644
+--- a/platform/cooja/Makefile.cooja
++++ b/platform/cooja/Makefile.cooja
+@@ -29,7 +29,7 @@ ifneq ($(MAKECMDGOALS),clean)
+ .PHONY: $(MAKECMDGOALS)
+ .PRECIOUS: $(MAKECMDGOALS)
+ $(MAKECMDGOALS): $(CONTIKI)/tools/cooja/dist/cooja.jar
+-	 java -mx512m -jar $< -quickstart='$(firstword $(MAKECMDGOALS))' -contiki='$(CONTIKI)'
++	 java -mx512m -Xint -jar $< -quickstart='$(firstword $(MAKECMDGOALS))' -contiki='$(CONTIKI)'
+ endif
+ 
+ endif ## QUICKSTART
+diff --git a/tools/cooja/build.xml b/tools/cooja/build.xml
+index 38c3feb..7723460 100644
+--- a/tools/cooja/build.xml
++++ b/tools/cooja/build.xml
+@@ -106,6 +106,7 @@ The COOJA Simulator
+   <target name="run" depends="init, compile, jar, copy configs">
+     <java fork="yes" dir="${build}" classname="org.contikios.cooja.Cooja" maxmemory="512m">
+       <sysproperty key="user.language" value="en"/>
++      <jvmarg line="-Xint"/>
+       <arg line="${args}"/>
+       <env key="LD_LIBRARY_PATH" value="."/>
+       <classpath>
+@@ -121,7 +122,8 @@ The COOJA Simulator
+   <target name="run64" depends="init, compile, jar, copy configs">
+     <java fork="yes" dir="${build}" classname="org.contikios.cooja.Cooja" maxmemory="512m">
+       <sysproperty key="user.language" value="en"/>
+-      <jvmarg value="-d64 -XX:+ShowMessageBoxOnError"/>
++      <jvmarg value="-d64 -XX:+ShowMessageBoxOnError -Xint"/>
++      <jvmarg line="-Xint"/>
+       <arg line="${args}"/>
+       <env key="LD_LIBRARY_PATH" value="."/>
+       <classpath>
+@@ -137,7 +139,7 @@ The COOJA Simulator
+   <target name="run_errorbox" depends="init, compile, jar, copy configs">
+     <java fork="yes" dir="${build}" classname="org.contikios.cooja.Cooja" maxmemory="512m">
+       <sysproperty key="user.language" value="en"/>
+-      <jvmarg value="-XX:+ShowMessageBoxOnError"/>
++      <jvmarg value="-XX:+ShowMessageBoxOnError" -Xint/>
+       <env key="LD_LIBRARY_PATH" value="."/>
+       <classpath>
+         <pathelement path="${build}"/>
+@@ -153,7 +155,7 @@ The COOJA Simulator
+     <java fork="yes" dir="${build}" classname="org.contikios.cooja.Cooja">
+       <arg line="${args}"/>
+       <env key="LD_LIBRARY_PATH" value="."/>
+-      <jvmarg line="-agentlib:yjpagent"/>
++      <jvmarg line="-agentlib:yjpagent -Xint"/>
+       <classpath>
+         <pathelement path="${build}"/>
+         <pathelement location="lib/jdom.jar"/>
+diff --git a/tools/mspsim b/tools/mspsim
+--- a/tools/mspsim
++++ b/tools/mspsim
+@@ -1 +1 @@
+-Subproject commit 47ae45cb0f36337115e32adb2a5ba0bf6e1e4437
++Subproject commit 47ae45cb0f36337115e32adb2a5ba0bf6e1e4437-dirty
