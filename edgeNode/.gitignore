@@ -1,0 +1,5 @@
+/config.o
+/fifo.o
+/messages.o
+/rtc.o
+/neighbors.o
