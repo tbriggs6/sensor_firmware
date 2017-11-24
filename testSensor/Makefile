@@ -2,7 +2,7 @@
 CFLAGS=-g 
 
 #DEFINES+=PROJECT_CONF_H=\"project-conf.h\"
-CONTIKI_PROJECT = testSensor
+CONTIKI_PROJECT = testsensor
 
 
 
@@ -12,7 +12,7 @@ APPS += bcast-service
 #include /home/contiki/git/firmware/apps/shared/Makefile.shared
 
 
-all: info $(CONTIKI_PROJECT)
+all:  $(CONTIKI_PROJECT)
 
 CONTIKI_WITH_IPV6 = 1
 
