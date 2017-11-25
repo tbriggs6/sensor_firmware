@@ -22,24 +22,26 @@
   \param port the port number for the service (0 will use BCAST_PORT).
   \return 0 for an error, 1 on success
 */
-int bcast_init( uint16_t port);
+void bcast_init( void );
 void bcast_add_observer(struct process *observer);
 void bcast_remove_observer(struct process *observer);
+void bcast_send(char *data, int len);
+uip_ipaddr_t *bcast_address( );
 
-extern  process_event_t bcast_event;
-
-
+#define MAX_PAYLOAD (32)
 
 typedef struct {
     struct simple_udp_connection *c;
-    const uip_ipaddr_t *sender_addr;
+    uip_ipaddr_t sender_addr;
     uint16_t sender_port;
-    const uip_ipaddr_t *receiver_addr;
+    uip_ipaddr_t receiver_addr;
     uint16_t receiver_port;
-    const uint8_t *data;
     uint16_t datalen;
-
+    char data[MAX_PAYLOAD];
+    char zero;
 } bcast_t;
 
+//! Event is posted when a broadcast mesg is received
+extern process_event_t bcast_event;
 
 #endif

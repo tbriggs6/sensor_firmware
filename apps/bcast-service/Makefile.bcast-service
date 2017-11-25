@@ -1,3 +1,3 @@
 
 
-bcast-service_src = bcast-service.c
+bcast-service_src = bcast-service.c bcast-sink.c bcast-source.c

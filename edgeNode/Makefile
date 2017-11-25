@@ -43,6 +43,9 @@ endif
 APPDIRS += /home/contiki/git/firmware/apps/ 
 APPS += bcast-service
 
+MODULES += core/net/ipv6/multicast
+
+
 CONTIKI_WITH_IPV6 = 1
 include $(CONTIKI)/Makefile.include
 

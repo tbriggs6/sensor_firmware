@@ -1,7 +1,7 @@
 
 CFLAGS=-g 
 
-#DEFINES+=PROJECT_CONF_H=\"project-conf.h\"
+DEFINES+=PROJECT_CONF_H=\"project-conf.h\"
 CONTIKI_PROJECT = testsensor
 
 
@@ -14,6 +14,8 @@ APPS += bcast-service
 
 all:  $(CONTIKI_PROJECT)
 
+MODULES += core/net/ipv6/multicast
+
 CONTIKI_WITH_IPV6 = 1
 
 #PROJECT_SOURCEFILES += ../bcast-service.c
@@ -22,6 +24,8 @@ CONTIKI_WITH_IPV6 = 1
 
 CONTIKI = /home/contiki/contiki
 include $(CONTIKI)/Makefile.include
+
+
 
 .PHONY: mrclean
 mrclean: clean
