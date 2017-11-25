@@ -54,6 +54,9 @@
 #include <string.h>
 #include <ctype.h>
 
+
+#include "bcast-forwarder.h"
+
 #define DEBUG DEBUG_NONE
 #include "net/ip/uip-debug.h"
 
@@ -258,7 +261,7 @@ PT_THREAD(generate_routes(struct httpd_state *s))
     }
     SEND_STRING(&s->sout, buf);
 #if BUF_USES_STACK
-    bufptr = buf; bufend = bufptr + sizeof(buf);
+    bufptr = bAPPDIRS += /home/contiki/git/firmware/apps/ uf; bufend = bufptr + sizeof(buf);
 #else
     blen = 0;
 #endif
@@ -396,12 +399,18 @@ set_prefix_64(uip_ipaddr_t *prefix_64)
     PRINTF("created a new RPL dag\n");
   }
 }
+
+
 /*---------------------------------------------------------------------------*/
 PROCESS_THREAD(border_router_process, ev, data)
 {
   static struct etimer et;
 
   PROCESS_BEGIN();
+
+  bcast_forwarder_init();
+
+
 
 /* While waiting for the prefix to be sent through the SLIP connection, the future
  * border router can join an existing DAG as a parent or child, or acquire a default
