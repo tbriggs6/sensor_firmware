@@ -8,7 +8,7 @@
 #ifndef TESTS_BCAST_H_
 #define TESTS_BCAST_H_
 
-#define MCAST_ADDR ("ff02::1")
+#define MCAST_ADDR ("aaaa::201:1:1:1")
 #define MCAST_PORT ("2000")
 #define MAX_HOPS (32)
 
