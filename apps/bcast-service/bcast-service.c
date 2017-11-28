@@ -15,6 +15,9 @@
 
 void bcast_init( void )
 {
+
+    printf("Multicast Engine: '%s'\n", UIP_MCAST6.name);
+
     bcast_sink_init();
     bcast_source_init( );
 

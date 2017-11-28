@@ -182,7 +182,6 @@ static void bcast_set_addresses( )
    PROCESS_BEGIN();
 
 
-     PRINTF("Multicast Engine: '%s'\n", UIP_MCAST6.name);
 
      NETSTACK_MAC.off(1);
 

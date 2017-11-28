@@ -166,9 +166,6 @@ static void bcast_receiver( const char *data, int length)
  {
    PROCESS_BEGIN();
 
-
-   printf("Multicast Engine: '%s'\n", UIP_MCAST6.name);
-
    // join the multicast group
    if (bcast_join_mcast_group() == NULL) {
        printf("ERROR - could not join multicast group\n");
