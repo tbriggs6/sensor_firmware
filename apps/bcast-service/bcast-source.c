@@ -81,6 +81,24 @@ static void bcast_source(bcast_send_t *payload)
     PRINTF(" Remote Port %u,", uip_ntohs(mcast_conn->rport));
     PRINTF(" %d bytes %s\n", payload->length, payload->data);
 
+    /* uip_udp_packet_send - one of the first steps is to do a "memmove"
+	to copy the data into the global uip_buf[ ] buffer 
+	we need to make sure that this is done sending before we 
+	send the next packet 
+
+        then, this calls a function "tcpip_output()" which is
+          a pointer toanother function.  I tracked it back to the
+	  cooja version, and it starts off doing a packetbuf_copyfrom()
+	  to copy the data from the uip_buf[] buffer into the local packet
+	  memory.  It then calls NETSTACK_LLSEC.send(NULL, NULL)
+
+     */
+
+
+
+    uip_udp_packet_send(mcast_conn, payload->data, payload->length);
+
+    // send two back to back - see if they both go...
     uip_udp_packet_send(mcast_conn, payload->data, payload->length);
 
 }
@@ -198,6 +216,26 @@ static void bcast_set_addresses( )
                     ((bcast_send_t *)data)->data);
              bcast_source((bcast_send_t *) data);
          }
+	 else if (ev == tcpip_event) {
+	   PRINTF("TCPIP Event ");
+	   if (uip_newdata()) 
+	     PRINTF("new data ");
+	   if (uip_acked())
+	     PRINTF("acked ");
+	   if (uip_connected())
+	     PRINTF("connected ");
+	   if (uip_closed())
+	     PRINTF("closed ");
+	   if (uip_aborted())
+	     PRINTF("aborted ");
+	   if (uip_timedout())
+	     PRINTF("timedout ");
+	   if (uip_rexmit())
+	     PRINTF("rexmit ");
+	   if (uip_poll())
+	     PRINTF("poll ");
+	   PRINTF("\n");
+	 }
      }
 
    PROCESS_END();

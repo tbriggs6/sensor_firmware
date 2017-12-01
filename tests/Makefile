@@ -11,3 +11,5 @@ send-bcast: send-bcast.c bcast.h
 send-dgram: send-dgram.c bcast.h
 
 recv-bcast: recv-bcast.c bcast.h
+
+mrclean: clean
