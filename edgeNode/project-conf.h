@@ -65,6 +65,10 @@
 #endif
 
 
+#define UIP_CONF_DS6_PREFIX_NBU 4
+#define UIP_CONF_DS6_ADDR_NBU 4
+#define UIP_CONF_DS6_MADDR_NBU 4
+
 #include "net/ipv6/multicast/uip-mcast6-engines.h"
 
 /* Change this to switch engines. Engine codes in uip-mcast6-engines.h */

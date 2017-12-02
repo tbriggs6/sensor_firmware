@@ -20,6 +20,7 @@
 #include <net/ip/uip-debug.h>
 #include <net/rpl/rpl.h>
 
+#include <sys/process.h>
 #include <stdio.h>
 
 #define DEBUG 1
@@ -93,12 +94,6 @@ static void bcast_source(bcast_send_t *payload)
 	  memory.  It then calls NETSTACK_LLSEC.send(NULL, NULL)
 
      */
-
-
-
-    uip_udp_packet_send(mcast_conn, payload->data, payload->length);
-
-    // send two back to back - see if they both go...
     uip_udp_packet_send(mcast_conn, payload->data, payload->length);
 
 }
@@ -180,17 +175,19 @@ static void bcast_set_addresses( )
      // add the address to the list of addresses used by this device
      uip_ds6_addr_add(&ipaddr, 0, ADDR_AUTOCONF);
 
-     // update the broadcast states from tentative to preferred
-     bcast_update_address_states( );
+//TODO remove if not necessary
+//     // update the broadcast states from tentative to preferred
+//     bcast_update_address_states( );
 
-     /* Become root of a new DODAG with ID our global v6 address */
-     dag = rpl_set_root(RPL_DEFAULT_INSTANCE, &ipaddr);
-     if(dag != NULL) {
-         rpl_set_prefix(dag, &ipaddr, 64);
-         PRINTF("Created a new RPL dag with ID: ");
-         PRINT6ADDR(&dag->dag_id);
-         PRINTF("\n");
-     }
+//TODO remove if not necessary
+//     /* Become root of a new DODAG with ID our global v6 address */
+//     dag = rpl_set_root(RPL_DEFAULT_INSTANCE, &ipaddr);
+//     if(dag != NULL) {
+//         rpl_set_prefix(dag, &ipaddr, 64);
+//         PRINTF("Created a new RPL dag with ID: ");
+//         PRINT6ADDR(&dag->dag_id);
+//         PRINTF("\n");
+//     }
 
 }
 
@@ -203,7 +200,7 @@ static void bcast_set_addresses( )
 
      NETSTACK_MAC.off(1);
 
-     bcast_set_addresses();
+    // bcast_set_addresses();
 
      bcast_prepare();
 
@@ -243,6 +240,7 @@ static void bcast_set_addresses( )
 
 void bcast_source_init( )
 {
+	printf("****** Starting broadcast source (should be root) ******* \n");
      bcast_send_event = process_alloc_event();
      process_start(&broadcast_source, NULL);
 }

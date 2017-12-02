@@ -88,37 +88,6 @@ LIST(observers_list);
 
 
 
-/**
- * @brief joins the multicast group
- *
- * This code is largely taken from the contiki/examples/ipv6/multicast/sink.c
- */
-static uip_ds6_maddr_t * bcast_join_mcast_group(void)
-{
-    uip_ipaddr_t addr;
-    uip_ds6_maddr_t *rv;
-
-    /* First, set our v6 global */
-    uip_ip6addr(&addr, UIP_DS6_DEFAULT_PREFIX, 0, 0, 0, 0, 0, 0, 0);
-    uip_ds6_set_addr_iid(&addr, &uip_lladdr);
-    uip_ds6_addr_add(&addr, 0, ADDR_AUTOCONF);
-
-    /*
-     * IPHC will use stateless multicast compression for this destination
-     * (M=1, DAC=0), with 32 inline bits (1E 89 AB CD)
-     */
-    uip_ip6addr(&addr, 0xFF1E,0,0,0,0,0,0x89,0xABCD);
-    rv = uip_ds6_maddr_add(&addr);
-
-    if (rv) {
-        printf("Joined multicast group ");
-        uip_debug_ipaddr_print(&uip_ds6_maddr_lookup(&addr)->ipaddr);
-        printf("\n");
-    }
-
-    return rv;
-}
-
 
 /**
  * @brief delivers the received data to the observers
@@ -166,12 +135,6 @@ static void bcast_receiver( const char *data, int length)
  {
    PROCESS_BEGIN();
 
-   // join the multicast group
-   if (bcast_join_mcast_group() == NULL) {
-       printf("ERROR - could not join multicast group\n");
-       PROCESS_EXIT();
-   }
-
    // create the UDP connections to listen for incoming messages
    sink_conn = udp_new(NULL, UIP_HTONS(0), NULL);   // creates an unassigned connection
    udp_bind(sink_conn, UIP_HTONS(BCAST_PORT));     // binds to connection to local port (2000)
@@ -192,6 +155,8 @@ static void bcast_receiver( const char *data, int length)
 
  void bcast_sink_init( void  )
  {
+	 printf("****** Starting broadcast sink (should not be root) ******* \n");
+
      bcast_event = process_alloc_event();
 
      process_start(&broadcast_sink, NULL);
