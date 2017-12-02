@@ -24,7 +24,7 @@
 #include <net/ipv6/multicast/uip-mcast6.h>
 #include <net/ipv6/multicast/uip-mcast6-engines.h>
 
-#define DEBUG 1
+#undef DEBUG
 
 #undef PRINTF
 
@@ -51,12 +51,6 @@ static uip_ds6_maddr_t * bcast_join_mcast_group(void)
     uip_ipaddr_t addr;
     uip_ds6_maddr_t *rv;
 
-//    /* First, set our v6 global */
-//    uip_ip6addr(&addr, UIP_DS6_DEFAULT_PREFIX, 0, 0, 0, 0, 0, 0, 0);
-//    uip_ds6_set_addr_iid(&addr, &uip_lladdr);
-//    uip_ds6_addr_add(&addr, 0, ADDR_AUTOCONF);
-
-
     /*
      * IPHC will use stateless multicast compression for this destination
      * (M=1, DAC=0), with 32 inline bits (1E 89 AB CD)
@@ -65,9 +59,9 @@ static uip_ds6_maddr_t * bcast_join_mcast_group(void)
     rv = uip_ds6_maddr_add(&addr);
 
     if (rv != NULL) {
-        printf("Joined multicast group ");
-        uip_debug_ipaddr_print(&uip_ds6_maddr_lookup(&addr)->ipaddr);
-        printf("\n");
+        PRINTF("Joined multicast group ");
+        PRINT6ADDR(&uip_ds6_maddr_lookup(&addr)->ipaddr);
+        PRINTF("\n");
     }
     else {
     	printf("Error - did not join multicast group\n");
@@ -77,11 +71,20 @@ static uip_ds6_maddr_t * bcast_join_mcast_group(void)
 }
 
 
+/**
+ * @brief initialize the broadcast layer
+ *
+ * Initialize either the source or the sink.  Only the root (border router)
+ * should call the source initialization, while all of the other nodes should
+ * be configured as a sink.
+ *
+ * The border node should also be configured as a sink so that it can listen
+ * to remote requests.
+ */
 void bcast_init( int root_node )
 {
 
-    printf("Multicast Engine: '%s'\n", UIP_MCAST6.name);
-
+    PRINTF("Multicast Engine: '%s'\n", UIP_MCAST6.name);
 
     if (root_node)
     	bcast_source_init( );
@@ -89,8 +92,6 @@ void bcast_init( int root_node )
     	bcast_sink_init();
 
     bcast_join_mcast_group( );
-
-
 }
 
 

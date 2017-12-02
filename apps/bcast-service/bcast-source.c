@@ -47,13 +47,11 @@ PROCESS(broadcast_source, "Broadcast source");
 /** @breif The mutlicast connection used for sending out packets */
 static struct uip_udp_conn * mcast_conn;
 
-
 /**
  * @brief An internal event used to send the requested
  * broadcast message.
  */
 static process_event_t bcast_send_event;
-
 
 /**
  * @brief a package of data that will be sent to each of the
@@ -63,10 +61,9 @@ static process_event_t bcast_send_event;
  * to the received data buffer (efficient) but could be overwritten.
  */
 typedef struct {
-    char *data; // the data that was received
-    int length; // the number of bytes that were received
+	char *data; // the data that was received
+	int length; // the number of bytes that were received
 } bcast_send_t;
-
 
 /**
  * @brief Actual procedure for sending the data to the multi-cast connection
@@ -75,26 +72,24 @@ typedef struct {
  * only be called from the broadcast_source() process.  This must be called
  * only after the bcast_init() function has initialized the #mcast_conn variable.
  */
-static void bcast_source(bcast_send_t *payload)
-{
-    PRINTF("Send to: ");
-    PRINT6ADDR(&mcast_conn->ripaddr);
-    PRINTF(" Remote Port %u,", uip_ntohs(mcast_conn->rport));
-    PRINTF(" %d bytes %s\n", payload->length, payload->data);
+static void bcast_source(bcast_send_t *payload) {
+	PRINTF("Send to: "); PRINT6ADDR(&mcast_conn->ripaddr);
+	PRINTF(" Remote Port %u,", uip_ntohs(mcast_conn->rport));
+	PRINTF(" %d bytes %s\n", payload->length, payload->data);
 
-    /* uip_udp_packet_send - one of the first steps is to do a "memmove"
-	to copy the data into the global uip_buf[ ] buffer 
-	we need to make sure that this is done sending before we 
-	send the next packet 
+	/* uip_udp_packet_send - one of the first steps is to do a "memmove"
+	 to copy the data into the global uip_buf[ ] buffer
+	 we need to make sure that this is done sending before we
+	 send the next packet
 
-        then, this calls a function "tcpip_output()" which is
-          a pointer toanother function.  I tracked it back to the
-	  cooja version, and it starts off doing a packetbuf_copyfrom()
-	  to copy the data from the uip_buf[] buffer into the local packet
-	  memory.  It then calls NETSTACK_LLSEC.send(NULL, NULL)
+	 then, this calls a function "tcpip_output()" which is
+	 a pointer toanother function.  I tracked it back to the
+	 cooja version, and it starts off doing a packetbuf_copyfrom()
+	 to copy the data from the uip_buf[] buffer into the local packet
+	 memory.  It then calls NETSTACK_LLSEC.send(NULL, NULL)
 
-     */
-    uip_udp_packet_send(mcast_conn, payload->data, payload->length);
+	 */
+	uip_udp_packet_send(mcast_conn, payload->data, payload->length);
 
 }
 
@@ -103,161 +98,59 @@ static void bcast_source(bcast_send_t *payload)
  *
  * The function will setup the IP6 multicast address and create a UDP connection.
  */
-static void bcast_prepare( )
-{
-   uip_ipaddr_t ipaddr;
+static void bcast_prepare() {
+	uip_ipaddr_t ipaddr;
 
-  /*
-   * IPHC will use stateless multicast compression for this destination
-   * (M=1, DAC=0), with 32 inline bits (1E 89 AB CD)
-   */
-  uip_ip6addr(&ipaddr, 0xFF1E,0,0,0,0,0,0x89,0xABCD);
-  mcast_conn = udp_new(&ipaddr, UIP_HTONS(BCAST_PORT), NULL);
+	/*
+	 * IPHC will use stateless multicast compression for this destination
+	 * (M=1, DAC=0), with 32 inline bits (1E 89 AB CD)
+	 */
+	uip_ip6addr(&ipaddr, 0xFF1E, 0, 0, 0, 0, 0, 0x89, 0xABCD);
+	mcast_conn = udp_new(&ipaddr, UIP_HTONS(BCAST_PORT), NULL);
 }
 
-/**
- * @brief Prints all known addresses
- */
-static void bcast_print_addresses( )
-{
-     int i;
-     uint8_t state;
+PROCESS_THREAD(broadcast_source, ev, data) {
+	PROCESS_BEGIN()	;
 
-     printf("Our IPv6 addresses:\n");
-     for(i = 0; i < UIP_DS6_ADDR_NB; i++) {
-       state = uip_ds6_if.addr_list[i].state;
-       if(uip_ds6_if.addr_list[i].isused &&
-               (state == ADDR_TENTATIVE || state == ADDR_PREFERRED)) {
-         printf("  ");
-         uip_debug_ipaddr_print(&uip_ds6_if.addr_list[i].ipaddr);
-         printf("\n");
-       }
-     }
+	bcast_prepare();
+
+	while (1) {
+		PROCESS_YIELD(	);
+
+		if (ev == bcast_send_event) {
+			PRINTF("Handling posted bcast event %p data\n");
+			PRINTF("len: %d string: %s\n", ((bcast_send_t * )data)->length,
+					((bcast_send_t * )data)->data);
+			bcast_source((bcast_send_t *) data);
+		}
+	}
+
+PROCESS_END();
 }
 
-/**
- * @brief Update the state of the address lists from TENTATIVE to PREFFERED
- */
-static void bcast_update_address_states( )
-{
-   int i;
-   uint8_t state;
-
-    for(i = 0; i < UIP_DS6_ADDR_NB; i++) {
-      state = uip_ds6_if.addr_list[i].state;
-      if(uip_ds6_if.addr_list[i].isused &&
-              (state == ADDR_TENTATIVE || state == ADDR_PREFERRED)) {
-
-          if(state == ADDR_TENTATIVE) {
-          uip_ds6_if.addr_list[i].state = ADDR_PREFERRED;
-        }
-      }
-    }
+void bcast_source_init() {
+PRINTF("****** Starting broadcast source (should be root) ******* \n");
+bcast_send_event = process_alloc_event();
+process_start(&broadcast_source, NULL);
 }
 
-
-/**
- * @brief Sets the address and RPL routing information for the broadcast
- *
- * The default address is set for one of the default multi-cast addresses.
- */
-static void bcast_set_addresses( )
-{
-     rpl_dag_t *dag;
-     uip_ipaddr_t ipaddr;
-
-     // loads the default prefix (upper 64-bit bits) with the default prefix
-     uip_ip6addr(&ipaddr, UIP_DS6_DEFAULT_PREFIX, 0, 0, 0, 0, 0, 0, 0);
-
-     // sets the lower 64-bit of the address to the MAC address
-     uip_ds6_set_addr_iid(&ipaddr, &uip_lladdr);
-
-     // add the address to the list of addresses used by this device
-     uip_ds6_addr_add(&ipaddr, 0, ADDR_AUTOCONF);
-
-//TODO remove if not necessary
-//     // update the broadcast states from tentative to preferred
-//     bcast_update_address_states( );
-
-//TODO remove if not necessary
-//     /* Become root of a new DODAG with ID our global v6 address */
-//     dag = rpl_set_root(RPL_DEFAULT_INSTANCE, &ipaddr);
-//     if(dag != NULL) {
-//         rpl_set_prefix(dag, &ipaddr, 64);
-//         PRINTF("Created a new RPL dag with ID: ");
-//         PRINT6ADDR(&dag->dag_id);
-//         PRINTF("\n");
-//     }
-
+uip_ipaddr_t *bcast_address() {
+return &mcast_conn->ripaddr;
 }
 
+void bcast_send(char *data, int len) {
+// this needs to be static b/c it will be used in a different
+//protothread context
 
- PROCESS_THREAD(broadcast_source, ev, data)
- {
-   PROCESS_BEGIN();
-
-
-
-     NETSTACK_MAC.off(1);
-
-    // bcast_set_addresses();
-
-     bcast_prepare();
-
-
-     while(1) {
-         PROCESS_YIELD();
-         if (ev == bcast_send_event) {
-             PRINTF("Handling posted bcast event %p data\n");
-             PRINTF("len: %d string: %s\n", ((bcast_send_t *)data)->length,
-                    ((bcast_send_t *)data)->data);
-             bcast_source((bcast_send_t *) data);
-         }
-	 else if (ev == tcpip_event) {
-	   PRINTF("TCPIP Event ");
-	   if (uip_newdata()) 
-	     PRINTF("new data ");
-	   if (uip_acked())
-	     PRINTF("acked ");
-	   if (uip_connected())
-	     PRINTF("connected ");
-	   if (uip_closed())
-	     PRINTF("closed ");
-	   if (uip_aborted())
-	     PRINTF("aborted ");
-	   if (uip_timedout())
-	     PRINTF("timedout ");
-	   if (uip_rexmit())
-	     PRINTF("rexmit ");
-	   if (uip_poll())
-	     PRINTF("poll ");
-	   PRINTF("\n");
-	 }
-     }
-
-   PROCESS_END();
- }
-
-void bcast_source_init( )
-{
-	printf("****** Starting broadcast source (should be root) ******* \n");
-     bcast_send_event = process_alloc_event();
-     process_start(&broadcast_source, NULL);
+if (len > MAX_PAYLOAD) {
+	printf("%s:%d Error - payload is larger than %d bytes\n", __FILE__,
+			__LINE__, MAX_PAYLOAD);
+	return;
 }
 
+static bcast_send_t send_data;
+send_data.data = data;
+send_data.length = len;
 
-uip_ipaddr_t *bcast_address( )
-{
-    return &mcast_conn->ripaddr;
-}
-
-void bcast_send(char *data, int len)
-{
-    // this needs to be static b/c it will be used in a different
-    //protothread context
-    static bcast_send_t send_data;
-    send_data.data = data;
-    send_data.length = len;
-
-    process_post(&broadcast_source, bcast_send_event, &send_data);
+process_post(&broadcast_source, bcast_send_event, &send_data);
 }
