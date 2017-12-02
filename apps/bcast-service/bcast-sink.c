@@ -24,6 +24,19 @@
 
 #include <bcast-service.h>
 
+
+
+#undef DEBUG
+
+#undef PRINTF
+
+#if DEBUG
+#define PRINTF(...) printf(__VA_ARGS__)
+#else
+#define PRINTF(...)
+#endif
+
+
 #if !NETSTACK_CONF_WITH_IPV6 || !UIP_CONF_ROUTER || !UIP_IPV6_MULTICAST || !UIP_CONF_IPV6_RPL
 #error "This example can not work with the current contiki configuration"
 #error "Check the values of: NETSTACK_CONF_WITH_IPV6, UIP_CONF_ROUTER, UIP_CONF_IPV6_RPL"
@@ -88,37 +101,6 @@ LIST(observers_list);
 
 
 
-/**
- * @brief joins the multicast group
- *
- * This code is largely taken from the contiki/examples/ipv6/multicast/sink.c
- */
-static uip_ds6_maddr_t * bcast_join_mcast_group(void)
-{
-    uip_ipaddr_t addr;
-    uip_ds6_maddr_t *rv;
-
-    /* First, set our v6 global */
-    uip_ip6addr(&addr, UIP_DS6_DEFAULT_PREFIX, 0, 0, 0, 0, 0, 0, 0);
-    uip_ds6_set_addr_iid(&addr, &uip_lladdr);
-    uip_ds6_addr_add(&addr, 0, ADDR_AUTOCONF);
-
-    /*
-     * IPHC will use stateless multicast compression for this destination
-     * (M=1, DAC=0), with 32 inline bits (1E 89 AB CD)
-     */
-    uip_ip6addr(&addr, 0xFF1E,0,0,0,0,0,0x89,0xABCD);
-    rv = uip_ds6_maddr_add(&addr);
-
-    if (rv) {
-        printf("Joined multicast group ");
-        uip_debug_ipaddr_print(&uip_ds6_maddr_lookup(&addr)->ipaddr);
-        printf("\n");
-    }
-
-    return rv;
-}
-
 
 /**
  * @brief delivers the received data to the observers
@@ -154,7 +136,7 @@ static void bcast_receiver( const char *data, int length)
     bcast.datalen = length;
 
 
-    printf("Notifying observers %d %s\n", length, data);
+    PRINTF("Notifying observers %d %s\n", length, data);
     for (curr = list_head(observers_list); curr != NULL; curr = list_item_next(curr))
     {
         process_post_synch(curr->process, bcast_event, &bcast);
@@ -166,19 +148,13 @@ static void bcast_receiver( const char *data, int length)
  {
    PROCESS_BEGIN();
 
-   // join the multicast group
-   if (bcast_join_mcast_group() == NULL) {
-       printf("ERROR - could not join multicast group\n");
-       PROCESS_EXIT();
-   }
-
    // create the UDP connections to listen for incoming messages
    sink_conn = udp_new(NULL, UIP_HTONS(0), NULL);   // creates an unassigned connection
    udp_bind(sink_conn, UIP_HTONS(BCAST_PORT));     // binds to connection to local port (2000)
 
-   printf("Listening for incoming multicast messages ");
-   uip_debug_ipaddr_print(&sink_addr);
-   printf(" port: %u/%u\n", UIP_HTONS(sink_conn->lport), UIP_HTONS(sink_conn->rport));
+   PRINTF("Listening for incoming multicast messages ");
+   PRINT6ADDR(&sink_addr);
+   PRINTF(" port: %u/%u\n", UIP_HTONS(sink_conn->lport), UIP_HTONS(sink_conn->rport));
 
    while(1) {
      PROCESS_YIELD();
@@ -192,6 +168,8 @@ static void bcast_receiver( const char *data, int length)
 
  void bcast_sink_init( void  )
  {
+	 PRINTF("****** Starting broadcast sink (should not be root) ******* \n");
+
      bcast_event = process_alloc_event();
 
      process_start(&broadcast_sink, NULL);

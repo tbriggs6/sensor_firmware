@@ -8,6 +8,9 @@
 #include <contiki-lib.h>
 #include <net/ip/uip.h>
 #include <net/ip/simple-udp.h>
+#include <net/ipv6/uip-ds6.h>
+
+#include <sys/process.h>
 
 /*! \def BCAST_PORT
     \brief The default port used for listening to broadcasts
@@ -19,10 +22,13 @@
 
 //! Initialize the broadcast service
 /*!
-  \param port the port number for the service (0 will use BCAST_PORT).
+  \param root_node indicate whether this is a root node or not
   \return 0 for an error, 1 on success
 */
-void bcast_init( void );
+void bcast_init( int root_node );
+
+
+
 void bcast_add_observer(struct process *observer);
 void bcast_remove_observer(struct process *observer);
 void bcast_send(char *data, int len);
@@ -30,6 +36,13 @@ uip_ipaddr_t *bcast_address( );
 
 #define MAX_PAYLOAD (32)
 
+/**
+ * @brief The broadcast details
+ *
+ * This is used to pass the broadcast details around the program
+ * Note that it makes a copy of the received data - and restricts
+ * the size to MAX_PAYLOAD
+ */
 typedef struct {
     struct simple_udp_connection *c;
     uip_ipaddr_t sender_addr;
