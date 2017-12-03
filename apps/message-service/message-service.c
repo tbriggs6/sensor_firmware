@@ -70,6 +70,11 @@ void messenger_add_handler(uint32_t header, uint32_t min_len, uint32_t max_len, 
 		return;
 
 	struct listener *n = memb_alloc(&handlers_memb);
+	n->header = header;
+	n->min_len = min_len;
+	n->max_len = max_len;
+	n->handler = handler;
+
 	list_add(handlers_list, n);
 }
 
@@ -110,13 +115,29 @@ static void message_dispatch( )
 	int length = uip_datalen( );
 	struct listener *curr;
 
+	printf("Dispatching a received message with %d bytes to %d listeners\n", length, list_length(handlers_list));
 	for (curr = list_head(handlers_list); curr != NULL; curr = list_item_next(curr))
 	{
-		if (curr->handler == NULL) continue;
-		if (curr->header != *header) continue;
-		if ((curr->min_len > 0) && (length < curr->min_len)) continue;
-		if ((curr->max_len > 0) && (length > curr->max_len)) continue;
+		if (curr->handler == NULL) {
+			printf("Handler is null\n");
+			continue;
+		}
+		if (curr->header != *header) {
+			printf("header %x != %x\n", curr->header, *header);
+			continue;
+		}
 
+		if ((curr->min_len > 0) && (length < curr->min_len)) {
+			printf("length to small: %d < %d\n", length, curr->min_len);
+			continue;
+		}
+		if ((curr->max_len > 0) && (length > curr->max_len)) {
+			printf("length is too large: %d > %d\n", length, curr->max_len);
+			continue;
+		}
+
+
+		printf("Sending to %p\n", curr->handler);
 
 		//TODO this may be backwards
 		// this is a valid message for this handler, so invoke it
@@ -126,6 +147,8 @@ static void message_dispatch( )
 		curr->handler(&sender, UIP_IP_BUF->srcport, (char *) uip_appdata, length);
 		break;
 	}
+
+	printf("Done dispatching message\n");
 }
 
 PROCESS(message_receiver, "Message Receiver");
@@ -149,5 +172,6 @@ PROCESS_THREAD(message_receiver, ev, data)
 
 void message_init( )
 {
+	printf("Message service starting\n");
 	process_start(&message_receiver, NULL);
 }

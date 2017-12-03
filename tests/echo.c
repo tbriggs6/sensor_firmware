@@ -134,18 +134,34 @@ int bcast_message(int num_sockets, int *sockets, const struct addrinfo const * m
     int rc = 0;
 
     for (i = 0; i < num_sockets; i++) {
-
+    	struct sockaddr repladdr;
+    	int repllen;
         rc = sendto(sockets[i], msg, len, 0, mcast_address->ai_addr, mcast_address->ai_addrlen);
         if (rc < OK) {
             fprintf(stderr,"%s:%d Error sending to socket %d : %s\n", __FILE__, __LINE__, i, strerror(errno));
             fail++;
+            continue;
         }
+        char repl[128];
+		/* print the server's reply */
+		rc = recvfrom(sockets[i], repl, 128, 0,&repladdr, &repllen);
+		if (rc < 0) {
+		  printf("ERROR in recvfrom\n");
+		  fail++;
+		  continue;
+		}
+
+		printf("Echo from server: %s", repl);
+		return 0;
         success++;
     }
 
     return fail;
 }
 
+
+#define ECHO_REQ 0x323232
+#define ECHO_REPL 0x232323
 
 typedef struct {
 	uint32_t header;
@@ -184,13 +200,22 @@ int main(int argc, char **argv)
     }
 
     echo_t echo;
-    echo.header =0x323232;
+    echo.header = ECHO_REQ;
     strncpy((char *) &echo.message, argv[2], 32);
 
     rc = sendto(sockets[0], &echo, sizeof(echo_t), 0, mcast_address->ai_addr, mcast_address->ai_addrlen);
 
+    struct sockaddr repladdr;
+   	int repllen;
+    echo_t repl;
+    /* print the server's reply */
+  	rc = recvfrom(sockets[0], &repl, sizeof(repl), 0,&repladdr, &repllen);
+  	if (rc < 0) {
+  		printf("result: %d\n", rc);
+  	}
+  	printf("Echo from server: %x %s", repl.header, repl.message);
 
-    // cleanup
+  	// cleanup
     for (int i = 0; i < num_sockets; i++) {
         close(sockets[i]);
     }

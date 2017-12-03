@@ -27,11 +27,20 @@ typedef struct {
 void echo_handler(uip_ipaddr_t *remote_addr, int remote_port, char *data, int length)
 {
 	echo_t *echoreq = (echo_t *) data;
+
+	printf("echo handler invoked %x - %s from ", echoreq->header, echoreq->message);
+	PRINT6ADDR(remote_addr);
+	printf(" port %d\n", remote_port);
+
 	if (length != sizeof(echo_t)) return;
+
+	printf("Sending reply\n");
 
 	echo_t echo_rep;
 	memcpy(&echo_rep, echoreq, sizeof(echo_t));
+
 	echo_rep.header = ECHO_REPL;
+	strcpy(&echo_rep.message, "repl");
 
 	messenger_send(remote_addr, remote_port, &echo_rep, sizeof(echo_rep));
 }
