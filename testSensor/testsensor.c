@@ -12,6 +12,13 @@
 #include <net/ipv6/uip-ds6.h>
 
 #include <message-service.h>
+#include "commandhandler.h"
+
+#include "message.h"
+#include "config.h"
+#include "neighbors.h"
+#include "datahandler.h"
+
 
 PROCESS(test_bcast_cb, "Test Sensor Broadcast Handler");
 
@@ -40,7 +47,7 @@ void echo_handler(uip_ipaddr_t *remote_addr, int remote_port, char *data, int le
 	memcpy(&echo_rep, echoreq, sizeof(echo_t));
 
 	echo_rep.header = ECHO_REPL;
-	strcpy(&echo_rep.message, "repl");
+	strcpy((char *)&echo_rep.message, (const char *) "repl");
 
 	messenger_send(remote_addr, remote_port, &echo_rep, sizeof(echo_rep));
 }
@@ -50,6 +57,10 @@ PROCESS_THREAD(test_bcast_cb, ev, data)
 {
     PROCESS_BEGIN( );
 
+    config_init( );
+
+    neighbors_init( );
+
     bcast_init(0);
 
     bcast_add_observer(&test_bcast_cb);
@@ -57,6 +68,8 @@ PROCESS_THREAD(test_bcast_cb, ev, data)
     message_init( );
 
     messenger_add_handler(ECHO_REQ, sizeof(echo_t), sizeof(echo_t), echo_handler);
+    messenger_add_handler(CMD_SET_HEADER, sizeof(uint32_t) * 4, sizeof(command_set_t), command_handler);
+    messenger_add_handler(DATA_ACK_HEADER, sizeof(data_ack_t), sizeof(data_ack_t), data_ack_handler);
 
     printf("Broadcast CB started\n");
     while(1)

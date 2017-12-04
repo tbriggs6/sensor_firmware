@@ -103,7 +103,7 @@ void messenger_remove_handler(handler_t handler)
 static struct uip_udp_conn *rcvr_conn = NULL;
 
 
-void messenger_send(uip_ipaddr_t *remote_addr, int remote_port, void *data, int length)
+void messenger_send(const uip_ipaddr_t const *remote_addr, int remote_port, const void * const data, int length)
 {
 	uip_udp_packet_sendto(rcvr_conn, data, length, remote_addr, remote_port);
 }
