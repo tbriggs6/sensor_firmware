@@ -69,7 +69,8 @@ PROCESS_THREAD(test_bcast_cb, ev, data)
 
     messenger_add_handler(ECHO_REQ, sizeof(echo_t), sizeof(echo_t), echo_handler);
     messenger_add_handler(CMD_SET_HEADER, sizeof(uint32_t) * 4, sizeof(command_set_t), command_handler);
-    messenger_add_handler(DATA_ACK_HEADER, sizeof(data_ack_t), sizeof(data_ack_t), data_ack_handler);
+
+    datahandler_init( );
 
     printf("Broadcast CB started\n");
     while(1)
