@@ -74,7 +74,7 @@ static void command_handle_set(const command_set_t const *req, const uip_ipaddr_
 		break;
 	}
 
-	messenger_send(remote_addr, remote_port, &ret, ret.length);
+	messenger_send(remote_addr, &ret, ret.length);
 }
 
 
@@ -149,7 +149,7 @@ static void command_handle_get(const command_set_t *const req, uip_ipaddr_t *rem
 		break;
 	}
 
-	messenger_send(remote_addr, remote_port, &ret, ret.length);
+	messenger_send(remote_addr, &ret, ret.length);
 }
 
 void command_handler(uip_ipaddr_t *remote_addr, int remote_port, char *data, int length)

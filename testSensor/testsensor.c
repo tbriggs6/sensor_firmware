@@ -49,7 +49,7 @@ void echo_handler(uip_ipaddr_t *remote_addr, int remote_port, char *data, int le
 	echo_rep.header = ECHO_REPL;
 	strcpy((char *)&echo_rep.message, (const char *) "repl");
 
-	messenger_send(remote_addr, remote_port, &echo_rep, sizeof(echo_rep));
+	messenger_send(remote_addr, &echo_rep, sizeof(echo_rep));
 }
 
 

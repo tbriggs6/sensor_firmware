@@ -46,7 +46,6 @@ PROCESS_THREAD(test_data, ev, data)
     static int count = 0;
 
     uip_ip6addr(&server, 0xFD00, 0, 0, 0, 0, 0, 0, 1);
-
     messenger_add_handler(DATA_ACK_HEADER, sizeof(data_ack_t), sizeof(data_ack_t), data_ack_handler);
 
     printf("Data Sender\n");
@@ -68,7 +67,7 @@ PROCESS_THREAD(test_data, ev, data)
 
         count = 0;
         while ((count++ < 10) && (data_seq_acked < sequence)) {
-            messenger_send(&server, MESSAGE_SERVER_PORT, &data, sizeof(data_t));
+            messenger_send(&server, &data, sizeof(data_t));
             etimer_set(&et, 2 * CLOCK_SECOND);
             PROCESS_WAIT_UNTIL(etimer_expired(&et));
         }

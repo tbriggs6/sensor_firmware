@@ -18,6 +18,7 @@
 
 #include <net/ipv6/uip-ds6.h>
 #include <net/ip/uip-debug.h>
+#include "simple-udp.h"
 
 #include "message-service.h"
 
@@ -100,78 +101,63 @@ void messenger_remove_handler(handler_t handler)
 
 
 
-static struct uip_udp_conn *rcvr_conn = NULL;
+static struct simple_udp_connection udp_conn;
 
-
-void messenger_send(const uip_ipaddr_t const *remote_addr, int remote_port, const void * const data, int length)
+void messenger_send(const uip_ipaddr_t const *remote_addr, const void * const data, int length)
 {
-	uip_udp_packet_sendto(rcvr_conn, data, length, remote_addr, remote_port);
+    simple_udp_sendto(&udp_conn, data, length, remote_addr);
 }
 
 
-static void message_dispatch( )
+
+static void message_receiver(struct simple_udp_connection *c,
+         const uip_ipaddr_t *sender_addr,
+         uint16_t sender_port,
+         const uip_ipaddr_t *receiver_addr,
+         uint16_t receiver_port,
+         const uint8_t *data,
+         uint16_t datalen)
 {
-	uint32_t *header = (uint32_t *) uip_appdata;
-	int length = uip_datalen( );
-	struct listener *curr;
+  printf("Data received on port %d from port %d with length %d\n",
+         receiver_port, sender_port, datalen);
 
-	printf("Dispatching a received message with %d bytes to %d listeners\n", length, list_length(handlers_list));
-	for (curr = list_head(handlers_list); curr != NULL; curr = list_item_next(curr))
-	{
-		if (curr->handler == NULL) {
-			printf("Handler is null\n");
-			continue;
-		}
-		if (curr->header != *header) {
-			printf("header %x != %x\n", curr->header, *header);
-			continue;
-		}
+      uint32_t *header = (uint32_t *) data;
+      int length = datalen;
 
-		if ((curr->min_len > 0) && (length < curr->min_len)) {
-			printf("length to small: %d < %d\n", length, curr->min_len);
-			continue;
-		}
-		if ((curr->max_len > 0) && (length > curr->max_len)) {
-			printf("length is too large: %d > %d\n", length, curr->max_len);
-			continue;
-		}
+      struct listener *curr;
+      printf("Dispatching a received message with %d bytes to %d listeners\n", length, list_length(handlers_list));
+      for (curr = list_head(handlers_list); curr != NULL; curr = list_item_next(curr))
+      {
+          if (curr->handler == NULL) {
+              printf("Handler is null\n");
+              continue;
+          }
+          if (curr->header != *header) {
+              printf("header %x != %x\n", curr->header, *header);
+              continue;
+          }
+
+          if ((curr->min_len > 0) && (length < curr->min_len)) {
+              printf("length to small: %d < %d\n", length, curr->min_len);
+              continue;
+          }
+          if ((curr->max_len > 0) && (length > curr->max_len)) {
+              printf("length is too large: %d > %d\n", length, curr->max_len);
+              continue;
+          }
 
 
-		printf("Sending to %p\n", curr->handler);
+          printf("Sending to %p\n", curr->handler);
+          curr->handler(sender_addr, sender_port, (char *) uip_appdata, length);
+          break;
+      }
 
-		//TODO this may be backwards
-		// this is a valid message for this handler, so invoke it
-		uip_ipaddr_t sender;
-		uip_ipaddr_copy(&sender, &UIP_IP_BUF->srcipaddr);
-
-		curr->handler(&sender, UIP_IP_BUF->srcport, (char *) uip_appdata, length);
-		break;
-	}
-
-	printf("Done dispatching message\n");
+      printf("Done dispatching message\n");
 }
 
-PROCESS(message_receiver, "Message Receiver");
-PROCESS_THREAD(message_receiver, ev, data)
-{
-  PROCESS_BEGIN();
 
-  // create the UDP connections to listen for incoming messages
-  rcvr_conn = udp_new(NULL, UIP_HTONS(MESSAGE_CLIENT_PORT), NULL);   // creates an unassigned connection
-  udp_bind(rcvr_conn, UIP_HTONS(MESSAGE_SERVER_PORT));     // binds to connection to local port (2000)
-
-  while(1) {
-    PROCESS_YIELD();
-    if ((ev == tcpip_event) && (uip_newdata())) {
-    	message_dispatch( );
-    }
-  }
-
-  PROCESS_END();
-}
 
 void message_init( )
 {
-	printf("Message service starting\n");
-	process_start(&message_receiver, NULL);
+    simple_udp_register( &udp_conn, MESSAGE_SERVER_PORT, NULL, MESSAGE_SERVER_PORT, message_receiver);
 }
