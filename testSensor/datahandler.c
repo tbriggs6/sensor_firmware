@@ -10,6 +10,7 @@
 #include "config.h"
 #include "neighbors.h"
 #include "message-service.h"
+#include <contiki.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -29,7 +30,9 @@ void data_ack_handler(uip_ipaddr_t *remote_addr, int remote_port, char *data, in
         return;
     }
 
+    printf("Data ack seq: %d\n", ack->ack_seq);
     data_seq_acked = ack->ack_seq;
+    process_post(&test_data, PROCESS_EVENT_MSG, data);
 }
 
 
@@ -51,13 +54,12 @@ PROCESS_THREAD(test_data, ev, data)
     printf("Data Sender\n");
     while(1)
     {
-
+        printf("Waiting for %d  /  %d\n", config_get_sensor_interval(), config_get_sensor_interval() / CLOCK_SECOND);
         etimer_set(&et, config_get_sensor_interval());
         PROCESS_WAIT_UNTIL(etimer_expired(&et));
 
-
         data.header = DATA_HEADER;
-        data.sequence = sequence++;
+        data.sequence = sequence;
         data.battery = 55;
         data.temperature = 33;
         data.adc[0] = 0x1010;
@@ -66,22 +68,40 @@ PROCESS_THREAD(test_data, ev, data)
         data.adc[3] = 0x4343;
 
         count = 0;
-        while ((count++ < 10) && (data_seq_acked < sequence)) {
-            messenger_send(&server, &data, sizeof(data_t));
-            etimer_set(&et, 2 * CLOCK_SECOND);
-            PROCESS_WAIT_UNTIL(etimer_expired(&et));
+        while ((count < 10) && (data_seq_acked < sequence)) {
+
+
+            if ((count == 0) || (etimer_expired(&et)))
+            {
+                printf("Sending data - attempt %d \n", count);
+                messenger_send(&server, &data, sizeof(data_t));
+                etimer_set(&et, 2 * CLOCK_SECOND);
+            }
+
+            PROCESS_WAIT_EVENT( );
+
+            if ((ev == PROCESS_EVENT_MSG) && (data_seq_acked == sequence)) {
+                printf("OK - data is ACKd\n");
+                break;
+            }
+
+            else if (etimer_expired(&et)) {
+                printf("Timeout waiting for ACK\n");
+                count++;
+            }
+
+            else {
+                printf("Seq: %d  Last ack: %d\n",sequence , data_seq_acked);
+                printf("Unexpected wake-up (%d), resending\n", ev);
+            }
+
+
         }
 
-        if (data_seq_acked < sequence) {
-            printf("Error - send failed\n");
-        }
-        else {
-            printf("OK - send succes\n");
-        }
+        printf("\n\n\nFinished sending sequence %d\n\n\n", sequence);
         sequence++;
 
-        etimer_set(&et, config_get_sensor_interval());
-        PROCESS_WAIT_UNTIL(etimer_expired(&et));
+
 
     }
     PROCESS_END();
