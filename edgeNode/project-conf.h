@@ -48,13 +48,17 @@
 #define UIP_FALLBACK_INTERFACE rpl_interface
 #endif
 
-#ifndef QUEUEBUF_CONF_NUM
-#define QUEUEBUF_CONF_NUM          4
-#endif
 
-#ifndef UIP_CONF_BUFFER_SIZE
-#define UIP_CONF_BUFFER_SIZE    140
-#endif
+
+
+// per http://sunmaysky.blogspot.tw/2015/09/contiki-subg-hz-6lowpan-on-cc1350.html
+//#ifndef QUEUEBUF_CONF_NUM
+//#define QUEUEBUF_CONF_NUM          4
+//#endif
+//
+//#ifndef UIP_CONF_BUFFER_SIZE
+//#define UIP_CONF_BUFFER_SIZE    140
+//#endif
 
 #ifndef UIP_CONF_RECEIVE_WINDOW
 #define UIP_CONF_RECEIVE_WINDOW  60
@@ -69,6 +73,10 @@
 
 /* Change this to switch engines. Engine codes in uip-mcast6-engines.h */
 #define UIP_MCAST6_CONF_ENGINE UIP_MCAST6_ENGINE_ROLL_TM
+
+#define NETSTACK_CONF_RDC nullrdc_driver
+#define RF_CORE_CONF_CHANNEL 25
+
 
 /* For Imin: Use 16 over NullRDC, 64 over Contiki MAC */
 #define ROLL_TM_CONF_IMIN_1         64
