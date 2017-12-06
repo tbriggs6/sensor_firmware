@@ -18,6 +18,8 @@
 static config_t config;
 static dynamic_config_t dynconfig;
 
+#define SECONDS(x) (x * CLOCK_SECOND)
+
 static void config_read( )
 {
 	//TODO Read the configuration from the flash
@@ -35,9 +37,9 @@ void config_init()
 	if (config.magic != CONFIG_MAGIC) {
 		printf("Configuration magic (%-8.8x != %-8.8x) not found, using defaults\n", config.magic, CONFIG_MAGIC);
 		config.magic = CONFIG_MAGIC;
-		config_set_bcast_interval(30 * CLOCK_SECOND);
-		config_set_sensor_interval(30 * CLOCK_SECOND);
-		config_set_neighbor_interval(30 * CLOCK_SECOND);
+		config_set_bcast_interval( SECONDS(30) );
+		config_set_sensor_interval( SECONDS(30) );
+		config_set_neighbor_interval( SECONDS(30) );
 		config_write( );
 		config_read();
 	}
@@ -49,10 +51,10 @@ void config_init()
 
 void config_set_sensor_interval(const int interval)
 {
-	if (interval < 5) {
+	if (interval < SECONDS(5)) {
 		printf("Error - interval too small (5...3600) seconds\n");
 	}
-	else if (interval > 3600) {
+	else if (interval > SECONDS(3600)) {
 		printf("Error - interval too large (5...3600) seconds\n");
 		return;
 	}
@@ -62,8 +64,8 @@ void config_set_sensor_interval(const int interval)
 
 int config_get_sensor_interval()
 {
-	if (config.sensor_interval < (CLOCK_SECOND))
-		return 1 * CLOCK_SECOND;
+	if (config.sensor_interval < (SECONDS(5)))
+		return SECONDS(5);
 
 	return config.sensor_interval;
 }
@@ -81,10 +83,10 @@ int config_get_ctime_offset()
 
 void config_set_bcast_interval(const int interval)
 {
-	if (interval < 5) {
+	if (interval < SECONDS(5)) {
 		printf("Error - interval too small (5...3600) seconds\n");
 	}
-	else if (interval > 3600) {
+	else if (interval > SECONDS(3600)) {
 		printf("Error - interval too large (5...3600) seconds\n");
 		return;
 	}
@@ -96,8 +98,8 @@ void config_set_bcast_interval(const int interval)
 int config_get_bcast_interval()
 {
 
-	if (config.bcast_interval < (CLOCK_SECOND))
-		return 30 * CLOCK_SECOND;
+	if (config.bcast_interval < (SECONDS(30)))
+		return SECONDS(30);
 
 	return config.bcast_interval;
 }
@@ -105,10 +107,10 @@ int config_get_bcast_interval()
 
 void config_set_neighbor_interval(const int interval)
 {
-	if (interval < 5) {
+	if (interval < (SECONDS(5))) {
 		printf("Error - interval too small (5...3600) seconds\n");
 	}
-	else if (interval > 3600) {
+	else if (interval > SECONDS(3600)) {
 		printf("Error - interval too large (5...3600) seconds\n");
 		return;
 	}
@@ -119,8 +121,8 @@ void config_set_neighbor_interval(const int interval)
 
 int config_get_neighbor_interval()
 {
-	if (config.neighbor_interval < (CLOCK_SECOND))
-		return 10 * CLOCK_SECOND;
+	if (config.neighbor_interval < (SECONDS(10)))
+		return (SECONDS(10));
 
 	return config.neighbor_interval;
 }
