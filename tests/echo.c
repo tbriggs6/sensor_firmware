@@ -183,7 +183,7 @@ int main(int argc, char **argv)
 
     len = strlen(argv[2]);
 
-    rc = create_send_sockets(argv[1], "5353", &mcast_address, &sockets, &num_sockets);
+    rc = create_send_sockets(argv[1], "5523", &mcast_address, &sockets, &num_sockets);
     if (rc != OK) {
         fprintf(stderr,"Error - could not create multicast sending sockets.\n");
         exit(-1);

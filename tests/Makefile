@@ -4,7 +4,7 @@ CC=gcc
 all: send-bcast recv-bcast send-dgram echo
 
 clean:
-	rm -f send-bcast send-dgram recv-bcast *.o
+	rm -f send-bcast send-dgram recv-bcast echo *.o
 
 send-bcast: send-bcast.c bcast.h
 

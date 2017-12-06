@@ -13,13 +13,12 @@
 #include <contiki-net.h>
 
 
-#define MESSAGE_CLIENT_PORT (0)	// listen to any port
-#define MESSAGE_SERVER_PORT (5353) // only listen to this one
+#define MESSAGE_SERVER_PORT (5323) // only listen to this one
 
 typedef void (*handler_t)(uip_ipaddr_t *remote_addr, int remote_port, char *data, int length);
 
 void message_init( void );
-void messenger_send(uip_ipaddr_t *remote_addr, int remote_port, void *data, int length);
+void messenger_send(const uip_ipaddr_t const *remote_addr, const void const *data, int length);
 void messenger_add_handler(uint32_t header, uint32_t min_len, uint32_t max_len, handler_t handler);
 void messenger_remove_handler(handler_t handler);
 
