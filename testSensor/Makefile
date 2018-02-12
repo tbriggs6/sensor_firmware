@@ -15,6 +15,7 @@ APPS += bcast-service message-service
 all:  $(CONTIKI_PROJECT)
 
 MODULES += core/net/ipv6/multicast
+#MODULES += core/net/llsec/noncoresec #Added to test encryption
 
 CONTIKI_WITH_IPV6 = 1
 
