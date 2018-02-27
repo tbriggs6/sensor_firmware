@@ -95,7 +95,7 @@ static void print_neighbors( )
 	int count = 0;
 
 
-	PRINTF("Neighbors:\n");
+	PRINTF("Neighbors:\r\n");
 	nbr = nbr_table_head(ds6_neighbors);
 	while (nbr != NULL) {
 
@@ -114,7 +114,7 @@ static void print_neighbors( )
 #if (DEBUG > 0)
 		PRINTF("   %d ",nbr->isrouter);
 		uip_debug_ipaddr_print(&(nbr->ipaddr));
-		PRINTF(" rssi=%d\n", rssi);
+		PRINTF(" rssi=%d\r\n", rssi);
 #endif
 		nbr = nbr_table_next(ds6_neighbors, nbr);
 	}

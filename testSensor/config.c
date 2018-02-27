@@ -35,7 +35,7 @@ void config_init()
 {
 	config_read( );
 	if (config.magic != CONFIG_MAGIC) {
-		printf("Configuration magic (%-8.8x != %-8.8x) not found, using defaults\n", config.magic, CONFIG_MAGIC);
+		printf("Configuration magic (%-8.8x != %-8.8x) not found, using defaults\r\n", config.magic, CONFIG_MAGIC);
 		config.magic = CONFIG_MAGIC;
 		config_set_bcast_interval( SECONDS(30) );
 		config_set_sensor_interval( SECONDS(30) );
@@ -84,10 +84,10 @@ int config_get_ctime_offset()
 void config_set_bcast_interval(const int interval)
 {
 	if (interval < SECONDS(5)) {
-		printf("Error - interval too small (5...3600) seconds\n");
+		printf("Error - interval too small (5...3600) seconds\r\n");
 	}
 	else if (interval > SECONDS(3600)) {
-		printf("Error - interval too large (5...3600) seconds\n");
+		printf("Error - interval too large (5...3600) seconds\r\n");
 		return;
 	}
 
@@ -108,10 +108,10 @@ int config_get_bcast_interval()
 void config_set_neighbor_interval(const int interval)
 {
 	if (interval < (SECONDS(5))) {
-		printf("Error - interval too small (5...3600) seconds\n");
+		printf("Error - interval too small (5...3600) seconds\r\n");
 	}
 	else if (interval > SECONDS(3600)) {
-		printf("Error - interval too large (5...3600) seconds\n");
+		printf("Error - interval too large (5...3600) seconds\r\n");
 		return;
 	}
 
@@ -152,7 +152,7 @@ void config_set(const int configID, const int value)
 		break;
 
 	default:
-		printf("Error - unknown config ID: %d", configID);
+		printf("Error - unknown config ID: %d\r\n", configID);
 	}
 }
 

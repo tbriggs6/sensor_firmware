@@ -1,0 +1,35 @@
+diff --git a/cpu/cc26xx-cc13xx/cc26xx.ld b/cpu/cc26xx-cc13xx/cc26xx.ld
+index 84601ce..4990dec 100644
+--- a/cpu/cc26xx-cc13xx/cc26xx.ld
++++ b/cpu/cc26xx-cc13xx/cc26xx.ld
+@@ -36,7 +36,9 @@ ENTRY(ResetISR)
+ MEMORY
+ {
+     /* Flash Size 128 KB minus the CCA area below (88 bytes) */
+-    FLASH (RX) : ORIGIN = 0x00000000, LENGTH = 0x0001FFA8
++    FLASH (RX) : ORIGIN = 0x00000000, LENGTH = 0x1E000
++
++    UFLASH (RX) : ORIGIN = 0x1E000, LENGTH = 0x1000
+ 
+     /*
+      * Customer Configuration Area and Bootloader Backdoor configuration
+@@ -95,6 +97,11 @@ SECTIONS
+         KEEP(*(.ccfg))
+     } > FLASH_CCFG
+ 
++    .uflash :
++    {
++        KEEP(*(.uflash))
++    } > UFLASH
++
+     /* User_heap_stack section, used to check that there is enough RAM left */
+     ._user_heap_stack :
+     {
+@@ -109,3 +116,6 @@ SECTIONS
+     } > GPRAM
+     
+ }
++
++_uflash_base = 0x1E000;
++_uflash_size = 0x1000;
+
