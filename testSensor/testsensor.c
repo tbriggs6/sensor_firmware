@@ -40,7 +40,7 @@ typedef struct {
 extern void * _uflash_base;
 extern void * _uflash_size;
 
-
+/*
 void check_nvflash(){
 	config_t * currentConfig = (config_t *) &_uflash_base;
 
@@ -61,17 +61,17 @@ void check_nvflash(){
 		VIMSModeSet(VIMS_BASE, VIMS_MODE_DISABLED);
 		while(VIMSModeGet(VIMS_BASE) != VIMS_MODE_DISABLED);
 
-		/* Disable all interrupts when accessing flash, prevents memory from getting hosed */
+		// Disable all interrupts when accessing flash, prevents memory from getting hosed
 		CPUcpsid();
 
-		/* Erase the flash -- required in order to write */
+		// Erase the flash -- required in order to write
 		uint32_t resp = FlashSectorErase( mybase );
 		resp = FlashProgram((uint8_t *) &myconf, mybase, sizeof(config_t));
 
-		/* Reenable interupts */
+		// Reenable interupts
 		CPUcpsie();
 
-		/* Re-enable the cache */
+		// Re-enable the cache
 		VIMSModeSet(VIMS_BASE, VIMS_MODE_ENABLED);
 		printf("New Magic: %X\r\n", currentConfig->magic);
 	}
@@ -82,7 +82,7 @@ void check_nvflash(){
 
 
 }
-
+*/
 
 void echo_handler(uip_ipaddr_t *remote_addr, int remote_port, char *data, int length)
 {
@@ -125,11 +125,11 @@ PROCESS_THREAD(test_bcast_cb, ev, data)
     printf("Before data handler init()\n");
     datahandler_init( );
 
-    /* FLASH */
-    printf("Calling check_nvflash() ... \n");
-    check_nvflash();
-
-    /* end Flash */
+//    /* FLASH */
+//    printf("Calling check_nvflash() ... \n");
+//    check_nvflash();
+//
+//    /* end Flash */
 
 
     printf("Broadcast CB started\n");
