@@ -98,7 +98,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "scif_framework.h"
-#include "scif_osal_none.h"
+#include "scif_osal_contiki.h"
 
 
 /// Target chip name
