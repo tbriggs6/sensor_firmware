@@ -19,6 +19,10 @@
 #include "neighbors.h"
 #include "datahandler.h"
 
+#include "scif_framework.h"
+#include "scif_osal_contiki.h"
+#include "scif_scs.h"
+
 
 PROCESS(test_bcast_cb, "Test Sensor Broadcast Handler");
 
