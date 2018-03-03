@@ -11,9 +11,10 @@
 #include <driverlib/interrupt.h>
 #include "scif_osal_contiki.h"
 #include "scif_scs.h"
+#include "config.h"
 
-#include "sensor.h"
-#include "sender.h"
+//#include "sensor.h"
+//#include "sender.h"
 
 #include <contiki.h>
 #include <dev/aux-ctrl.h>
@@ -29,6 +30,14 @@
 
 #ifndef BV
 #define BV(n)           (1 << (n))
+#endif
+
+#define DEBUG 1
+#if DEBUG
+#include <stdio.h>
+#define PRINTF(...) printf(__VA_ARGS__)
+#else
+#define PRINTF(...)
 #endif
 
 
@@ -114,6 +123,7 @@ static void osalClearCtrlReadyInt(void) {
 
 static void osalIndicateCtrlReady(void);
 
+
 PROCESS(ready_interrupt, "Ready Interrupt");
 PROCESS_THREAD(ready_interrupt, ev, data)
 {
@@ -130,6 +140,7 @@ PROCESS_THREAD(ready_interrupt, ev, data)
 
 	PROCESS_END();
 }
+
 
 bool osalIsReady( ) {
 	return osalPostedReady;
@@ -218,9 +229,9 @@ PROCESS_THREAD(alert_interrupt, ev, data)
 				scifScsTaskData.analogSensor.output.anaValues[2],
 				scifScsTaskData.analogSensor.output.anaValues[3]);
 
-		sensors_send( );
+		//sensors_send( );
 
-		PROCESS_YIELD_UNTIL(ev == sender_finish_event);
+		//PROCESS_YIELD_UNTIL(ev == sender_finish_event);
 
 
 		// update the schedule
@@ -240,6 +251,7 @@ PROCESS_THREAD(alert_interrupt, ev, data)
 
 	PROCESS_END();
 }
+
 
 /** \brief Interrupt service route for ready interrupt
  */

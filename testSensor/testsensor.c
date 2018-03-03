@@ -56,17 +56,6 @@ void echo_handler(uip_ipaddr_t *remote_addr, int remote_port, char *data, int le
 	messenger_send(remote_addr, &echo_rep, sizeof(echo_rep));
 }
 
-// https://github.com/contiki-os/contiki/issues/2019
-process_event_t sensor_event;
-
-void sensor_callback()
-{
-    scifClearAlertIntSource();
-    sensor_event = process_alloc_event();
-    process_post(&test_bcast_cb, sensor_event, NULL);
-    scifAckAlertEvents();
-}
-
 PROCESS_THREAD(test_bcast_cb, ev, data)
 {
     PROCESS_BEGIN( );
@@ -81,14 +70,12 @@ PROCESS_THREAD(test_bcast_cb, ev, data)
 
     message_init( );
 
+    sensor_aux_init();
+
     messenger_add_handler(ECHO_REQ, sizeof(echo_t), sizeof(echo_t), echo_handler);
     messenger_add_handler(CMD_SET_HEADER, sizeof(uint32_t) * 4, sizeof(command_set_t), command_handler);
     printf("Before data handler init()\n");
     datahandler_init( );
-
-    scifOsalRegisterTaskAlertCallback(sensor_callback);
-    scifInit(&sensor_callback);
-
 
     printf("Broadcast CB started\n");
     while(1)
@@ -103,12 +90,6 @@ PROCESS_THREAD(test_bcast_cb, ev, data)
             printf("  port: %d\r\n", bcast->sender_port);
 
             printf("len: %d message: %s\r\n", bcast->datalen, bcast->data);
-	}
-	else if (ev == sensor_event) {
-	    int i;
-	    for(i = 0; i < 5; i++){
-		printf("Sensor reading %d: %u\r\n", i, scifScsTaskData.analogSensor.output.anaValues[i]);
-	    }
 	}
         else {
             printf("Different event: %d\r\n", ev);
