@@ -63,7 +63,7 @@
                 <uattr name="Configuration on uninitialization">1</uattr>
                 <uattr name="Output value on initialization">0</uattr>
                 <uattr name="Pin count">0</uattr>
-                <uattr name="Pin/0000">DIO29</uattr>
+                <uattr name="Pin/0000">DIO7</uattr>
                 <uattr name="Pin/0001"></uattr>
                 <uattr name="Pin/0002"></uattr>
                 <uattr name="Pin/0003"></uattr>
@@ -143,7 +143,7 @@
         <resource_ref name="System CPU Alert" enabled="1"/>
         <resource_ref name="TDC" enabled="1"/>
         <resource_ref name="Timer 0" enabled="0"/>
-        <resource_ref name="Timer Event Trigger" enabled="1"/>
+        <resource_ref name="Timer Event Trigger" enabled="0"/>
         <resource_ref name="UART Emulator" enabled="0">
             <rattr name="RX buffer size">64</rattr>
             <rattr name="Required idle period before enabling RX">11</rattr>
@@ -153,7 +153,8 @@
                 <uattr name="TX pin/0000"></uattr>
             </io_usage>
         </resource_ref>
-        <sccode name="event0"><![CDATA[// Analog sensing logic - read the analog channel and save in output buffer
+        <sccode name="event0"><![CDATA[]]></sccode>
+        <sccode name="execute"><![CDATA[// Analog sensing logic - read the analog channel and save in output buffer
 
 // turn on the output power rail
 gpioSetOutput(AUXIO_XD_ANA_POWER);
@@ -200,18 +201,8 @@ adcDisable( );
 gpioClearOutput(AUXIO_XD_ANA_POWER);
 
 
-fwGenAlertInterrupt();
-
-evhSetupTimerTrigger(0, cfg.scheduleDelay, 12);
-//evhSetupTimerTrigger(0, cfg.scheduleDelay, 10);
-
-//fwScheduleTask(cfg.scheduleDelay);]]></sccode>
-        <sccode name="execute"><![CDATA[]]></sccode>
-        <sccode name="initialize"><![CDATA[// 4KHz timer, prescaled by 2^12 = 1s, man = 15, 15s interval
-//evhSetupTimerTrigger(0, cfg.scheduleDelay, 10);
-
-evhSetupTimerTrigger(0, cfg.scheduleDelay, 12);
-//fwScheduleTask(cfg.scheduleDelay);]]></sccode>
+fwGenAlertInterrupt();]]></sccode>
+        <sccode name="initialize"><![CDATA[]]></sccode>
         <sccode name="terminate"><![CDATA[]]></sccode>
         <tt_iter>run_event0</tt_iter>
         <tt_struct>output.anaValues.[0],output.anaValues.[1],output.anaValues.[2],output.anaValues.[3],output.distance</tt_struct>
