@@ -23,6 +23,9 @@
 #include "scif_osal_contiki.h"
 #include "scif_scs.h"
 
+#ifndef BV
+#define BV(n)           (1 << (n))
+#endif
 
 PROCESS(test_bcast_cb, "Test Sensor Broadcast Handler");
 
@@ -60,7 +63,11 @@ PROCESS_THREAD(test_bcast_cb, ev, data)
 {
     PROCESS_BEGIN( );
 
+    printf("Thread Test is begun\r\n()");
+
     config_init( );
+
+    sensor_aux_init();
 
     neighbors_init( );
 
@@ -70,7 +77,6 @@ PROCESS_THREAD(test_bcast_cb, ev, data)
 
     message_init( );
 
-    sensor_aux_init();
 
     messenger_add_handler(ECHO_REQ, sizeof(echo_t), sizeof(echo_t), echo_handler);
     messenger_add_handler(CMD_SET_HEADER, sizeof(uint32_t) * 4, sizeof(command_set_t), command_handler);
@@ -78,6 +84,12 @@ PROCESS_THREAD(test_bcast_cb, ev, data)
     datahandler_init( );
 
     printf("Broadcast CB started\n");
+
+    while(1){
+    	scifExecuteTasksOnceNbl(BV(SCIF_SCS_ANALOG_SENSOR_TASK_ID));
+    	PROCESS_WAIT_EVENT();
+    }
+
     while(1)
     {
         PROCESS_WAIT_EVENT();

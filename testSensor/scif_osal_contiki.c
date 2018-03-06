@@ -130,6 +130,7 @@ PROCESS_THREAD(ready_interrupt, ev, data)
 	PROCESS_BEGIN( );
 
 	while(1) {
+		// poll_process(&ready_interrupt); allows this
 		PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL);
 
 		scifOsalEnableAuxDomainAccess();
@@ -180,7 +181,7 @@ static void osalRegisterTaskAlertInt(void) {
   */
 static void osalEnableTaskAlertInt(void) {
   HWREG(NVIC_EN0 + NVIC_OFFSET(INT_SCIF_TASK_ALERT)) = NVIC_BV(INT_SCIF_TASK_ALERT);
-	//IntEnable(INT_SCIF_TASK_ALERT);
+	IntEnable(INT_SCIF_TASK_ALERT);
 } // osalEnableTaskAlertInt
 
 
@@ -222,12 +223,13 @@ PROCESS_THREAD(alert_interrupt, ev, data)
 		PRINTF("Waiting for next ALERT interrupt\n");
 		PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL);
 
-		scifOsalEnableAuxDomainAccess();
 		PRINTF("\nReceived alert interrupt\n");
-		PRINTF("Analog values: %d %d %d %d\n\n", scifScsTaskData.analogSensor.output.anaValues[0],
-				scifScsTaskData.analogSensor.output.anaValues [1],
+		scifOsalEnableAuxDomainAccess();
+		PRINTF("Analog values: %d %d %d %d %d\r\n\n", scifScsTaskData.analogSensor.output.anaValues[0],
+				scifScsTaskData.analogSensor.output.anaValues[1],
 				scifScsTaskData.analogSensor.output.anaValues[2],
-				scifScsTaskData.analogSensor.output.anaValues[3]);
+				scifScsTaskData.analogSensor.output.anaValues[3],
+				scifScsTaskData.analogSensor.output.anaValues[4]);
 
 		//sensors_send( );
 
@@ -237,9 +239,9 @@ PROCESS_THREAD(alert_interrupt, ev, data)
 		// update the schedule
 		scifScsTaskData.analogSensor.cfg.scheduleDelay = config_get_sensor_interval();
 
-		osalIndicateTaskAlert( );
-
-		scifAckAlertEvents( );
+		//osalIndicateTaskAlert( );
+		osalClearTaskAlertInt();
+		scifAckAlertEvents();
 
 
 		//TODO can I disable the aux domain?  do I need to?
@@ -257,10 +259,17 @@ PROCESS_THREAD(alert_interrupt, ev, data)
  */
 static void osalTaskAlertIsr(void) {
 
-	scifOsalEnableAuxDomainAccess();
-	osalClearTaskAlertInt( );
+	scifClearAlertIntSource();
 
+	PRINTF("Alert interrupt generated. Calling Contiki process...\r\n");
 	process_poll(&alert_interrupt);
+
+
+	scifOsalEnableAuxDomainAccess();
+	//osalClearTaskAlertInt();
+
+//    osalDisableTaskAlertInt();
+//    osalIndicateTaskAlert();
 }
 
 
@@ -545,10 +554,12 @@ int sensor_aux_init( )
 		return -1;
 	}
 
-	rc = scifStartTasksNbl(BV(SCIF_SCS_ANALOG_SENSOR_TASK_ID));
-	if (rc != SCIF_SUCCESS) {
-		PRINTF("Error during scif control start: %d\n", rc);
-	}
+//	rc = scifStartTasksNbl(BV(SCIF_SCS_ANALOG_SENSOR_TASK_ID));
+//	if (rc != SCIF_SUCCESS) {
+//		PRINTF("Error during scif control start: %d\n", rc);
+//	} else {
+//		PRINTF("Scif control start SUCCESSFUL\r\n");
+//	}
 
 
 	// using timer 1, enable reload mode

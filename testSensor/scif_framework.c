@@ -20,7 +20,7 @@
 #endif
 
 
-#define DEBUG 0
+#define DEBUG 1
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -224,10 +224,10 @@ SCIF_RESULT_T scifInit(const SCIF_DATA_T* pScifDriverSetup) {
 
   	scifOsalEnableAuxDomainAccess( );
 
-//    // Perform sanity checks: The Sensor Controller cannot already be active
-//    if (HWREG(AON_WUC_BASE + AON_WUC_O_AUXCTL) & AON_WUC_AUXCTL_SCE_RUN_EN_M) {
-//        return SCIF_ILLEGAL_OPERATION;
-//    }
+    // Perform sanity checks: The Sensor Controller cannot already be active
+    if (HWREG(AON_WUC_BASE + AON_WUC_O_AUXCTL) & AON_WUC_AUXCTL_SCE_RUN_EN_M) {
+        return SCIF_ILLEGAL_OPERATION;
+    }
 
     // Copy the driver setup
     memcpy(&scifData, pScifDriverSetup, sizeof(SCIF_DATA_T));

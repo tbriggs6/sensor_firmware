@@ -90,7 +90,7 @@ void config_init()
 		config.magic = CONFIG_MAGIC;
 		config.bcast_interval = SECONDS(30);
 		config.neighbor_interval = SECONDS(30);
-		config.sensor_interval = SECONDS(30);
+		config.sensor_interval = SECONDS(5);
 
 		config_write();
 		config_read();
