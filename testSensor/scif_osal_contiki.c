@@ -220,10 +220,10 @@ PROCESS_THREAD(alert_interrupt, ev, data)
 	PROCESS_BEGIN( );
 
 	while(1) {
-		PRINTF("Waiting for next ALERT interrupt\n");
+		PRINTF("Waiting for next ALERT interrupt\r\n");
 		PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL);
 
-		PRINTF("\nReceived alert interrupt\n");
+		PRINTF("\nReceived alert interrupt\r\n");
 		scifOsalEnableAuxDomainAccess();
 		PRINTF("Analog values: %d %d %d %d %d\r\n\n", scifScsTaskData.analogSensor.output.anaValues[0],
 				scifScsTaskData.analogSensor.output.anaValues[1],
@@ -550,16 +550,16 @@ int sensor_aux_init( )
 
 	int rc = scifInit(&scifScsDriverSetup);
 	if (rc != SCIF_SUCCESS) {
-		PRINTF("Error during scifInit - %d\n", rc);
+		PRINTF("Error during scifInit - %d\r\n", rc);
 		return -1;
 	}
 
-//	rc = scifStartTasksNbl(BV(SCIF_SCS_ANALOG_SENSOR_TASK_ID));
-//	if (rc != SCIF_SUCCESS) {
-//		PRINTF("Error during scif control start: %d\n", rc);
-//	} else {
-//		PRINTF("Scif control start SUCCESSFUL\r\n");
-//	}
+	rc = scifStartTasksNbl(BV(SCIF_SCS_ANALOG_SENSOR_TASK_ID));
+	if (rc != SCIF_SUCCESS) {
+		PRINTF("Error during scif control start: %d\r\n", rc);
+	} else {
+		PRINTF("Scif control start SUCCESSFUL\r\n");
+	}
 
 
 	// using timer 1, enable reload mode

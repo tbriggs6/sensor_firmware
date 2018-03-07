@@ -61,6 +61,8 @@ void echo_handler(uip_ipaddr_t *remote_addr, int remote_port, char *data, int le
 
 PROCESS_THREAD(test_bcast_cb, ev, data)
 {
+	static struct etimer et;
+
     PROCESS_BEGIN( );
 
     printf("Thread Test is begun\r\n()");
@@ -86,8 +88,10 @@ PROCESS_THREAD(test_bcast_cb, ev, data)
     printf("Broadcast CB started\n");
 
     while(1){
-    	scifExecuteTasksOnceNbl(BV(SCIF_SCS_ANALOG_SENSOR_TASK_ID));
-    	PROCESS_WAIT_EVENT();
+    	//scifExecuteTasksOnceNbl(BV(SCIF_SCS_ANALOG_SENSOR_TASK_ID));
+		etimer_set(&et, config_get_sensor_interval());
+		PROCESS_WAIT_UNTIL(etimer_expired(&et));
+    	scifSwTriggerExecutionCodeNbl(BV(SCIF_SCS_ANALOG_SENSOR_TASK_ID));
     }
 
     while(1)

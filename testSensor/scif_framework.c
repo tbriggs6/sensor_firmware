@@ -800,6 +800,33 @@ SCIF_RESULT_T scifStopTasksNbl(uint16_t bvTaskIds) {
 } // scifStopTasksNbl
 
 
+/** \brief Triggers manually the Execution code blocks for the specified tasks
+  *
+  * This triggers the Execution code for each task ID specified in \a bvTaskIds. The READY event
+  * is generated when the Execution code has run for all the specified tasks.
+  *
+  * Calling this function does not interrupt any ongoing activities on the Sensor Controller, and does
+  * not affect RTC-based task execution.
+  *
+  * \note This function should only be called for already active tasks.
+  *
+  * \note Task control does not interrupt ongoing code execution on the Sensor Controller, but it has
+  *       priority over other triggers/wake-up sources. Calling this function can therefore delay
+  *       upcoming Sensor Controller activities such as RTC-based task execution and Event Handler code
+  *       execution.
+  *
+  * \param[in]      bvTaskIds
+  *     Bit-vector indicating which tasks should be executed (where bit N corresponds to task ID N)
+  *
+  * \return
+  *     \ref SCIF_SUCCESS if successful, otherwise \ref SCIF_NOT_READY (last non-blocking call has not
+  *     completed) or \ref SCIF_ILLEGAL_OPERATION (attempted to execute an already active task). The
+  *     function call has no effect if unsuccessful.
+  */
+SCIF_RESULT_T scifSwTriggerExecutionCodeNbl(uint16_t bvTaskIds) {
+    return scifCtrlTasksNbl(bvTaskIds, 0x02);
+} // scifSwTriggerExecutionCodeNbl
+
 
 
 /** \brief Waits for a non-blocking call to complete, with timeout
