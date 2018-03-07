@@ -17,7 +17,13 @@
 #include "message.h"
 #include "config.h"
 #include "neighbors.h"
-#include "datahandler.h"
+
+#define DEPLOYABLE
+#ifdef  DEPLOYABLE
+	#include "sensor_handler.h"
+#else
+	#include "datahandler.h"
+#endif
 
 #include "scif_framework.h"
 #include "scif_osal_contiki.h"
@@ -82,6 +88,7 @@ PROCESS_THREAD(test_bcast_cb, ev, data)
 
     messenger_add_handler(ECHO_REQ, sizeof(echo_t), sizeof(echo_t), echo_handler);
     messenger_add_handler(CMD_SET_HEADER, sizeof(uint32_t) * 4, sizeof(command_set_t), command_handler);
+
     printf("Before data handler init()\n");
     datahandler_init( );
 

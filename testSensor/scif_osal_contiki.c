@@ -220,20 +220,20 @@ PROCESS_THREAD(alert_interrupt, ev, data)
 	PROCESS_BEGIN( );
 
 	while(1) {
-		PRINTF("Waiting for next ALERT interrupt\r\n");
+		PRINTF("[CONTIKI ALERT PROCESS] Waiting for next ALERT interrupt\r\n");
 		PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL);
 
-		PRINTF("\nReceived alert interrupt\r\n");
+		PRINTF("\n[CONTIKI ALERT PROCESS] Received alert interrupt\r\n");
 		scifOsalEnableAuxDomainAccess();
 		PRINTF("Analog values: %d %d %d %d %d\r\n\n", scifScsTaskData.analogSensor.output.anaValues[0],
 				scifScsTaskData.analogSensor.output.anaValues[1],
 				scifScsTaskData.analogSensor.output.anaValues[2],
 				scifScsTaskData.analogSensor.output.anaValues[3],
-				scifScsTaskData.analogSensor.output.anaValues[4]);
+				scifScsTaskData.analogSensor.output.anaValues[4]
+		);
 
-		//sensors_send( );
-
-		//PROCESS_YIELD_UNTIL(ev == sender_finish_event);
+		// TODO: Store the data into a struct and poll the process (or register an event)
+		// that handles the broadcasting.
 
 
 		// update the schedule
@@ -242,12 +242,6 @@ PROCESS_THREAD(alert_interrupt, ev, data)
 		//osalIndicateTaskAlert( );
 		osalClearTaskAlertInt();
 		scifAckAlertEvents();
-
-
-		//TODO can I disable the aux domain?  do I need to?
-//		scifOsalDisableAuxDomainAccess();
-
-
 
 	}
 
@@ -261,9 +255,8 @@ static void osalTaskAlertIsr(void) {
 
 	scifClearAlertIntSource();
 
-	PRINTF("Alert interrupt generated. Calling Contiki process...\r\n");
+	PRINTF("[ALERT ISR] Alert interrupt generated. Calling Contiki process...\r\n");
 	process_poll(&alert_interrupt);
-
 
 	scifOsalEnableAuxDomainAccess();
 	//osalClearTaskAlertInt();
