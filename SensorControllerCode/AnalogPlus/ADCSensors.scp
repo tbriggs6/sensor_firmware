@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<project name="WaterColorSensor" version="1.4.1.54">
+<project name="ADCSensors" version="1.4.1.54">
     <desc><![CDATA[]]></desc>
     <pattr name="Board">CC2650 LaunchPad</pattr>
     <pattr name="Chip name">CC2650</pattr>
@@ -24,8 +24,8 @@
         <tattr name="INTG_24" desc="The integration time is 1 cycle" type="dec" content="const" scope="task" min="0" max="65535">255</tattr>
         <tattr name="NUM_ANALOG_INPUT" desc="The number of analog input pins" type="dec" content="const" scope="task" min="0" max="65535">5</tattr>
         <tattr name="RGB" desc="n/a" type="dec" content="const" scope="task" min="0" max="65535">4</tattr>
+        <tattr name="output.Err" desc="We encountered an error with the color sensor" type="dec" content="struct" scope="task" min="0" max="65535">0</tattr>
         <tattr name="output.adcValues" desc="The remaining adc values" size="NUM_ANALOG_INPUT" type="dec" content="struct_array" scope="task" min="0" max="65535">0</tattr>
-        <tattr name="output.colorSensor" desc="The ID for the color sensor" type="dec" content="struct" scope="task" min="0" max="65535">0</tattr>
         <tattr name="output.colorValues" desc="The ADC values of the RGB of the water" size="RGB" type="dec" content="struct_array" scope="task" min="0" max="65535">0</tattr>
         <resource_ref name="ADC" enabled="1"/>
         <resource_ref name="Analog Open-Drain Pins" enabled="0"/>
@@ -126,21 +126,24 @@
         <sccode name="execute"><![CDATA[//Check with briggs if we should have outputs for error checking
 // Analog sensing logic - read the analog channel and save in output buffer
 
+output.Err = 0;
+
 // turn on the output power rail
 gpioSetOutput(AUXIO_XD_ANA_POWER);
 
 // delay between 1 to 5 ms
 fwDelayUs(1000, FW_DELAY_RANGE_5_MS);
 
+//In order to prevent future errors with the I2C communication we need to read the water color ID register
+U16 dummy = 0;
 //Check which sensor is connected
 i2cStart();
 i2cTx( (ADDRESS << 1) | I2C_OP_WRITE);
 i2cTx( (COMMAND_BYTE | ID_REG) );
 i2cRepeatedStart();
 i2cTx( (ADDRESS << 1) | I2C_OP_READ);
-i2cRxAck(output.colorSensor);
+i2cRxAck(dummy);
 i2cStop();
-//Check with briggs if we should have outputs for error checking
 
 //Set the RGB Integration time
 i2cStart();
@@ -149,6 +152,10 @@ i2cTx( (COMMAND_BYTE | A_TIME_REG) );
 i2cTx( (INTG_24) );
 i2cStop();
 
+if(state.i2cStatus != 0x00){
+    output.Err = 1;
+}
+
 //Set the RGB Integration time
 i2cStart();
 i2cTx( (ADDRESS << 1) | I2C_OP_WRITE);
@@ -156,12 +163,20 @@ i2cTx( (COMMAND_BYTE | CTRL_REG) );
 i2cTx( (GAIN_4X) );
 i2cStop();
 
+if(state.i2cStatus != 0x00){
+    output.Err = 2;
+}
+
 //Enable the Power on
 i2cStart();
 i2cTx( (ADDRESS << 1) | I2C_OP_WRITE);
 i2cTx( (COMMAND_BYTE | ENABLE_REG) );
 i2cTx(ENABLE_PON);
 i2cStop();
+
+if(state.i2cStatus != 0x00){
+    output.Err = 3;
+}
 
 //confirm what the delays should be here
 fwDelayUs(100, FW_DELAY_RANGE_500_US);
@@ -172,6 +187,10 @@ i2cTx( (ADDRESS << 1) | I2C_OP_WRITE);
 i2cTx( (COMMAND_BYTE | ENABLE_REG) );
 i2cTx(ENABLE_PON | ENABLE_AEN);
 i2cStop();
+
+if(state.i2cStatus != 0x00){
+    output.Err = 4;
+}
 
 //confirm what the delays should be here
 fwDelayUs(100, FW_DELAY_RANGE_500_US);
@@ -234,6 +253,6 @@ fwGenAlertInterrupt();]]></sccode>
         <sccode name="initialize"><![CDATA[]]></sccode>
         <sccode name="terminate"><![CDATA[]]></sccode>
         <tt_iter>run_execute</tt_iter>
-        <tt_struct>output.adcValue.[0],output.adcValue.[1],output.adcValue.[2],output.adcValue.[3],state.i2cStatus</tt_struct>
+        <tt_struct>output.Err,output.colorValues.[0],output.colorValues.[1],output.colorValues.[2],output.colorValues.[3],state.i2cStatus</tt_struct>
     </task>
 </project>
