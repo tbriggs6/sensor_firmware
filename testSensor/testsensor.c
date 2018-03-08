@@ -99,12 +99,16 @@ PROCESS_THREAD(test_bcast_cb, ev, data)
 
     printf("Broadcast CB started\r\n");
 
-    while(1){
-    	etimer_set(&et, config_get_sensor_interval());
-		PROCESS_WAIT_UNTIL(etimer_expired(&et));
-    	//scifExecuteTasksOnceNbl(BV(SCIF_SCS_ANALOG_SENSOR_TASK_ID));
-    	scifSwTriggerExecutionCodeNbl(BV(SCIF_SCS_ANALOG_SENSOR_TASK_ID));
-    }
+//    while(1){
+//    	etimer_set(&et, config_get_sensor_interval());
+//		PROCESS_WAIT_UNTIL(etimer_expired(&et));
+//    	//scifExecuteTasksOnceNbl(BV(SCIF_SCS_ANALOG_SENSOR_TASK_ID));
+//    	scifSwTriggerExecutionCodeNbl(BV(SCIF_SCS_ANALOG_SENSOR_TASK_ID));
+//    }
+
+//    while(1){
+//    	;
+//    }
 
 
     while(1)

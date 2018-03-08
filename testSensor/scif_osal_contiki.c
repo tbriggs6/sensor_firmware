@@ -250,7 +250,7 @@ PROCESS_THREAD(alert_interrupt, ev, data)
 		scifAckAlertEvents();
 
 		PRINTF("[CONTIKI ALERT PROCESS] Calling broadcast process...\r\n");
-		//process_poll(&test_data2);
+		process_poll(&test_data2);
 
 	}
 
