@@ -19,6 +19,7 @@
 #include "neighbors.h"
 
 #define DEPLOYABLE
+
 #ifdef  DEPLOYABLE
 	#include "sensor_handler.h"
 #else
@@ -89,17 +90,22 @@ PROCESS_THREAD(test_bcast_cb, ev, data)
     messenger_add_handler(ECHO_REQ, sizeof(echo_t), sizeof(echo_t), echo_handler);
     messenger_add_handler(CMD_SET_HEADER, sizeof(uint32_t) * 4, sizeof(command_set_t), command_handler);
 
-    printf("Before data handler init()\n");
-    datahandler_init( );
+    printf("Before data handler init()\r\n");
+	#ifdef DEPLOYABLE
+    	datahandler_init2( );
+	#else
+    	datahandler_init();
+	#endif
 
-    printf("Broadcast CB started\n");
+    printf("Broadcast CB started\r\n");
 
     while(1){
-    	//scifExecuteTasksOnceNbl(BV(SCIF_SCS_ANALOG_SENSOR_TASK_ID));
-		etimer_set(&et, config_get_sensor_interval());
+    	etimer_set(&et, config_get_sensor_interval());
 		PROCESS_WAIT_UNTIL(etimer_expired(&et));
+    	//scifExecuteTasksOnceNbl(BV(SCIF_SCS_ANALOG_SENSOR_TASK_ID));
     	scifSwTriggerExecutionCodeNbl(BV(SCIF_SCS_ANALOG_SENSOR_TASK_ID));
     }
+
 
     while(1)
     {

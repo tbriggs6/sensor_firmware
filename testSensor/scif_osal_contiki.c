@@ -16,6 +16,12 @@
 //#include "sensor.h"
 //#include "sender.h"
 
+#define DEPLOYABLE
+
+#ifdef DEPLOYABLE
+	#include "sensor_handler.h"
+#endif
+
 #include <contiki.h>
 #include <dev/aux-ctrl.h>
 #include <sys/pt.h>
@@ -134,7 +140,7 @@ PROCESS_THREAD(ready_interrupt, ev, data)
 		PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL);
 
 		scifOsalEnableAuxDomainAccess();
-		PRINTF("Received ready interrupt\n");
+		PRINTF("Received ready interrupt\r\n");
 		osalIndicateCtrlReady( );
 		osalPostedReady = true;
 	}
@@ -242,6 +248,9 @@ PROCESS_THREAD(alert_interrupt, ev, data)
 		//osalIndicateTaskAlert( );
 		osalClearTaskAlertInt();
 		scifAckAlertEvents();
+
+		PRINTF("[CONTIKI ALERT PROCESS] Calling broadcast process...\r\n");
+		//process_poll(&test_data2);
 
 	}
 

@@ -8,7 +8,9 @@
 #ifndef TESTSENSOR_SENSOR_HANDLER_H_
 #define TESTSENSOR_SENSOR_HANDLER_H_
 
-void datahandler_init( );
-void data_ack_handler(uip_ipaddr_t *remote_addr, int remote_port, char *data, int length);
+void datahandler_init2( );
+void data_ack_handler2(uip_ipaddr_t *remote_addr, int remote_port, char *data, int length);
+
+//PROCESS_NAME(test_data2);
 
 #endif /* TESTSENSOR_DATAHANDLER_H_ */

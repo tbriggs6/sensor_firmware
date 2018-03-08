@@ -721,7 +721,7 @@ static SCIF_RESULT_T scifCtrlTasksNbl(uint32_t bvTaskIds, uint32_t bvTaskReq) {
     HWREG(AUX_EVCTL_BASE + AUX_EVCTL_O_VECCFG0) &= ~AUX_EVCTL_VECCFG0_VEC0_POL_M;
     osalUnlockCtrlTaskNbl();
 
-    PRINTF("\nscif - Returning OK\n");
+    PRINTF("\r\nscif - Returning OK\r\n");
     return SCIF_SUCCESS;
 
 } // scifCtrlTasksNbl
