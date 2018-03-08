@@ -24,8 +24,17 @@
         <tattr name="INTG_24" desc="The integration time is 1 cycle" type="dec" content="const" scope="task" min="0" max="65535">255</tattr>
         <tattr name="NUM_ANALOG_INPUT" desc="The number of analog input pins" type="dec" content="const" scope="task" min="0" max="65535">5</tattr>
         <tattr name="RGB" desc="n/a" type="dec" content="const" scope="task" min="0" max="65535">4</tattr>
+        <tattr name="cfg.adcValues" size="NUM_ANALOG_INPUT" type="dec" content="struct_array" scope="task" min="0" max="65535">0</tattr>
+        <tattr name="output.Amb" desc="The ambient light sensor value" type="dec" content="struct" scope="task" min="0" max="65535">0</tattr>
+        <tattr name="output.BatSen" desc="The battery sensor" type="dec" content="struct" scope="task" min="0" max="65535">0</tattr>
+        <tattr name="output.Cond" desc="The conductivity of the water" type="dec" content="struct" scope="task" min="0" max="65535">0</tattr>
         <tattr name="output.Err" desc="We encountered an error with the color sensor" type="dec" content="struct" scope="task" min="0" max="65535">0</tattr>
-        <tattr name="output.adcValues" desc="The remaining adc values" size="NUM_ANALOG_INPUT" type="dec" content="struct_array" scope="task" min="0" max="65535">0</tattr>
+        <tattr name="output.Hall" desc="The hall sensor value" type="dec" content="struct" scope="task" min="0" max="65535">0</tattr>
+        <tattr name="output.Temp" desc="The water temp value" type="dec" content="struct" scope="task" min="0" max="65535">0</tattr>
+        <tattr name="output.colorBlue" desc="The amount of blue reported by the color sensor" type="dec" content="struct" scope="task" min="0" max="65535">0</tattr>
+        <tattr name="output.colorClear" desc="The clear color reported by the color sensor" type="dec" content="struct" scope="task" min="0" max="65535">0</tattr>
+        <tattr name="output.colorGreen" desc="The amount of green reported by the color sensor" type="dec" content="struct" scope="task" min="0" max="65535">0</tattr>
+        <tattr name="output.colorRed" desc="The amount of red reported by the color sensor" type="dec" content="struct" scope="task" min="0" max="65535">0</tattr>
         <tattr name="output.colorValues" desc="The ADC values of the RGB of the water" size="RGB" type="dec" content="struct_array" scope="task" min="0" max="65535">0</tattr>
         <resource_ref name="ADC" enabled="1"/>
         <resource_ref name="Analog Open-Drain Pins" enabled="0"/>
@@ -205,11 +214,18 @@ i2cRepeatedStart();
 i2cTx( (ADDRESS << 1) | I2C_OP_READ);
 
 for(U16 n = 0; n < RGB; n++){
+    cfg.adcValues[n] = 0;
+
     i2cRxAck(low);
     i2cRxAck(high);
 
-    output.colorValues[n] = ((high << 8) | low);
+    cfg.adcValues[n] = ((high << 8) | low);
 }
+
+output.colorClear = cfg.adcValues[0];
+output.colorRed = cfg.adcValues[1];
+output.colorGreen = cfg.adcValues[2];
+output.colorBlue = cfg.adcValues[3];
 
 i2cStop();
 
@@ -220,6 +236,8 @@ adcEnableSync(ADC_REF_FIXED, ADC_SAMPLE_TIME_2P7_US,ADC_TRIGGER_MANUAL);
 adcGenManualTrigger();
 for(U16 n = 0; n < NUM_ANALOG_INPUT; n++){
     U16 total = 0;
+
+    cfg.adcValues[n] = 0;
 
     adcSelectGpioInput(cfg.pAuxioAAnaInput[n]);
 
@@ -240,8 +258,14 @@ for(U16 n = 0; n < NUM_ANALOG_INPUT; n++){
     adcReadFifo(value);
     total = total + value;
 
-    output.adcValues[n] = (total >> 2);
+    cfg.adcValues[n] = (total >> 2);
 }
+
+output.Cond = cfg.adcValues[0];
+output.Temp = cfg.adcValues[1];
+output.Amb = cfg.adcValues[2];
+output.BatSen = cfg.adcValues[3];
+output.Hall = cfg.adcValues[4];
 
 // disable ADC
 adcDisable( );
