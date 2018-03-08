@@ -7,7 +7,7 @@
     <pattr name="Chip revision">-</pattr>
     <pattr name="Code prefix"></pattr>
     <pattr name="Operating system">None</pattr>
-    <pattr name="Output directory">.</pattr>
+    <pattr name="Output directory">Z:/Research/Briggs_SensorCode/firmware/SensorControllerCode/AnalogPlus</pattr>
     <task name="ReadData">
         <desc><![CDATA[]]></desc>
         <tattr name="ADDRESS" desc="Water color sensors address" type="dec" content="const" scope="task" min="0" max="65535">41</tattr>
