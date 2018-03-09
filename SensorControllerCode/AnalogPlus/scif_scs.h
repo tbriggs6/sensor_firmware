@@ -5,12 +5,12 @@
   * Studio tool:
   * - <b>Project name</b>:     ADCSensors
   * - <b>Project file</b>:     Z:/Research/Briggs_SensorCode/firmware/SensorControllerCode/AnalogPlus/ADCSensors.scp
-  * - <b>Code prefix</b>:      -
+  * - <b>Code prefix</b>:      SCS
   * - <b>Operating system</b>: None
   * - <b>Tool version</b>:     1.4.1.54
   * - <b>Tool patches</b>:     None
   * - <b>Target chip</b>:      CC1310, revision -, package QFN48 7x7 RGZ
-  * - <b>Created</b>:          2018-03-08 12:31:44.460
+  * - <b>Created</b>:          2018-03-09 12:13:59.540
   * - <b>Computer</b>:         MCT163S08
   * - <b>User</b>:             dg0932
   *
@@ -83,7 +83,7 @@
   *
   * This driver setup instance has been generated for:
   * - <b>Project name</b>:     ADCSensors
-  * - <b>Code prefix</b>:      -
+  * - <b>Code prefix</b>:      SCS
   *
   * The driver setup module contains the generated output from the Sensor Controller Studio project:
   * - Location of task control and scheduling data structures in AUX RAM
@@ -94,8 +94,8 @@
   *
   * @{
   */
-#ifndef SCIF_H
-#define SCIF_H
+#ifndef SCIF_SCS_H
+#define SCIF_SCS_H
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -104,53 +104,53 @@
 
 
 /// Target chip name
-#define SCIF_TARGET_CHIP_NAME_CC1310
+#define SCIF_SCS_TARGET_CHIP_NAME_CC1310
 /// Target chip package
-#define SCIF_TARGET_CHIP_PACKAGE_QFN48_7X7_RGZ
+#define SCIF_SCS_TARGET_CHIP_PACKAGE_QFN48_7X7_RGZ
 
 /// Number of tasks implemented by this driver
-#define SCIF_TASK_COUNT 1
+#define SCIF_SCS_TASK_COUNT 1
 
 /// ReadData: Task ID
-#define SCIF_READ_DATA_TASK_ID 0
+#define SCIF_SCS_READ_DATA_TASK_ID 0
 
 
 /// ReadData: Water color sensors address
-#define SCIF_READ_DATA_ADDRESS 41
+#define SCIF_SCS_READ_DATA_ADDRESS 41
 /// ReadData: The integration time for the color sensor
-#define SCIF_READ_DATA_A_TIME_REG 1
+#define SCIF_SCS_READ_DATA_A_TIME_REG 1
 /// ReadData: The beginning of the color registers
-#define SCIF_READ_DATA_COLORS 20
+#define SCIF_SCS_READ_DATA_COLORS 20
 /// ReadData: Send a to the command register with the auto-incorment function
-#define SCIF_READ_DATA_COMMAND_AUTO 160
+#define SCIF_SCS_READ_DATA_COMMAND_AUTO 160
 /// ReadData: The command bit
-#define SCIF_READ_DATA_COMMAND_BYTE 128
+#define SCIF_SCS_READ_DATA_COMMAND_BYTE 128
 /// ReadData: The address for the control register
-#define SCIF_READ_DATA_CTRL_REG 15
+#define SCIF_SCS_READ_DATA_CTRL_REG 15
 /// ReadData: 
-#define SCIF_READ_DATA_ENABLE_AEN 2
+#define SCIF_SCS_READ_DATA_ENABLE_AEN 2
 /// ReadData: The enable power on register
-#define SCIF_READ_DATA_ENABLE_PON 1
+#define SCIF_SCS_READ_DATA_ENABLE_PON 1
 /// ReadData: Address for the enable register
-#define SCIF_READ_DATA_ENABLE_REG 0
+#define SCIF_SCS_READ_DATA_ENABLE_REG 0
 /// ReadData: Have the adc value have a gain of 4
-#define SCIF_READ_DATA_GAIN_4X 1
+#define SCIF_SCS_READ_DATA_GAIN_4X 1
 /// ReadData: The address for the ID register
-#define SCIF_READ_DATA_ID_REG 18
+#define SCIF_SCS_READ_DATA_ID_REG 18
 /// ReadData: The integration time is 1 cycle
-#define SCIF_READ_DATA_INTG_24 255
+#define SCIF_SCS_READ_DATA_INTG_24 255
 /// ReadData: The number of analog input pins
-#define SCIF_READ_DATA_NUM_ANALOG_INPUT 5
+#define SCIF_SCS_READ_DATA_NUM_ANALOG_INPUT 5
 /// ReadData: n/a
-#define SCIF_READ_DATA_RGB 4
+#define SCIF_SCS_READ_DATA_RGB 4
 /// ReadData I/O mapping: Analog Input
-#define SCIF_READ_DATA_DIO_AANA_INPUT { 23, 24, 25, 26, 27 }
+#define SCIF_SCS_READ_DATA_DIO_AANA_INPUT { 23, 24, 25, 26, 27 }
 /// ReadData I/O mapping: The power rail for the sensors
-#define SCIF_READ_DATA_DIO_XD_ANA_POWER 7
+#define SCIF_SCS_READ_DATA_DIO_XD_ANA_POWER 7
 /// ReadData I/O mapping: I2C SCL
-#define SCIF_READ_DATA_DIO_I2C_SCL 4
+#define SCIF_SCS_READ_DATA_DIO_I2C_SCL 4
 /// ReadData I/O mapping: I2C SDA
-#define SCIF_READ_DATA_DIO_I2C_SDA 5
+#define SCIF_SCS_READ_DATA_DIO_I2C_SDA 5
 
 
 // All shared data structures in AUX RAM need to be packed
@@ -159,48 +159,46 @@
 
 /// ReadData: Task configuration structure
 typedef struct {
-    uint16_t adcValues[5];       ///< 
     uint16_t pAuxioAAnaInput[5]; ///< I/O mapping: Analog Input
-} SCIF_READ_DATA_CFG_T;
+} SCIF_SCS_READ_DATA_CFG_T;
 
 
 /// ReadData: Task output data structure
 typedef struct {
-    uint16_t Amb;            ///< The ambient light sensor value
-    uint16_t BatSen;         ///< The battery sensor
-    uint16_t Cond;           ///< The conductivity of the water
-    uint16_t Err;            ///< We encountered an error with the color sensor
-    uint16_t Hall;           ///< The hall sensor value
-    uint16_t Temp;           ///< The water temp value
-    uint16_t colorBlue;      ///< The amount of blue reported by the color sensor
-    uint16_t colorClear;     ///< The clear color reported by the color sensor
-    uint16_t colorGreen;     ///< The amount of green reported by the color sensor
-    uint16_t colorRed;       ///< The amount of red reported by the color sensor
-    uint16_t colorValues[4]; ///< The ADC values of the RGB of the water
-} SCIF_READ_DATA_OUTPUT_T;
+    uint16_t AmbLight;          ///< The ambient light sensor value
+    uint16_t BatterySensor;     ///< The battery sensor
+    uint16_t Conductivity;      ///< The conductivity of the water
+    uint16_t HallSensor;        ///< The hall sensor value
+    uint16_t I2CError;          ///< We encountered an error with the color sensor
+    uint16_t TemperatureSensor; ///< The water temp value
+    uint16_t colorBlue;         ///< The amount of blue reported by the color sensor
+    uint16_t colorClear;        ///< The clear color reported by the color sensor
+    uint16_t colorGreen;        ///< The amount of green reported by the color sensor
+    uint16_t colorRed;          ///< The amount of red reported by the color sensor
+} SCIF_SCS_READ_DATA_OUTPUT_T;
 
 
 /// ReadData: Task state structure
 typedef struct {
     uint16_t i2cStatus; ///< I2C master status
-} SCIF_READ_DATA_STATE_T;
+} SCIF_SCS_READ_DATA_STATE_T;
 
 
 /// Sensor Controller task data (configuration, input buffer(s), output buffer(s) and internal state)
 typedef struct {
     struct {
-        SCIF_READ_DATA_CFG_T cfg;
-        SCIF_READ_DATA_OUTPUT_T output;
-        SCIF_READ_DATA_STATE_T state;
+        SCIF_SCS_READ_DATA_CFG_T cfg;
+        SCIF_SCS_READ_DATA_OUTPUT_T output;
+        SCIF_SCS_READ_DATA_STATE_T state;
     } readData;
-} SCIF_TASK_DATA_T;
+} SCIF_SCS_TASK_DATA_T;
 
 /// Sensor Controller task generic control (located in AUX RAM)
-#define scifTaskData    (*((volatile SCIF_TASK_DATA_T*) 0x400E00E8))
+#define scifScsTaskData    (*((volatile SCIF_SCS_TASK_DATA_T*) 0x400E00E8))
 
 
 // Initialized internal driver data, to be used in the call to \ref scifInit()
-extern const SCIF_DATA_T scifDriverSetup;
+extern const SCIF_DATA_T scifScsDriverSetup;
 
 
 // Restore previous struct packing setting
@@ -208,7 +206,7 @@ extern const SCIF_DATA_T scifDriverSetup;
 
 
 // AUX I/O re-initialization functions
-void scifReinitTaskIo(uint32_t bvTaskIds);
+void scifScsReinitTaskIo(uint32_t bvTaskIds);
 
 
 // No task-specific API available
@@ -218,4 +216,4 @@ void scifReinitTaskIo(uint32_t bvTaskIds);
 //@}
 
 
-// Generated by MCT163S08 at 2018-03-08 12:31:44.460
+// Generated by MCT163S08 at 2018-03-09 12:13:59.540

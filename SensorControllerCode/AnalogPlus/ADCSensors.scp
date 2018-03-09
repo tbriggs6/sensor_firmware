@@ -5,7 +5,7 @@
     <pattr name="Chip name">CC1310</pattr>
     <pattr name="Chip package">QFN48 7x7 RGZ</pattr>
     <pattr name="Chip revision">-</pattr>
-    <pattr name="Code prefix"></pattr>
+    <pattr name="Code prefix">scs</pattr>
     <pattr name="Operating system">None</pattr>
     <pattr name="Output directory">Z:/Research/Briggs_SensorCode/firmware/SensorControllerCode/AnalogPlus</pattr>
     <task name="ReadData">
@@ -24,18 +24,16 @@
         <tattr name="INTG_24" desc="The integration time is 1 cycle" type="dec" content="const" scope="task" min="0" max="65535">255</tattr>
         <tattr name="NUM_ANALOG_INPUT" desc="The number of analog input pins" type="dec" content="const" scope="task" min="0" max="65535">5</tattr>
         <tattr name="RGB" desc="n/a" type="dec" content="const" scope="task" min="0" max="65535">4</tattr>
-        <tattr name="cfg.adcValues" size="NUM_ANALOG_INPUT" type="dec" content="struct_array" scope="task" min="0" max="65535">0</tattr>
-        <tattr name="output.Amb" desc="The ambient light sensor value" type="dec" content="struct" scope="task" min="0" max="65535">0</tattr>
-        <tattr name="output.BatSen" desc="The battery sensor" type="dec" content="struct" scope="task" min="0" max="65535">0</tattr>
-        <tattr name="output.Cond" desc="The conductivity of the water" type="dec" content="struct" scope="task" min="0" max="65535">0</tattr>
-        <tattr name="output.Err" desc="We encountered an error with the color sensor" type="dec" content="struct" scope="task" min="0" max="65535">0</tattr>
-        <tattr name="output.Hall" desc="The hall sensor value" type="dec" content="struct" scope="task" min="0" max="65535">0</tattr>
-        <tattr name="output.Temp" desc="The water temp value" type="dec" content="struct" scope="task" min="0" max="65535">0</tattr>
+        <tattr name="output.AmbLight" desc="The ambient light sensor value" type="dec" content="struct" scope="task" min="0" max="65535">0</tattr>
+        <tattr name="output.BatterySensor" desc="The battery sensor" type="dec" content="struct" scope="task" min="0" max="65535">0</tattr>
+        <tattr name="output.Conductivity" desc="The conductivity of the water" type="dec" content="struct" scope="task" min="0" max="65535">0</tattr>
+        <tattr name="output.HallSensor" desc="The hall sensor value" type="dec" content="struct" scope="task" min="0" max="65535">0</tattr>
+        <tattr name="output.I2CError" desc="We encountered an error with the color sensor" type="dec" content="struct" scope="task" min="0" max="65535">0</tattr>
+        <tattr name="output.TemperatureSensor" desc="The water temp value" type="dec" content="struct" scope="task" min="0" max="65535">0</tattr>
         <tattr name="output.colorBlue" desc="The amount of blue reported by the color sensor" type="dec" content="struct" scope="task" min="0" max="65535">0</tattr>
         <tattr name="output.colorClear" desc="The clear color reported by the color sensor" type="dec" content="struct" scope="task" min="0" max="65535">0</tattr>
         <tattr name="output.colorGreen" desc="The amount of green reported by the color sensor" type="dec" content="struct" scope="task" min="0" max="65535">0</tattr>
         <tattr name="output.colorRed" desc="The amount of red reported by the color sensor" type="dec" content="struct" scope="task" min="0" max="65535">0</tattr>
-        <tattr name="output.colorValues" desc="The ADC values of the RGB of the water" size="RGB" type="dec" content="struct_array" scope="task" min="0" max="65535">0</tattr>
         <resource_ref name="ADC" enabled="1"/>
         <resource_ref name="Analog Open-Drain Pins" enabled="0"/>
         <resource_ref name="Analog Open-Source Pins" enabled="0"/>
@@ -134,8 +132,7 @@
         <sccode name="event0"><![CDATA[]]></sccode>
         <sccode name="execute"><![CDATA[//Check with briggs if we should have outputs for error checking
 // Analog sensing logic - read the analog channel and save in output buffer
-
-output.Err = 0;
+output.I2CError = 0;
 
 // turn on the output power rail
 gpioSetOutput(AUXIO_XD_ANA_POWER);
@@ -162,7 +159,7 @@ i2cTx( (INTG_24) );
 i2cStop();
 
 if(state.i2cStatus != 0x00){
-    output.Err = 1;
+    output.I2CError = 1;
 }
 
 //Set the RGB Integration time
@@ -173,7 +170,7 @@ i2cTx( (GAIN_4X) );
 i2cStop();
 
 if(state.i2cStatus != 0x00){
-    output.Err = 2;
+    output.I2CError = 2;
 }
 
 //Enable the Power on
@@ -184,7 +181,7 @@ i2cTx(ENABLE_PON);
 i2cStop();
 
 if(state.i2cStatus != 0x00){
-    output.Err = 3;
+    output.I2CError = 3;
 }
 
 //confirm what the delays should be here
@@ -198,7 +195,7 @@ i2cTx(ENABLE_PON | ENABLE_AEN);
 i2cStop();
 
 if(state.i2cStatus != 0x00){
-    output.Err = 4;
+    output.I2CError = 4;
 }
 
 //confirm what the delays should be here
@@ -213,59 +210,139 @@ i2cTx( (COMMAND_AUTO | COLORS) );
 i2cRepeatedStart();
 i2cTx( (ADDRESS << 1) | I2C_OP_READ);
 
-for(U16 n = 0; n < RGB; n++){
-    cfg.adcValues[n] = 0;
+//Reading the color sensor
+//Clear
+i2cRxAck(low);
+i2cRxAck(high);
+output.colorClear = ((high << 8) | low);
 
-    i2cRxAck(low);
-    i2cRxAck(high);
+//Red
+i2cRxAck(low);
+i2cRxAck(high);
+output.colorRed = ((high << 8) | low);
 
-    cfg.adcValues[n] = ((high << 8) | low);
-}
+//Green
+i2cRxAck(low);
+i2cRxAck(high);
+output.colorGreen = ((high << 8) | low);
 
-output.colorClear = cfg.adcValues[0];
-output.colorRed = cfg.adcValues[1];
-output.colorGreen = cfg.adcValues[2];
-output.colorBlue = cfg.adcValues[3];
+//Blue
+i2cRxAck(low);
+i2cRxAck(high);
+output.colorBlue = ((high << 8) | low);
 
 i2cStop();
 
 // Enable the ADC
 adcEnableSync(ADC_REF_FIXED, ADC_SAMPLE_TIME_2P7_US,ADC_TRIGGER_MANUAL);
 
-// read & store the rremaining adc values
+// read & store the remaining adc values
 adcGenManualTrigger();
-for(U16 n = 0; n < NUM_ANALOG_INPUT; n++){
-    U16 total = 0;
 
-    cfg.adcValues[n] = 0;
+U16 total;
+U16 value;
 
-    adcSelectGpioInput(cfg.pAuxioAAnaInput[n]);
+//Read ADC Sensor Conductivity
+total = 0;
+adcSelectGpioInput(cfg.pAuxioAAnaInput[0]);
+adcGenManualTrigger();
+adcReadFifo(value);
+total = total + value;
 
-    U16 value;
-    adcGenManualTrigger();
-    adcReadFifo(value);
-    total = total + value;
+adcGenManualTrigger();
+adcReadFifo(value);
+total = total + value;
 
-    adcGenManualTrigger();
-    adcReadFifo(value);
-    total = total + value;
+adcGenManualTrigger();
+adcReadFifo(value);
+total = total + value;
 
-    adcGenManualTrigger();
-    adcReadFifo(value);
-    total = total + value;
+adcGenManualTrigger();
+adcReadFifo(value);
+total = total + value;
+output.Conductivity = (total >> 2);
 
-    adcGenManualTrigger();
-    adcReadFifo(value);
-    total = total + value;
+//Read ADC Sensor Temp
+total = 0;
+adcSelectGpioInput(cfg.pAuxioAAnaInput[1]);
+adcGenManualTrigger();
+adcReadFifo(value);
+total = total + value;
 
-    cfg.adcValues[n] = (total >> 2);
-}
+adcGenManualTrigger();
+adcReadFifo(value);
+total = total + value;
 
-output.Cond = cfg.adcValues[0];
-output.Temp = cfg.adcValues[1];
-output.Amb = cfg.adcValues[2];
-output.BatSen = cfg.adcValues[3];
-output.Hall = cfg.adcValues[4];
+adcGenManualTrigger();
+adcReadFifo(value);
+total = total + value;
+
+adcGenManualTrigger();
+adcReadFifo(value);
+total = total + value;
+output.TemperatureSensor = (total >> 2);
+
+//Read ADC Sensor AmbLight
+total = 0;
+adcSelectGpioInput(cfg.pAuxioAAnaInput[2]);
+adcGenManualTrigger();
+adcReadFifo(value);
+total = total + value;
+
+adcGenManualTrigger();
+adcReadFifo(value);
+total = total + value;
+
+adcGenManualTrigger();
+adcReadFifo(value);
+total = total + value;
+
+adcGenManualTrigger();
+adcReadFifo(value);
+total = total + value;
+output.AmbLight = (total >> 2);
+
+//Read ADC Sensor Battery
+total = 0;
+adcSelectGpioInput(cfg.pAuxioAAnaInput[3]);
+adcGenManualTrigger();
+adcReadFifo(value);
+total = total + value;
+
+adcGenManualTrigger();
+adcReadFifo(value);
+total = total + value;
+
+adcGenManualTrigger();
+adcReadFifo(value);
+total = total + value;
+
+adcGenManualTrigger();
+adcReadFifo(value);
+total = total + value;
+output.BatterySensor = (total >> 2);
+
+//Read ADC Sensor Hall
+total = 0;
+adcSelectGpioInput(cfg.pAuxioAAnaInput[4]);
+adcGenManualTrigger();
+adcReadFifo(value);
+total = total + value;
+
+adcGenManualTrigger();
+adcReadFifo(value);
+total = total + value;
+
+adcGenManualTrigger();
+adcReadFifo(value);
+total = total + value;
+
+adcGenManualTrigger();
+adcReadFifo(value);
+total = total + value;
+output.HallSensor = (total >> 2);
+
+//End Reading ADC Sensors
 
 // disable ADC
 adcDisable( );
