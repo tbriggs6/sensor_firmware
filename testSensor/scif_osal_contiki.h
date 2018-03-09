@@ -75,6 +75,8 @@ void scifOsalEnableAuxDomainAccess(void);
 void scifOsalDisableAuxDomainAccess(void);
 
 bool osalIsReady( );
+void setOsalReady( );
+void unsetOsalReady( );
 int sensor_aux_init( );
 
 extern struct process alert_interrupt;

@@ -72,7 +72,7 @@ PROCESS_THREAD(test_bcast_cb, ev, data)
 
     PROCESS_BEGIN( );
 
-    printf("Thread Test is begun\r\n()");
+    printf("\r\n[CONTIKI TEST BROADCAST PROCESS] Starting initializations...\r\n");
 
     config_init( );
 
@@ -90,14 +90,13 @@ PROCESS_THREAD(test_bcast_cb, ev, data)
     messenger_add_handler(ECHO_REQ, sizeof(echo_t), sizeof(echo_t), echo_handler);
     messenger_add_handler(CMD_SET_HEADER, sizeof(uint32_t) * 4, sizeof(command_set_t), command_handler);
 
-    printf("Before data handler init()\r\n");
 	#ifdef DEPLOYABLE
     	datahandler_init2( );
 	#else
     	datahandler_init();
 	#endif
 
-    printf("Broadcast CB started\r\n");
+    printf("[CONTIKI TEST BROADCAST PROCESS] Broadcast CB started...\r\n");
 
 //    while(1){
 //    	etimer_set(&et, config_get_sensor_interval());

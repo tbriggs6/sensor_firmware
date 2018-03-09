@@ -56,16 +56,16 @@ static void config_write()
 	/* Erase the flash -- required in order to write */
 	uint32_t resp = FlashSectorErase(mybase);
 	if(resp == FAPI_STATUS_SUCCESS){
-		printf("FLASH ERASURE SUCCESSFUL\r\n");
+		printf("[CONFIG WRITE] Flash erasure successful...\r\n");
 	} else {
-		printf("FLASH ERASURE UNSUCCESSFUL\r\n");
+		printf("[CONFIG WRITE] Flash erasure unsuccessful...\r\n");
 	}
 
 	resp = FlashProgram((uint8_t *) &config, mybase, sizeof(config_t));
 	if(resp == FAPI_STATUS_SUCCESS){
-		printf("FLASH PROGRAM SUCCESSFUL\r\n");
+		printf("[CONFIG WRITE] Flash program successful...\r\n");
 	} else {
-		printf("FLASH PROGRAM UNSUCCESSFUL\r\n");
+		printf("[CONFIG WRITE] Flash program unsuccessful...\r\n");
 	}
 
 	/* Reenable interupts */
@@ -79,14 +79,14 @@ void config_init()
 {
 	config_read();
 	// print config
-	printf("Configuration:\r\n");
-	printf("Magic: %X\r\n", config.magic);
-	printf("Broadcast interval: %d\r\n", config.bcast_interval);
-	printf("Neighbor interval: %d\r\n", config.neighbor_interval);
-	printf("Sensor interval: %d\r\n\n", config.sensor_interval);	
+	printf("[CONFIG INIT] Configuration:\r\n");
+	printf("[CONFIG INIT] Magic: %X\r\n", config.magic);
+	printf("[CONFIG INIT] Broadcast interval: %d\r\n", config.bcast_interval);
+	printf("[CONFIG INIT] Neighbor interval: %d\r\n", config.neighbor_interval);
+	printf("[CONFIG INIT] Sensor interval: %d\r\n\n", config.sensor_interval);
 
 	if (config.magic != CONFIG_MAGIC) {
-		printf("Configuration magic (%-8.8X != %-8.8X) not found, using defaults\r\n", config.magic, CONFIG_MAGIC);
+		printf("[CONFIG INIT] Configuration magic (%-8.8X != %-8.8X) not found, using defaults\r\n", config.magic, CONFIG_MAGIC);
 		config.magic = CONFIG_MAGIC;
 		config.bcast_interval = SECONDS(30);
 		config.neighbor_interval = SECONDS(30);
@@ -96,11 +96,11 @@ void config_init()
 		config_read();
 
 		// print config
-		printf("Configuration:\r\n");
-		printf("Magic: %X\r\n", config.magic);
-		printf("Broadcast interval: %d\r\n", config.bcast_interval);
-		printf("Neighbor interval: %d\r\n", config.neighbor_interval);
-		printf("Sensor interval: %d\r\n\n", config.sensor_interval);
+		printf("[CONFIG INIT] Configuration:\r\n");
+		printf("[CONFIG INIT] Magic: %X\r\n", config.magic);
+		printf("[CONFIG INIT] Broadcast interval: %d\r\n", config.bcast_interval);
+		printf("[CONFIG INIT] Neighbor interval: %d\r\n", config.neighbor_interval);
+		printf("[CONFIG INIT] Sensor interval: %d\r\n\n", config.sensor_interval);
 	}
 
 	

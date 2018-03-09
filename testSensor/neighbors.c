@@ -95,7 +95,7 @@ static void print_neighbors( )
 	int count = 0;
 
 
-	PRINTF("Neighbors:\r\n");
+	PRINTF("[PRINT NEIGHBORS] Neighbors:\r\n");
 	nbr = nbr_table_head(ds6_neighbors);
 	while (nbr != NULL) {
 

@@ -134,7 +134,7 @@ PROCESS_THREAD(test_data2, ev, data)
             {
             	// send the current message and set up a timer to control
             	// how long it will wait until trying to resend the data
-                printf("Sending data - attempt %d \r\n", count);
+                printf("[DATA SENDER PROC] Sending data - attempt %d \r\n", count);
                 messenger_send(&server, &data, sizeof(data_t));
                 etimer_set(&et, 2 * CLOCK_SECOND);
             }
@@ -145,27 +145,27 @@ PROCESS_THREAD(test_data2, ev, data)
             // if the event is that the data has been acknowledged (posted by data_ack_handler())
             // and the same number of messages have been acknowledged as have been sent
             if ((ev == PROCESS_EVENT_MSG) && (data_seq_acked == sequence)) {
-                printf("OK - data is ACKd\r\n");
+                printf("[DATA SENDER PROC] OK - data is ACKd\r\n");
                 break;
             }
 
             // if the timer for waiting for an acknowledgment has expired
             else if (etimer_expired(&et)) {
-                printf("Timeout waiting for ACK\r\n");
+                printf("[DATA SENDER PROC] Timeout waiting for ACK\r\n");
                 count++;
             }
 
             // an event was posted to this process that was not the expiration
             // of the timer or an acknowledgment
             else {
-                printf("Seq: %d  Last ack: %d\r\n",sequence , data_seq_acked);
-                printf("Unexpected wake-up (%d), resending\r\n", ev);
+                printf("[DATA SENDER PROC] Seq: %d  Last ack: %d\r\n",sequence , data_seq_acked);
+                printf("[DATA SENDER PROC] Unexpected wake-up (%d), resending\r\n", ev);
             }
 
 
         }
 
-        printf("\r\n\n\nFinished sending sequence %d\r\n\n\n", sequence);
+        printf("\r\n\n\n[DATA SENDER PROC] Finished sending sequence %d\r\n\n\n", sequence);
         sequence++;
 
 

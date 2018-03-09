@@ -136,13 +136,13 @@ PROCESS_THREAD(ready_interrupt, ev, data)
 	PROCESS_BEGIN( );
 
 	while(1) {
-		// poll_process(&ready_interrupt); allows this
+		PRINTF("[CONTIKI ALERT PROCESS] Waiting for next ALERT interrupt...\r\n");
 		PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL);
 
 		scifOsalEnableAuxDomainAccess();
-		PRINTF("Received ready interrupt\r\n");
+		PRINTF("[READY CONTIKI PROCESS] Received ready interrupt. Posting ready...\r\n");
 		osalIndicateCtrlReady( );
-		osalPostedReady = true;
+		setOsalReady( );
 	}
 
 	PROCESS_END();
@@ -153,10 +153,19 @@ bool osalIsReady( ) {
 	return osalPostedReady;
 }
 
+void unsetOsalReady(){
+	osalPostedReady = false;
+}
+
+void setOsalReady(){
+	osalPostedReady = true;
+}
+
 /** \brief Interrupt service route for ready interrupt
  */
 static void osalCtrlReadyIsr(void) {
 
+	PRINTF("[READY ISR] Ready interrupt received. Calling Contiki process...\r\n");
 	process_poll(&ready_interrupt);
 	scifOsalEnableAuxDomainAccess();
 	osalClearCtrlReadyInt( );
@@ -229,9 +238,9 @@ PROCESS_THREAD(alert_interrupt, ev, data)
 		PRINTF("[CONTIKI ALERT PROCESS] Waiting for next ALERT interrupt\r\n");
 		PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL);
 
-		PRINTF("\n[CONTIKI ALERT PROCESS] Received alert interrupt\r\n");
+		PRINTF("\r\n[CONTIKI ALERT PROCESS] Received alert interrupt\r\n");
 		scifOsalEnableAuxDomainAccess();
-		PRINTF("Analog values: %d %d %d %d %d\r\n\n", scifScsTaskData.analogSensor.output.anaValues[0],
+		PRINTF("[CONTIKI ALERT PROCESS] Analog values: %d %d %d %d %d\r\n\n", scifScsTaskData.analogSensor.output.anaValues[0],
 				scifScsTaskData.analogSensor.output.anaValues[1],
 				scifScsTaskData.analogSensor.output.anaValues[2],
 				scifScsTaskData.analogSensor.output.anaValues[3],
@@ -552,15 +561,15 @@ int sensor_aux_init( )
 
 	int rc = scifInit(&scifScsDriverSetup);
 	if (rc != SCIF_SUCCESS) {
-		PRINTF("Error during scifInit - %d\r\n", rc);
+		PRINTF("[SENSOR AUX INIT] Error during scifInit - %d\r\n", rc);
 		return -1;
 	}
 
 	rc = scifStartTasksNbl(BV(SCIF_SCS_ANALOG_SENSOR_TASK_ID));
 	if (rc != SCIF_SUCCESS) {
-		PRINTF("Error during scif control start: %d\r\n", rc);
+		PRINTF("[SENSOR AUX INIT] Error during scif control start: %d\r\n", rc);
 	} else {
-		PRINTF("Scif control start SUCCESSFUL\r\n");
+		PRINTF("[SENSOR AUX INIT] Scif control start SUCCESSFUL\r\n");
 	}
 
 
