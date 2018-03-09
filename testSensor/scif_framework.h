@@ -275,6 +275,7 @@ SCIF_RESULT_T scifExecuteTasksOnceNbl(uint16_t bvTaskIds);
 SCIF_RESULT_T scifStartTasksNbl(uint16_t bvTaskIds);
 SCIF_RESULT_T scifStopTasksNbl(uint16_t bvTaskIds);
 SCIF_RESULT_T scifWaitOnNbl(uint32_t timeoutUs);
+SCIF_RESULT_T scifSwTriggerExecutionCodeNbl(uint16_t bvTaskIds);
 
 // Task status functions
 uint16_t scifGetActiveTaskIds(void);

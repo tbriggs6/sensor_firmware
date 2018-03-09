@@ -62,7 +62,7 @@ PROCESS_THREAD(sensor_timer, ev, data)
 		if (ev == PROCESS_EVENT_TIMER){
 			printf("[SENSOR TIMER PROC] Sensor Timer expired. Restarting timer...\r\n");
 			printf("[SENSOR TIMER PROC] Invoking SCS code...\r\n");
-			scifSwTriggerExecutionCodeNbl(BV(SCIF_SCS_ANALOG_SENSOR_TASK_ID));
+			scifSwTriggerExecutionCodeNbl(BV(SCIF_SCS_READ_DATA_TASK_ID));
 			//process_poll(&test_data2);
 		}
 		else if (ev == PROCESS_EVENT_MSG){

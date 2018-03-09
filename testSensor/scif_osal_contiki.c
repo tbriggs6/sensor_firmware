@@ -240,19 +240,25 @@ PROCESS_THREAD(alert_interrupt, ev, data)
 
 		PRINTF("\r\n[CONTIKI ALERT PROCESS] Received alert interrupt\r\n");
 		scifOsalEnableAuxDomainAccess();
-		PRINTF("[CONTIKI ALERT PROCESS] Analog values: %d %d %d %d %d\r\n\n", scifScsTaskData.analogSensor.output.anaValues[0],
-				scifScsTaskData.analogSensor.output.anaValues[1],
-				scifScsTaskData.analogSensor.output.anaValues[2],
-				scifScsTaskData.analogSensor.output.anaValues[3],
-				scifScsTaskData.analogSensor.output.anaValues[4]
-		);
+		PRINTF("[CONTIKI ALERT PROCESS] Analog values:\r\n\n");
+		PRINTF("[CONTIKI ALERT PROCESS] Ambient Light: %u\r\n", scifScsTaskData.readData.output.AmbLight);
+		PRINTF("[CONTIKI ALERT PROCESS] Battery Sensor: %u\r\n", scifScsTaskData.readData.output.BatterySensor);
+		PRINTF("[CONTIKI ALERT PROCESS] Conductivity: %u\r\n", scifScsTaskData.readData.output.Conductivity);
+		PRINTF("[CONTIKI ALERT PROCESS] Hall Sensor: %u\r\n", scifScsTaskData.readData.output.HallSensor);
+		PRINTF("[CONTIKI ALERT PROCESS] I2CError: %u\r\n", scifScsTaskData.readData.output.I2CError);
+		PRINTF("[CONTIKI ALERT PROCESS] TemperatureSensor: %u\r\n", scifScsTaskData.readData.output.TemperatureSensor);
+		PRINTF("[CONTIKI ALERT PROCESS] colorClear: %u\r\n", scifScsTaskData.readData.output.colorClear);
+		PRINTF("[CONTIKI ALERT PROCESS] colorRed: %u\r\n", scifScsTaskData.readData.output.colorRed);
+		PRINTF("[CONTIKI ALERT PROCESS] colorGreen: %u\r\n", scifScsTaskData.readData.output.colorGreen);
+		PRINTF("[CONTIKI ALERT PROCESS] colorBlue: %u\r\n", scifScsTaskData.readData.output.colorBlue);
+
 
 		// TODO: Store the data into a struct and poll the process (or register an event)
 		// that handles the broadcasting.
 
 
 		// update the schedule
-		scifScsTaskData.analogSensor.cfg.scheduleDelay = config_get_sensor_interval();
+		//scifScsTaskData.readData.cfg.scheduleDelay = config_get_sensor_interval();
 
 		//osalIndicateTaskAlert( );
 		osalClearTaskAlertInt();
@@ -565,7 +571,7 @@ int sensor_aux_init( )
 		return -1;
 	}
 
-	rc = scifStartTasksNbl(BV(SCIF_SCS_ANALOG_SENSOR_TASK_ID));
+	rc = scifStartTasksNbl(BV(SCIF_SCS_READ_DATA_TASK_ID));
 	if (rc != SCIF_SUCCESS) {
 		PRINTF("[SENSOR AUX INIT] Error during scif control start: %d\r\n", rc);
 	} else {
