@@ -1,0 +1,359 @@
+<?xml version="1.0"?>
+<project name="ADCSensors" version="1.4.1.54">
+    <desc><![CDATA[]]></desc>
+    <pattr name="Board">CC2650 LaunchPad</pattr>
+    <pattr name="Chip name">CC1310</pattr>
+    <pattr name="Chip package">QFN48 7x7 RGZ</pattr>
+    <pattr name="Chip revision">-</pattr>
+    <pattr name="Code prefix">scs</pattr>
+    <pattr name="Operating system">None</pattr>
+    <pattr name="Output directory">Z:/Research/Briggs_SensorCode/firmware/SensorControllerCode/AnalogPlus</pattr>
+    <task name="ReadData">
+        <desc><![CDATA[]]></desc>
+        <tattr name="ADDRESS" desc="Water color sensors address" type="dec" content="const" scope="task" min="0" max="65535">41</tattr>
+        <tattr name="A_TIME_REG" desc="The integration time for the color sensor" type="dec" content="const" scope="task" min="0" max="65535">1</tattr>
+        <tattr name="COLORS" desc="The beginning of the color registers" type="dec" content="const" scope="task" min="0" max="65535">20</tattr>
+        <tattr name="COMMAND_AUTO" desc="Send a to the command register with the auto-incorment function" type="dec" content="const" scope="task" min="0" max="65535">160</tattr>
+        <tattr name="COMMAND_BYTE" desc="The command bit" type="dec" content="const" scope="task" min="0" max="65535">128</tattr>
+        <tattr name="CTRL_REG" desc="The address for the control register" type="dec" content="const" scope="task" min="0" max="65535">15</tattr>
+        <tattr name="ENABLE_AEN" type="dec" content="const" scope="task" min="0" max="65535">2</tattr>
+        <tattr name="ENABLE_PON" desc="The enable power on register" type="dec" content="const" scope="task" min="0" max="65535">1</tattr>
+        <tattr name="ENABLE_REG" desc="Address for the enable register" type="dec" content="const" scope="task" min="0" max="65535">0</tattr>
+        <tattr name="GAIN_4X" desc="Have the adc value have a gain of 4" type="dec" content="const" scope="task" min="0" max="65535">1</tattr>
+        <tattr name="ID_REG" desc="The address for the ID register" type="dec" content="const" scope="task" min="0" max="65535">18</tattr>
+        <tattr name="INTG_24" desc="The integration time is 1 cycle" type="dec" content="const" scope="task" min="0" max="65535">255</tattr>
+        <tattr name="NUM_ANALOG_INPUT" desc="The number of analog input pins" type="dec" content="const" scope="task" min="0" max="65535">5</tattr>
+        <tattr name="RGB" desc="n/a" type="dec" content="const" scope="task" min="0" max="65535">4</tattr>
+        <tattr name="output.AmbLight" desc="The ambient light sensor value" type="dec" content="struct" scope="task" min="0" max="65535">0</tattr>
+        <tattr name="output.BatterySensor" desc="The battery sensor" type="dec" content="struct" scope="task" min="0" max="65535">0</tattr>
+        <tattr name="output.Conductivity" desc="The conductivity of the water" type="dec" content="struct" scope="task" min="0" max="65535">0</tattr>
+        <tattr name="output.HallSensor" desc="The hall sensor value" type="dec" content="struct" scope="task" min="0" max="65535">0</tattr>
+        <tattr name="output.I2CError" desc="We encountered an error with the color sensor" type="dec" content="struct" scope="task" min="0" max="65535">0</tattr>
+        <tattr name="output.TemperatureSensor" desc="The water temp value" type="dec" content="struct" scope="task" min="0" max="65535">0</tattr>
+        <tattr name="output.colorBlue" desc="The amount of blue reported by the color sensor" type="dec" content="struct" scope="task" min="0" max="65535">0</tattr>
+        <tattr name="output.colorClear" desc="The clear color reported by the color sensor" type="dec" content="struct" scope="task" min="0" max="65535">0</tattr>
+        <tattr name="output.colorGreen" desc="The amount of green reported by the color sensor" type="dec" content="struct" scope="task" min="0" max="65535">0</tattr>
+        <tattr name="output.colorRed" desc="The amount of red reported by the color sensor" type="dec" content="struct" scope="task" min="0" max="65535">0</tattr>
+        <resource_ref name="ADC" enabled="1"/>
+        <resource_ref name="Analog Open-Drain Pins" enabled="0"/>
+        <resource_ref name="Analog Open-Source Pins" enabled="0"/>
+        <resource_ref name="Analog Pins" enabled="1">
+            <io_usage name="ANA_INPUT" label="Analog Input">
+                <uattr name="Pin count">5</uattr>
+                <uattr name="Pin/0000">DIO23</uattr>
+                <uattr name="Pin/0001">DIO24</uattr>
+                <uattr name="Pin/0002">DIO25</uattr>
+                <uattr name="Pin/0003">DIO26</uattr>
+                <uattr name="Pin/0004">DIO27</uattr>
+                <uattr name="Pin/0005"></uattr>
+                <uattr name="Pin/0006"></uattr>
+                <uattr name="Pin/0007"></uattr>
+            </io_usage>
+        </resource_ref>
+        <resource_ref name="COMPA" enabled="0"/>
+        <resource_ref name="COMPB" enabled="0"/>
+        <resource_ref name="COMPB Event Trigger" enabled="0"/>
+        <resource_ref name="Delay Insertion" enabled="1"/>
+        <resource_ref name="Differential Output Pins" enabled="0"/>
+        <resource_ref name="Digital Input Pins" enabled="0"/>
+        <resource_ref name="Digital Open-Drain Pins" enabled="1">
+            <io_usage name="ANA_POWER" label="The power rail for the sensors">
+                <uattr name="Configuration on uninitialization">1</uattr>
+                <uattr name="Output value on initialization">0</uattr>
+                <uattr name="Pin count">0</uattr>
+                <uattr name="Pin/0000">DIO7</uattr>
+                <uattr name="Pin/0001"></uattr>
+                <uattr name="Pin/0002"></uattr>
+                <uattr name="Pin/0003"></uattr>
+                <uattr name="Pin/0004"></uattr>
+                <uattr name="Pin/0005"></uattr>
+                <uattr name="Pin/0006"></uattr>
+                <uattr name="Pin/0007"></uattr>
+                <uattr name="Pin/0008"></uattr>
+                <uattr name="Pin/0009"></uattr>
+                <uattr name="Pin/0010"></uattr>
+                <uattr name="Pin/0011"></uattr>
+                <uattr name="Pin/0012"></uattr>
+                <uattr name="Pin/0013"></uattr>
+                <uattr name="Pin/0014"></uattr>
+                <uattr name="Pin/0015"></uattr>
+            </io_usage>
+        </resource_ref>
+        <resource_ref name="Digital Open-Source Pins" enabled="0"/>
+        <resource_ref name="Digital Output Pins" enabled="0"/>
+        <resource_ref name="GPIO Event Trigger" enabled="0"/>
+        <resource_ref name="I2C Master" enabled="1">
+            <rattr name="SCL frequency">0</rattr>
+            <rattr name="SCL stretch timeout">10</rattr>
+            <io_usage>
+                <uattr name="SCL pin/0000">DIO4</uattr>
+                <uattr name="SDA pin/0000">DIO5</uattr>
+            </io_usage>
+        </resource_ref>
+        <resource_ref name="ISRC" enabled="0"/>
+        <resource_ref name="Math and Logic" enabled="1"/>
+        <resource_ref name="Multi-Buffered Output Data Exchange" enabled="0">
+            <rattr name="Buffer count">2</rattr>
+            <rattr name="Indicate overflow at buffer check">1</rattr>
+            <rattr name="Indicate overflow at buffer switch">0</rattr>
+            <rattr name="Prevent overflow at buffer switch">1</rattr>
+        </resource_ref>
+        <resource_ref name="Peripheral Sharing" enabled="0"/>
+        <resource_ref name="Pulse Counter" enabled="0"/>
+        <resource_ref name="RTC Multi-Event Capture" enabled="0"/>
+        <resource_ref name="RTC-Based Execution Scheduling" enabled="0"/>
+        <resource_ref name="SPI Chip Select" enabled="0"/>
+        <resource_ref name="SPI Data Transfer" enabled="0">
+            <rattr name="Bit rate">0</rattr>
+            <rattr name="MISO configuration when inactive">-1</rattr>
+            <rattr name="MOSI configuration on initialization">0</rattr>
+            <rattr name="MOSI configuration on uninitialization">0</rattr>
+            <rattr name="SCLK configuration on initialization">0</rattr>
+            <rattr name="SCLK configuration on uninitialization">0</rattr>
+            <io_usage>
+                <uattr name="MISO pin/0000"></uattr>
+                <uattr name="MOSI pin/0000"></uattr>
+                <uattr name="SCLK pin/0000"></uattr>
+            </io_usage>
+        </resource_ref>
+        <resource_ref name="System CPU Alert" enabled="1"/>
+        <resource_ref name="TDC" enabled="0"/>
+        <resource_ref name="Timer 0" enabled="0"/>
+        <resource_ref name="Timer Event Trigger" enabled="0"/>
+        <resource_ref name="UART Emulator" enabled="0">
+            <rattr name="RX buffer size">64</rattr>
+            <rattr name="Required idle period before enabling RX">11</rattr>
+            <rattr name="TX buffer size">64</rattr>
+            <io_usage>
+                <uattr name="RX pin/0000"></uattr>
+                <uattr name="TX pin/0000"></uattr>
+            </io_usage>
+        </resource_ref>
+        <sccode name="event0"><![CDATA[]]></sccode>
+        <sccode name="execute"><![CDATA[//Check with briggs if we should have outputs for error checking
+// Analog sensing logic - read the analog channel and save in output buffer
+output.I2CError = 0;
+
+// turn on the output power rail
+gpioSetOutput(AUXIO_XD_ANA_POWER);
+
+// delay between 1 to 5 ms
+fwDelayUs(1000, FW_DELAY_RANGE_5_MS);
+
+//In order to prevent future errors with the I2C communication we need to read the water color ID register
+U16 dummy = 0;
+//Check which sensor is connected
+i2cStart();
+i2cTx( (ADDRESS << 1) | I2C_OP_WRITE);
+i2cTx( (COMMAND_BYTE | ID_REG) );
+i2cRepeatedStart();
+i2cTx( (ADDRESS << 1) | I2C_OP_READ);
+i2cRxAck(dummy);
+i2cStop();
+
+//Set the RGB Integration time
+i2cStart();
+i2cTx( (ADDRESS << 1) | I2C_OP_WRITE);
+i2cTx( (COMMAND_BYTE | A_TIME_REG) );
+i2cTx( (INTG_24) );
+i2cStop();
+
+if(state.i2cStatus != 0x00){
+    output.I2CError = 1;
+}
+
+//Set the RGB Integration time
+i2cStart();
+i2cTx( (ADDRESS << 1) | I2C_OP_WRITE);
+i2cTx( (COMMAND_BYTE | CTRL_REG) );
+i2cTx( (GAIN_4X) );
+i2cStop();
+
+if(state.i2cStatus != 0x00){
+    output.I2CError = 2;
+}
+
+//Enable the Power on
+i2cStart();
+i2cTx( (ADDRESS << 1) | I2C_OP_WRITE);
+i2cTx( (COMMAND_BYTE | ENABLE_REG) );
+i2cTx(ENABLE_PON);
+i2cStop();
+
+if(state.i2cStatus != 0x00){
+    output.I2CError = 3;
+}
+
+//confirm what the delays should be here
+fwDelayUs(100, FW_DELAY_RANGE_500_US);
+
+//Enable the Power on / AEN
+i2cStart();
+i2cTx( (ADDRESS << 1) | I2C_OP_WRITE);
+i2cTx( (COMMAND_BYTE | ENABLE_REG) );
+i2cTx(ENABLE_PON | ENABLE_AEN);
+i2cStop();
+
+if(state.i2cStatus != 0x00){
+    output.I2CError = 4;
+}
+
+//confirm what the delays should be here
+fwDelayUs(100, FW_DELAY_RANGE_500_US);
+
+//Read the color values
+U16 low;
+U16 high;
+i2cStart();
+i2cTx( (ADDRESS << 1) | I2C_OP_WRITE);
+i2cTx( (COMMAND_AUTO | COLORS) );
+i2cRepeatedStart();
+i2cTx( (ADDRESS << 1) | I2C_OP_READ);
+
+//Reading the color sensor
+//Clear
+i2cRxAck(low);
+i2cRxAck(high);
+output.colorClear = ((high << 8) | low);
+
+//Red
+i2cRxAck(low);
+i2cRxAck(high);
+output.colorRed = ((high << 8) | low);
+
+//Green
+i2cRxAck(low);
+i2cRxAck(high);
+output.colorGreen = ((high << 8) | low);
+
+//Blue
+i2cRxAck(low);
+i2cRxAck(high);
+output.colorBlue = ((high << 8) | low);
+
+i2cStop();
+
+// Enable the ADC
+adcEnableSync(ADC_REF_FIXED, ADC_SAMPLE_TIME_2P7_US,ADC_TRIGGER_MANUAL);
+
+// read & store the remaining adc values
+adcGenManualTrigger();
+
+U16 total;
+U16 value;
+
+//Read ADC Sensor Conductivity
+total = 0;
+adcSelectGpioInput(cfg.pAuxioAAnaInput[0]);
+adcGenManualTrigger();
+adcReadFifo(value);
+total = total + value;
+
+adcGenManualTrigger();
+adcReadFifo(value);
+total = total + value;
+
+adcGenManualTrigger();
+adcReadFifo(value);
+total = total + value;
+
+adcGenManualTrigger();
+adcReadFifo(value);
+total = total + value;
+output.Conductivity = (total >> 2);
+
+//Read ADC Sensor Temp
+total = 0;
+adcSelectGpioInput(cfg.pAuxioAAnaInput[1]);
+adcGenManualTrigger();
+adcReadFifo(value);
+total = total + value;
+
+adcGenManualTrigger();
+adcReadFifo(value);
+total = total + value;
+
+adcGenManualTrigger();
+adcReadFifo(value);
+total = total + value;
+
+adcGenManualTrigger();
+adcReadFifo(value);
+total = total + value;
+output.TemperatureSensor = (total >> 2);
+
+//Read ADC Sensor AmbLight
+total = 0;
+adcSelectGpioInput(cfg.pAuxioAAnaInput[2]);
+adcGenManualTrigger();
+adcReadFifo(value);
+total = total + value;
+
+adcGenManualTrigger();
+adcReadFifo(value);
+total = total + value;
+
+adcGenManualTrigger();
+adcReadFifo(value);
+total = total + value;
+
+adcGenManualTrigger();
+adcReadFifo(value);
+total = total + value;
+output.AmbLight = (total >> 2);
+
+//Read ADC Sensor Battery
+total = 0;
+adcSelectGpioInput(cfg.pAuxioAAnaInput[3]);
+adcGenManualTrigger();
+adcReadFifo(value);
+total = total + value;
+
+adcGenManualTrigger();
+adcReadFifo(value);
+total = total + value;
+
+adcGenManualTrigger();
+adcReadFifo(value);
+total = total + value;
+
+adcGenManualTrigger();
+adcReadFifo(value);
+total = total + value;
+output.BatterySensor = (total >> 2);
+
+//Read ADC Sensor Hall
+total = 0;
+adcSelectGpioInput(cfg.pAuxioAAnaInput[4]);
+adcGenManualTrigger();
+adcReadFifo(value);
+total = total + value;
+
+adcGenManualTrigger();
+adcReadFifo(value);
+total = total + value;
+
+adcGenManualTrigger();
+adcReadFifo(value);
+total = total + value;
+
+adcGenManualTrigger();
+adcReadFifo(value);
+total = total + value;
+output.HallSensor = (total >> 2);
+
+//End Reading ADC Sensors
+
+// disable ADC
+adcDisable( );
+
+// power down analog power rail
+gpioClearOutput(AUXIO_XD_ANA_POWER);
+
+fwGenAlertInterrupt();]]></sccode>
+        <sccode name="initialize"><![CDATA[]]></sccode>
+        <sccode name="terminate"><![CDATA[]]></sccode>
+        <tt_iter>run_execute</tt_iter>
+        <tt_struct>output.Err,output.colorValues.[0],output.colorValues.[1],output.colorValues.[2],output.colorValues.[3],state.i2cStatus</tt_struct>
+    </task>
+</project>
