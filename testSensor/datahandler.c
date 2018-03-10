@@ -58,6 +58,7 @@ PROCESS_THREAD(test_data, ev, data)
         etimer_set(&et, config_get_sensor_interval());
         PROCESS_WAIT_UNTIL(etimer_expired(&et));
 
+        // create fake data
         data.header = DATA_HEADER;
         data.sequence = sequence;
         data.battery = 55;
@@ -65,7 +66,11 @@ PROCESS_THREAD(test_data, ev, data)
         data.adc[0] = 0x1010;
         data.adc[1] = 0x2031;
         data.adc[2] = 0x3043;
-        data.adc[3] = 0x4343;
+        data.I2CError = 0;
+        data.colors[0] = 0x2020;
+        data.colors[1] = 0x3030;
+        data.colors[2] = 0x4040;
+        data.colors[3] = 0x5050;
 
         count = 0;
         while ((count < 10) && (data_seq_acked < sequence)) {

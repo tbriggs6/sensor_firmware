@@ -53,6 +53,8 @@ typedef struct {
         uint16_t battery;
         uint16_t temperature;
         uint16_t adc[4];
+        uint16_t colors[4];
+        uint16_t I2CError;
 } data_t;
 
 #define DATA_ACK_HEADER (0x90983323U)

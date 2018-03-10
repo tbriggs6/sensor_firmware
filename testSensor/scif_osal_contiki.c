@@ -166,9 +166,9 @@ void setOsalReady(){
 static void osalCtrlReadyIsr(void) {
 
 	PRINTF("[READY ISR] Ready interrupt received. Calling Contiki process...\r\n");
-	process_poll(&ready_interrupt);
 	scifOsalEnableAuxDomainAccess();
 	osalClearCtrlReadyInt( );
+	process_poll(&ready_interrupt);
 
 }
 
@@ -246,15 +246,27 @@ PROCESS_THREAD(alert_interrupt, ev, data)
 		PRINTF("[CONTIKI ALERT PROCESS] Conductivity: %u\r\n", scifScsTaskData.readData.output.Conductivity);
 		PRINTF("[CONTIKI ALERT PROCESS] Hall Sensor: %u\r\n", scifScsTaskData.readData.output.HallSensor);
 		PRINTF("[CONTIKI ALERT PROCESS] I2CError: %u\r\n", scifScsTaskData.readData.output.I2CError);
-		PRINTF("[CONTIKI ALERT PROCESS] TemperatureSensor: %u\r\n", scifScsTaskData.readData.output.TemperatureSensor);
+		PRINTF("[CONTIKI ALERT PROCESS] Temperature Sensor: %u\r\n", scifScsTaskData.readData.output.TemperatureSensor);
 		PRINTF("[CONTIKI ALERT PROCESS] colorClear: %u\r\n", scifScsTaskData.readData.output.colorClear);
 		PRINTF("[CONTIKI ALERT PROCESS] colorRed: %u\r\n", scifScsTaskData.readData.output.colorRed);
 		PRINTF("[CONTIKI ALERT PROCESS] colorGreen: %u\r\n", scifScsTaskData.readData.output.colorGreen);
 		PRINTF("[CONTIKI ALERT PROCESS] colorBlue: %u\r\n", scifScsTaskData.readData.output.colorBlue);
 
+		// Copy data from shared RAM into a local variable
+		SCIF_SCS_READ_DATA_OUTPUT_T data = scifScsTaskData.readData.output;
+		PRINTF("\r\n[CONTIKI ALERT PROCESS] Analog values:\r\n\n");
+		PRINTF("[CONTIKI ALERT PROCESS] Ambient Light: %u\r\n", data.AmbLight);
+		PRINTF("[CONTIKI ALERT PROCESS] Battery Sensor: %u\r\n", data.BatterySensor);
+		PRINTF("[CONTIKI ALERT PROCESS] Conductivity: %u\r\n", data.Conductivity);
+		PRINTF("[CONTIKI ALERT PROCESS] Hall Sensor: %u\r\n", data.HallSensor);
+		PRINTF("[CONTIKI ALERT PROCESS] I2CError: %u\r\n", data.I2CError);
+		PRINTF("[CONTIKI ALERT PROCESS] Temperature Sensor: %u\r\n", data.TemperatureSensor);
+		PRINTF("[CONTIKI ALERT PROCESS] colorClear: %u\r\n", data.colorClear);
+		PRINTF("[CONTIKI ALERT PROCESS] colorRed: %u\r\n", data.colorRed);
+		PRINTF("[CONTIKI ALERT PROCESS] colorGreen: %u\r\n", data.colorGreen);
+		PRINTF("[CONTIKI ALERT PROCESS] colorBlue: %u\r\n", data.colorBlue);
 
-		// TODO: Store the data into a struct and poll the process (or register an event)
-		// that handles the broadcasting.
+		setSCData(data);
 
 
 		// update the schedule
@@ -280,9 +292,9 @@ static void osalTaskAlertIsr(void) {
 	scifClearAlertIntSource();
 
 	PRINTF("[ALERT ISR] Alert interrupt generated. Calling Contiki process...\r\n");
-	process_poll(&alert_interrupt);
 
 	scifOsalEnableAuxDomainAccess();
+	process_poll(&alert_interrupt);
 	//osalClearTaskAlertInt();
 
 //    osalDisableTaskAlertInt();

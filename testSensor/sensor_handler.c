@@ -25,10 +25,19 @@
 #define BV(n)           (1 << (n))
 #endif
 
+#define DEBUG 1
+#if DEBUG
+#include <stdio.h>
+#define PRINTF(...) printf(__VA_ARGS__)
+#else
+#define PRINTF(...)
+#endif
+
 PROCESS(sensor_timer, "Sensor Interval Timer");
 PROCESS(test_data2, "Data Handler");
 
 volatile static int data_seq_acked = -1;
+volatile static SCIF_SCS_READ_DATA_OUTPUT_T scData;
 
 void data_ack_handler2(uip_ipaddr_t *remote_addr, int remote_port, char *data, int length)
 {
@@ -39,7 +48,7 @@ void data_ack_handler2(uip_ipaddr_t *remote_addr, int remote_port, char *data, i
         return;
     }
 
-    printf("Data ack seq: %d\r\n", ack->ack_seq);
+    PRINTF("[DATA ACK HANDLER] Data ack seq: %d\r\n", ack->ack_seq);
     data_seq_acked = ack->ack_seq;
     process_post(&test_data2, PROCESS_EVENT_MSG, data);
 }
@@ -53,23 +62,22 @@ PROCESS_THREAD(sensor_timer, ev, data)
 	static struct etimer et;
 
 	while(1){
-		printf("[SENSOR TIMER PROC] Waiting for %d  /  %d\r\n", config_get_sensor_interval(),
+		PRINTF("[SENSOR TIMER PROCESS] Waiting for %d  /  %d\r\n", config_get_sensor_interval(),
 				config_get_sensor_interval() / CLOCK_SECOND);
 		etimer_set(&et, config_get_sensor_interval());
 
 		PROCESS_WAIT_EVENT( );
 
 		if (ev == PROCESS_EVENT_TIMER){
-			printf("[SENSOR TIMER PROC] Sensor Timer expired. Restarting timer...\r\n");
-			printf("[SENSOR TIMER PROC] Invoking SCS code...\r\n");
+			PRINTF("[SENSOR TIMER PROCESS] Sensor Timer expired. Restarting timer...\r\n");
+			PRINTF("[SENSOR TIMER PROCESS] Invoking SCS code...\r\n");
 			scifSwTriggerExecutionCodeNbl(BV(SCIF_SCS_READ_DATA_TASK_ID));
-			//process_poll(&test_data2);
 		}
 		else if (ev == PROCESS_EVENT_MSG){
-			printf("[SENSOR TIMER PROC] Sensor interval changed. Restarting timer with new interval...\r\n");
+			PRINTF("[SENSOR TIMER PROCESS] Sensor interval changed. Restarting timer with new interval...\r\n");
 		}
 		else{
-			printf("[SENSOR TIMER PROC] Unknown event generated...\r\n");
+			PRINTF("[SENSOR TIMER PROCESS] Unknown event generated...\r\n");
 		}
 	}
 
@@ -100,29 +108,45 @@ PROCESS_THREAD(test_data2, ev, data)
     // controls how many times the loop attempts to send the data to another sensor
     static int count = 0;
 
+    // keeps track of how many times new data has been received since attempting to send data
+    static int newDatRcvd = 0;
+
     // Constructs an IPv6 address... part of Contiki source code
     uip_ip6addr(&server, 0xFD00, 0, 0, 0, 0, 0, 0, 1);
     messenger_add_handler(DATA_ACK_HEADER, sizeof(data_ack_t), sizeof(data_ack_t), data_ack_handler2);
 
-    printf("[DATA SENDER PROC] Initializing...\r\n");
+    PRINTF("[DATA SENDER PROCESS] Initializing...\r\n");
     while(1)
     {
-//    	// setting and waiting for the sensor_interval timer to go off
-//        printf("Waiting for %d  /  %d\r\n", config_get_sensor_interval(), config_get_sensor_interval() / CLOCK_SECOND);
-//        etimer_set(&et, config_get_sensor_interval());
-//        PROCESS_WAIT_UNTIL(etimer_expired(&et));
-
     	PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL);
+    	newDatRcvd = 0;
 
-        // create fake data
         data.header = DATA_HEADER;
         data.sequence = sequence;
-        data.battery = 55;
-        data.temperature = 33;
-        data.adc[0] = 0x1010;
-        data.adc[1] = 0x2031;
-        data.adc[2] = 0x3043;
-        data.adc[3] = 0x4343;
+        data.battery = scData.BatterySensor;
+        data.temperature = scData.TemperatureSensor;
+        data.adc[0] = scData.AmbLight;
+        data.adc[1] = scData.Conductivity;
+        data.adc[2] = scData.HallSensor;
+        data.I2CError = scData.I2CError;
+        data.colors[0] = scData.colorClear;
+        data.colors[1] = scData.colorRed;
+        data.colors[2] = scData.colorGreen;
+        data.colors[3] = scData.colorBlue;
+
+        PRINTF("\r\n\n\n[DATA SENDER PROCESS] Data to be broadcast:\r\n");
+        PRINTF("[DATA SENDER PROCESS] Header: %X\r\n", data.header);
+        PRINTF("[DATA SENDER PROCESS] Sequence: %u\r\n", data.sequence);
+        PRINTF("[DATA SENDER PROCESS] Ambient Light: %u\r\n", data.adc[0]);
+        PRINTF("[DATA SENDER PROCESS] Battery Sensor: %u\r\n", data.battery);
+        PRINTF("[DATA SENDER PROCESS] Conductivity: %u\r\n", data.adc[1]);
+        PRINTF("[DATA SENDER PROCESS] Hall Sensor: %u\r\n", data.adc[2]);
+        PRINTF("[DATA SENDER PROCESS] I2CError: %u\r\n", data.I2CError);
+        PRINTF("[DATA SENDER PROCESS] Temperature Sensor: %u\r\n", data.temperature);
+        PRINTF("[DATA SENDER PROCESS] colorClear: %u\r\n", data.colors[0]);
+        PRINTF("[DATA SENDER PROCESS] colorRed: %u\r\n", data.colors[1]);
+        PRINTF("[DATA SENDER PROCESS] colorRed: %u\r\n", data.colors[2]);
+        PRINTF("[DATA SENDER PROCESS] colorRed: %u\r\n", data.colors[3]);
 
         count = 0;
         // while the current message hasn't tried to send count times
@@ -134,7 +158,7 @@ PROCESS_THREAD(test_data2, ev, data)
             {
             	// send the current message and set up a timer to control
             	// how long it will wait until trying to resend the data
-                printf("[DATA SENDER PROC] Sending data - attempt %d \r\n", count);
+                PRINTF("[DATA SENDER PROCESS] Sending data - attempt %d \r\n", count);
                 messenger_send(&server, &data, sizeof(data_t));
                 etimer_set(&et, 2 * CLOCK_SECOND);
             }
@@ -145,27 +169,31 @@ PROCESS_THREAD(test_data2, ev, data)
             // if the event is that the data has been acknowledged (posted by data_ack_handler())
             // and the same number of messages have been acknowledged as have been sent
             if ((ev == PROCESS_EVENT_MSG) && (data_seq_acked == sequence)) {
-                printf("[DATA SENDER PROC] OK - data is ACKd\r\n");
+                PRINTF("[DATA SENDER PROCESS] OK - data is ACKd\r\n");
                 break;
+            }
+
+            else if(ev == PROCESS_EVENT_POLL){
+            	PRINTF("[DATA SENDER PROCESS] New SCS data available: %d times since data obtained...\r\n", ++newDatRcvd);
             }
 
             // if the timer for waiting for an acknowledgment has expired
             else if (etimer_expired(&et)) {
-                printf("[DATA SENDER PROC] Timeout waiting for ACK\r\n");
+                PRINTF("[DATA SENDER PROCESS] Timeout waiting for ACK\r\n");
                 count++;
             }
 
             // an event was posted to this process that was not the expiration
             // of the timer or an acknowledgment
             else {
-                printf("[DATA SENDER PROC] Seq: %d  Last ack: %d\r\n",sequence , data_seq_acked);
-                printf("[DATA SENDER PROC] Unexpected wake-up (%d), resending\r\n", ev);
+                PRINTF("[DATA SENDER PROCESS] Seq: %d  Last ack: %d\r\n",sequence , data_seq_acked);
+                PRINTF("[DATA SENDER PROCESS] Unexpected wake-up (%d), resending\r\n", ev);
             }
 
 
         }
 
-        printf("\r\n\n\n[DATA SENDER PROC] Finished sending sequence %d\r\n\n\n", sequence);
+        PRINTF("\r\n\n\n[DATA SENDER PROCESS] Finished sending sequence %d\r\n\n\n", sequence);
         sequence++;
 
 
@@ -174,9 +202,25 @@ PROCESS_THREAD(test_data2, ev, data)
     PROCESS_END();
 }
 
+void setSCData(SCIF_SCS_READ_DATA_OUTPUT_T data)
+{
+	scData = data;
+	return;
+}
 
 void datahandler_init2( )
 {
+	scData.AmbLight = 0;
+	scData.BatterySensor = 0;
+	scData.Conductivity = 0;
+	scData.HallSensor = 0;
+	scData.I2CError = 0;
+	scData.TemperatureSensor = 0;
+	scData.colorClear = 0;
+	scData.colorRed = 0;
+	scData.colorGreen = 0;
+	scData.colorBlue = 0;
+
     process_start(&test_data2, NULL);
     process_start(&sensor_timer, NULL);
 }
