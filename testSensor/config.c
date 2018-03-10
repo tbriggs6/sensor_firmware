@@ -17,6 +17,7 @@
 #include <driverlib/vims.h>
 
 #include "config.h"
+#include "sensor_handler.h"
 
 extern void * _uflash_base;
 extern void * _uflash_size;
@@ -25,6 +26,14 @@ static config_t config;
 static dynamic_config_t dynconfig;
 
 #define SECONDS(x) (x * CLOCK_SECOND)
+
+#define DEBUG 1
+#if DEBUG
+#include <stdio.h>
+#define PRINTF(...) printf(__VA_ARGS__)
+#else
+#define PRINTF(...)
+#endif
 
 static void config_read()
 {
@@ -56,16 +65,16 @@ static void config_write()
 	/* Erase the flash -- required in order to write */
 	uint32_t resp = FlashSectorErase(mybase);
 	if(resp == FAPI_STATUS_SUCCESS){
-		printf("[CONFIG WRITE] Flash erasure successful...\r\n");
+		PRINTF("[CONFIG WRITE] Flash erasure successful...\r\n");
 	} else {
-		printf("[CONFIG WRITE] Flash erasure unsuccessful...\r\n");
+		PRINTF("[CONFIG WRITE] Flash erasure unsuccessful...\r\n");
 	}
 
 	resp = FlashProgram((uint8_t *) &config, mybase, sizeof(config_t));
 	if(resp == FAPI_STATUS_SUCCESS){
-		printf("[CONFIG WRITE] Flash program successful...\r\n");
+		PRINTF("[CONFIG WRITE] Flash program successful...\r\n");
 	} else {
-		printf("[CONFIG WRITE] Flash program unsuccessful...\r\n");
+		PRINTF("[CONFIG WRITE] Flash program unsuccessful...\r\n");
 	}
 
 	/* Reenable interupts */
@@ -79,14 +88,14 @@ void config_init()
 {
 	config_read();
 	// print config
-	printf("[CONFIG INIT] Configuration:\r\n");
-	printf("[CONFIG INIT] Magic: %X\r\n", config.magic);
-	printf("[CONFIG INIT] Broadcast interval: %d\r\n", config.bcast_interval);
-	printf("[CONFIG INIT] Neighbor interval: %d\r\n", config.neighbor_interval);
-	printf("[CONFIG INIT] Sensor interval: %d\r\n\n", config.sensor_interval);
+	PRINTF("[CONFIG INIT] Configuration:\r\n");
+	PRINTF("[CONFIG INIT] Magic: %X\r\n", config.magic);
+	PRINTF("[CONFIG INIT] Broadcast interval: %d\r\n", config.bcast_interval);
+	PRINTF("[CONFIG INIT] Neighbor interval: %d\r\n", config.neighbor_interval);
+	PRINTF("[CONFIG INIT] Sensor interval: %d\r\n\n", config.sensor_interval);
 
 	if (config.magic != CONFIG_MAGIC) {
-		printf("[CONFIG INIT] Configuration magic (%-8.8X != %-8.8X) not found, using defaults\r\n", config.magic, CONFIG_MAGIC);
+		PRINTF("[CONFIG INIT] Configuration magic (%-8.8X != %-8.8X) not found, using defaults\r\n", config.magic, CONFIG_MAGIC);
 		config.magic = CONFIG_MAGIC;
 		config.bcast_interval = SECONDS(30);
 		config.neighbor_interval = SECONDS(30);
@@ -96,11 +105,11 @@ void config_init()
 		config_read();
 
 		// print config
-		printf("[CONFIG INIT] Configuration:\r\n");
-		printf("[CONFIG INIT] Magic: %X\r\n", config.magic);
-		printf("[CONFIG INIT] Broadcast interval: %d\r\n", config.bcast_interval);
-		printf("[CONFIG INIT] Neighbor interval: %d\r\n", config.neighbor_interval);
-		printf("[CONFIG INIT] Sensor interval: %d\r\n\n", config.sensor_interval);
+		PRINTF("[CONFIG INIT] Configuration:\r\n");
+		PRINTF("[CONFIG INIT] Magic: %X\r\n", config.magic);
+		PRINTF("[CONFIG INIT] Broadcast interval: %d\r\n", config.bcast_interval);
+		PRINTF("[CONFIG INIT] Neighbor interval: %d\r\n", config.neighbor_interval);
+		PRINTF("[CONFIG INIT] Sensor interval: %d\r\n\n", config.sensor_interval);
 	}
 
 	
@@ -113,14 +122,19 @@ void config_init()
 void config_set_sensor_interval(const int interval)
 {
 	if (interval < SECONDS(5)) {
-		printf("Error - interval too small (5...3600) seconds\r\n");
+		PRINTF("Error - interval too small (5...3600) seconds\r\n");
 	}
 	else if (interval > SECONDS(3600)) {
-		printf("Error - interval too large (5...3600) seconds\r\n");
+		PRINTF("Error - interval too large (5...3600) seconds\r\n");
 		return;
 	}
 
 	config.sensor_interval = interval;
+	config_write();
+
+	process_poll(&sensor_timer);
+
+	return;
 }
 
 int config_get_sensor_interval()
@@ -145,10 +159,10 @@ int config_get_ctime_offset()
 void config_set_bcast_interval(const int interval)
 {
 	if (interval < SECONDS(5)) {
-		printf("Error - interval too small (5...3600) seconds\r\n");
+		PRINTF("Error - interval too small (5...3600) seconds\r\n");
 	}
 	else if (interval > SECONDS(3600)) {
-		printf("Error - interval too large (5...3600) seconds\r\n");
+		PRINTF("Error - interval too large (5...3600) seconds\r\n");
 		return;
 	}
 
@@ -169,10 +183,10 @@ int config_get_bcast_interval()
 void config_set_neighbor_interval(const int interval)
 {
 	if (interval < (SECONDS(5))) {
-		printf("Error - interval too small (5...3600) seconds\r\n");
+		PRINTF("Error - interval too small (5...3600) seconds\r\n");
 	}
 	else if (interval > SECONDS(3600)) {
-		printf("Error - interval too large (5...3600) seconds\r\n");
+		PRINTF("Error - interval too large (5...3600) seconds\r\n");
 		return;
 	}
 
@@ -213,7 +227,7 @@ void config_set(const int configID, const int value)
 		break;
 
 	default:
-		printf("Error - unknown config ID: %d\r\n", configID);
+		PRINTF("Error - unknown config ID: %d\r\n", configID);
 	}
 }
 
@@ -225,7 +239,7 @@ void config_get_receiver(uip_ipaddr_t *receiver)
 
 void config_set_receiver(const uip_ipaddr_t *receiver)
 {
-	printf("Setting receiver address to ");
+	PRINTF("Setting receiver address to ");
 	uip_debug_ipaddr_print(receiver);
 
 	memcpy(&(dynconfig.receiver), receiver, sizeof(dynconfig.receiver));

@@ -14,6 +14,7 @@ void datahandler_init2( );
 void data_ack_handler2(uip_ipaddr_t *remote_addr, int remote_port, char *data, int length);
 void setSCData(SCIF_SCS_READ_DATA_OUTPUT_T data);
 
+PROCESS_NAME(sensor_timer);
 PROCESS_NAME(test_data2);
 
 #endif /* TESTSENSOR_DATAHANDLER_H_ */

@@ -62,6 +62,13 @@ PROCESS_THREAD(sensor_timer, ev, data)
 	static struct etimer et;
 
 	while(1){
+		if ((ev == PROCESS_EVENT_TIMER) || (ev == PROCESS_EVENT_TIMER)){
+			if(osalIsReady()){
+				scifSwTriggerExecutionCodeNbl(BV(SCIF_SCS_READ_DATA_TASK_ID));
+				unsetOsalReady();
+			}
+		}
+
 		PRINTF("[SENSOR TIMER PROCESS] Waiting for %d  /  %d\r\n", config_get_sensor_interval(),
 				config_get_sensor_interval() / CLOCK_SECOND);
 		etimer_set(&et, config_get_sensor_interval());
@@ -71,13 +78,12 @@ PROCESS_THREAD(sensor_timer, ev, data)
 		if (ev == PROCESS_EVENT_TIMER){
 			PRINTF("[SENSOR TIMER PROCESS] Sensor Timer expired. Restarting timer...\r\n");
 			PRINTF("[SENSOR TIMER PROCESS] Invoking SCS code...\r\n");
-			scifSwTriggerExecutionCodeNbl(BV(SCIF_SCS_READ_DATA_TASK_ID));
 		}
-		else if (ev == PROCESS_EVENT_MSG){
+		else if (ev == PROCESS_EVENT_POLL){
 			PRINTF("[SENSOR TIMER PROCESS] Sensor interval changed. Restarting timer with new interval...\r\n");
 		}
 		else{
-			PRINTF("[SENSOR TIMER PROCESS] Unknown event generated...\r\n");
+			PRINTF("[SENSOR TIMER PROCESS] Unknown event generated. Resetting timer...\r\n");
 		}
 	}
 

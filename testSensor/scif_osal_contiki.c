@@ -155,10 +155,12 @@ bool osalIsReady( ) {
 
 void unsetOsalReady(){
 	osalPostedReady = false;
+	PRINTF("[UNSET READY FUNCTION] Sensor Controller unready...\r\n");
 }
 
 void setOsalReady(){
 	osalPostedReady = true;
+	PRINTF("[UNSET READY FUNCTION] Sensor Controller ready...\r\n");
 }
 
 /** \brief Interrupt service route for ready interrupt
