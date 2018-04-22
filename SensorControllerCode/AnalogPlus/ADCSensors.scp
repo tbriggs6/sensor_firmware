@@ -2,7 +2,7 @@
 <project name="ADCSensors" version="1.4.1.54">
     <desc><![CDATA[]]></desc>
     <pattr name="Board">CC2650 LaunchPad</pattr>
-    <pattr name="Chip name">CC1310</pattr>
+    <pattr name="Chip name">CC2650</pattr>
     <pattr name="Chip package">QFN48 7x7 RGZ</pattr>
     <pattr name="Chip revision">-</pattr>
     <pattr name="Code prefix">scs</pattr>
@@ -151,6 +151,12 @@ i2cTx( (ADDRESS << 1) | I2C_OP_READ);
 i2cRxAck(dummy);
 i2cStop();
 
+if(state.i2cStatus != 0x00){
+    if(output.I2CError == 0){
+        output.I2CError = 1;
+    }
+}
+
 //Set the RGB Integration time
 i2cStart();
 i2cTx( (ADDRESS << 1) | I2C_OP_WRITE);
@@ -159,7 +165,9 @@ i2cTx( (INTG_24) );
 i2cStop();
 
 if(state.i2cStatus != 0x00){
-    output.I2CError = 1;
+    if(output.I2CError == 0){
+        output.I2CError = 2;
+    }
 }
 
 //Set the RGB Integration time
@@ -170,7 +178,9 @@ i2cTx( (GAIN_4X) );
 i2cStop();
 
 if(state.i2cStatus != 0x00){
-    output.I2CError = 2;
+    if(output.I2CError == 0){
+        output.I2CError = 3;
+    }
 }
 
 //Enable the Power on
@@ -181,7 +191,9 @@ i2cTx(ENABLE_PON);
 i2cStop();
 
 if(state.i2cStatus != 0x00){
-    output.I2CError = 3;
+    if(output.I2CError == 0){
+        output.I2CError = 4;
+    }
 }
 
 //confirm what the delays should be here
@@ -195,7 +207,9 @@ i2cTx(ENABLE_PON | ENABLE_AEN);
 i2cStop();
 
 if(state.i2cStatus != 0x00){
-    output.I2CError = 4;
+    if(output.I2CError == 0){
+        output.I2CError = 5;
+    }
 }
 
 //confirm what the delays should be here
@@ -353,7 +367,7 @@ gpioClearOutput(AUXIO_XD_ANA_POWER);
 fwGenAlertInterrupt();]]></sccode>
         <sccode name="initialize"><![CDATA[]]></sccode>
         <sccode name="terminate"><![CDATA[]]></sccode>
-        <tt_iter>run_execute</tt_iter>
-        <tt_struct>output.Err,output.colorValues.[0],output.colorValues.[1],output.colorValues.[2],output.colorValues.[3],state.i2cStatus</tt_struct>
+        <tt_iter>run_execute,if_noalertgen_start,wait_1s,if_noalertgen_end</tt_iter>
+        <tt_struct>output.colorBlue,output.colorClear,output.colorGreen,output.colorRed,state.i2cStatus</tt_struct>
     </task>
 </project>
