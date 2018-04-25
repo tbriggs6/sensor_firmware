@@ -69,7 +69,7 @@ PROCESS_THREAD(test_bcast_cb, ev, data)
 
     messenger_add_handler(ECHO_REQ, sizeof(echo_t), sizeof(echo_t), echo_handler);
     messenger_add_handler(CMD_SET_HEADER, sizeof(uint32_t) * 4, sizeof(command_set_t), command_handler);
-
+    printf("Before data handler init()\n");
     datahandler_init( );
 
     printf("Broadcast CB started\n");
@@ -78,16 +78,16 @@ PROCESS_THREAD(test_bcast_cb, ev, data)
         PROCESS_WAIT_EVENT();
         if (ev == bcast_event) {
             bcast_t *bcast = (bcast_t *) data;
-            printf("******************\n");
+            printf("******************\r\n");
             printf("bcast event: ");
             printf("from: ");
             uip_debug_ipaddr_print(&(bcast->sender_addr));
-            printf("  port: %d\n", bcast->sender_port);
+            printf("  port: %d\r\n", bcast->sender_port);
 
-            printf("len: %d message: %s\n", bcast->datalen, bcast->data);
+            printf("len: %d message: %s\r\n", bcast->datalen, bcast->data);
          }
         else {
-            printf("Different event: %d\n", ev);
+            printf("Different event: %d\r\n", ev);
         }
     }
 

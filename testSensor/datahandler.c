@@ -26,11 +26,11 @@ void data_ack_handler(uip_ipaddr_t *remote_addr, int remote_port, char *data, in
 
     data_ack_t *ack = (data_ack_t *) data;
     if (ack->header != DATA_ACK_HEADER) {
-        printf("unexpected message - not a data ack\n");
+        printf("unexpected message - not a data ack\r\n");
         return;
     }
 
-    printf("Data ack seq: %d\n", ack->ack_seq);
+    printf("Data ack seq: %d\r\n", ack->ack_seq);
     data_seq_acked = ack->ack_seq;
     process_post(&test_data, PROCESS_EVENT_MSG, data);
 }
@@ -51,10 +51,10 @@ PROCESS_THREAD(test_data, ev, data)
     uip_ip6addr(&server, 0xFD00, 0, 0, 0, 0, 0, 0, 1);
     messenger_add_handler(DATA_ACK_HEADER, sizeof(data_ack_t), sizeof(data_ack_t), data_ack_handler);
 
-    printf("Data Sender\n");
+    printf("Data Sender\r\n");
     while(1)
     {
-        printf("Waiting for %d  /  %d\n", config_get_sensor_interval(), config_get_sensor_interval() / CLOCK_SECOND);
+        printf("Waiting for %d  /  %d\r\n", config_get_sensor_interval(), config_get_sensor_interval() / CLOCK_SECOND);
         etimer_set(&et, config_get_sensor_interval());
         PROCESS_WAIT_UNTIL(etimer_expired(&et));
 
@@ -73,7 +73,7 @@ PROCESS_THREAD(test_data, ev, data)
 
             if ((count == 0) || (etimer_expired(&et)))
             {
-                printf("Sending data - attempt %d \n", count);
+                printf("Sending data - attempt %d \r\n", count);
                 messenger_send(&server, &data, sizeof(data_t));
                 etimer_set(&et, 2 * CLOCK_SECOND);
             }
@@ -81,24 +81,24 @@ PROCESS_THREAD(test_data, ev, data)
             PROCESS_WAIT_EVENT( );
 
             if ((ev == PROCESS_EVENT_MSG) && (data_seq_acked == sequence)) {
-                printf("OK - data is ACKd\n");
+                printf("OK - data is ACKd\r\n");
                 break;
             }
 
             else if (etimer_expired(&et)) {
-                printf("Timeout waiting for ACK\n");
+                printf("Timeout waiting for ACK\r\n");
                 count++;
             }
 
             else {
-                printf("Seq: %d  Last ack: %d\n",sequence , data_seq_acked);
-                printf("Unexpected wake-up (%d), resending\n", ev);
+                printf("Seq: %d  Last ack: %d\r\n",sequence , data_seq_acked);
+                printf("Unexpected wake-up (%d), resending\r\n", ev);
             }
 
 
         }
 
-        printf("\n\n\nFinished sending sequence %d\n\n\n", sequence);
+        printf("\r\n\n\nFinished sending sequence %d\r\n\n\n", sequence);
         sequence++;
 
 
