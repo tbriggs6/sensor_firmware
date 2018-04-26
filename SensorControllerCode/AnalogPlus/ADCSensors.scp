@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <project name="ADCSensors" version="1.4.1.54">
     <desc><![CDATA[]]></desc>
-    <pattr name="Board">CC2650 LaunchPad</pattr>
+    <pattr name="Board">None</pattr>
     <pattr name="Chip name">CC1310</pattr>
     <pattr name="Chip package">QFN48 7x7 RGZ</pattr>
     <pattr name="Chip revision">-</pattr>
@@ -201,9 +201,7 @@ i2cRxAck(dummy);
 i2cStop();
 
 if(state.i2cStatus != 0x00){
-    if(output.I2CError == 0){
-        output.I2CError = 1;
-    }
+    output.I2CError = output.I2CError | (1 << 0);
 }
 
 //Set the RGB Integration time
@@ -214,9 +212,7 @@ i2cTx( (INTG_24) );
 i2cStop();
 
 if(state.i2cStatus != 0x00){
-    if(output.I2CError == 0){
-        output.I2CError = 2;
-    }
+    output.I2CError = output.I2CError | (1 << 1);
 }
 
 //Set the RGB Integration time
@@ -227,9 +223,7 @@ i2cTx( (GAIN_4X) );
 i2cStop();
 
 if(state.i2cStatus != 0x00){
-    if(output.I2CError == 0){
-        output.I2CError = 3;
-    }
+    output.I2CError = output.I2CError | (1 << 2);
 }
 
 //Enable the Power on
@@ -240,9 +234,7 @@ i2cTx(ENABLE_PON);
 i2cStop();
 
 if(state.i2cStatus != 0x00){
-    if(output.I2CError == 0){
-        output.I2CError = 4;
-    }
+    output.I2CError = output.I2CError | (1 << 3);
 }
 
 //confirm what the delays should be here
@@ -259,9 +251,7 @@ i2cTx(ENABLE_PON | ENABLE_AEN);
 i2cStop();
 
 if(state.i2cStatus != 0x00){
-    if(output.I2CError == 0){
-        output.I2CError = 5;
-    }
+    output.I2CError = output.I2CError | (1 << 4);
 }
 
 //confirm what the delays should be here
