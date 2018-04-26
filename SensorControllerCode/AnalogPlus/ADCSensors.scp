@@ -183,6 +183,12 @@ gpioSetOutput(cfg.pAuxioOAuxPowEn[0]);
 fwDelayUs(100000, FW_DELAY_RANGE_100_MS);
 //fwDelayUs(100000, FW_DELAY_RANGE_100_MS);
 
+// turn on the power for LED_DRIVER
+gpioSetOutput(cfg.pAuxioOLedDriver[0]);
+
+//delay for the LED to turn on
+fwDelayUs(100000, FW_DELAY_RANGE_100_MS);
+
 //In order to prevent future errors with the I2C communication we need to read the water color ID register
 U16 dummy = 0;
 //Check which sensor is connected
@@ -240,8 +246,8 @@ if(state.i2cStatus != 0x00){
 }
 
 //confirm what the delays should be here
-//fwDelayUs(100, FW_DELAY_RANGE_500_US);
-fwDelayUs(100000, FW_DELAY_RANGE_100_MS);
+fwDelayUs(100, FW_DELAY_RANGE_500_US);
+//fwDelayUs(100000, FW_DELAY_RANGE_100_MS);
 
 
 
@@ -261,11 +267,6 @@ if(state.i2cStatus != 0x00){
 //confirm what the delays should be here
 fwDelayUs(100, FW_DELAY_RANGE_500_US);
 
-// turn on the power for LED_DRIVER
-gpioSetOutput(cfg.pAuxioOLedDriver[0]);
-
-//delay for the LED to turn on
-fwDelayUs(1000, FW_DELAY_RANGE_5_MS);
 
 //Read the color values
 U16 low;
@@ -303,7 +304,7 @@ i2cStop();
 gpioClearOutput(cfg.pAuxioOLedDriver[0]);
 
 // Delay for LED to turn off
-fwDelayUs(5000, FW_DELAY_RANGE_5_MS);
+fwDelayUs(50000, FW_DELAY_RANGE_100_MS);
 
 // Enable the ADC
 adcEnableSync(ADC_REF_FIXED, ADC_SAMPLE_TIME_2P7_US,ADC_TRIGGER_MANUAL);

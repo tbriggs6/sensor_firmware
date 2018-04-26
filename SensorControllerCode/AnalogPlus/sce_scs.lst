@@ -345,247 +345,248 @@
 008d ---- 1621                         jsr         FwDelay
                ;? //fwDelayUs(100000, FW_DELAY_RANGE_100_MS);
                ;? 
+               ;? // turn on the power for LED_DRIVER
+               ;? gpioSetOutput(cfg.pAuxioOLedDriver[0]);
+008e ---- 787a                         ld          R7, [#(readData/cfg/pAuxioOLedDriver + 0)]
+008f ---- 1619                         jsr         gpioSetOutput
+               ;? 
+               ;? //delay for the LED to turn on
+               ;? fwDelayUs(100000, FW_DELAY_RANGE_100_MS);
+0090 ---- 7093                         ld          R7, #(((100000 * 24 ) + ((1 << 14) - 1)) >> 14)
+0091 ---- 600e                         ld          R6, #14
+0092 ---- 1621                         jsr         FwDelay
+               ;? 
                ;? //In order to prevent future errors with the I2C communication we need to read the water color ID register
                ;? U16 dummy = 0;
                ;? //Check which sensor is connected
                ;? i2cStart();
-008e ---- 6000                         ld          R6, #0x0000
-008f ---- 162d                         jsr         I2cStart
-0090 ---- 6c85                         st          R6, [#readData/state/i2cStatus]
+0093 ---- 6000                         ld          R6, #0x0000
+0094 ---- 162d                         jsr         I2cStart
+0095 ---- 6c85                         st          R6, [#readData/state/i2cStatus]
                ;? i2cTx( (ADDRESS << 1) | I2C_OP_WRITE);
-0091 ---- 7052                         ld          R7, #82
-0092 ---- 6885                         ld          R6, [#readData/state/i2cStatus]
-0093 ---- 1644                         jsr         I2cTxByte
-0094 ---- 6c85                         st          R6, [#readData/state/i2cStatus]
+0096 ---- 7052                         ld          R7, #82
+0097 ---- 6885                         ld          R6, [#readData/state/i2cStatus]
+0098 ---- 1644                         jsr         I2cTxByte
+0099 ---- 6c85                         st          R6, [#readData/state/i2cStatus]
                ;? i2cTx( (COMMAND_BYTE | ID_REG) );
-0095 ---- 7092                         ld          R7, #146
-0096 ---- 6885                         ld          R6, [#readData/state/i2cStatus]
-0097 ---- 1644                         jsr         I2cTxByte
-0098 ---- 6c85                         st          R6, [#readData/state/i2cStatus]
+009a ---- 7092                         ld          R7, #146
+009b ---- 6885                         ld          R6, [#readData/state/i2cStatus]
+009c ---- 1644                         jsr         I2cTxByte
+009d ---- 6c85                         st          R6, [#readData/state/i2cStatus]
                ;? i2cRepeatedStart();
-0099 ---- 6885                         ld          R6, [#readData/state/i2cStatus]
-009a ---- 1627                         jsr         I2cRepeatedStart
-009b ---- 6c85                         st          R6, [#readData/state/i2cStatus]
+009e ---- 6885                         ld          R6, [#readData/state/i2cStatus]
+009f ---- 1627                         jsr         I2cRepeatedStart
+00a0 ---- 6c85                         st          R6, [#readData/state/i2cStatus]
                ;? i2cTx( (ADDRESS << 1) | I2C_OP_READ);
-009c ---- 7053                         ld          R7, #83
-009d ---- 6885                         ld          R6, [#readData/state/i2cStatus]
-009e ---- 1644                         jsr         I2cTxByte
-009f ---- 6c85                         st          R6, [#readData/state/i2cStatus]
+00a1 ---- 7053                         ld          R7, #83
+00a2 ---- 6885                         ld          R6, [#readData/state/i2cStatus]
+00a3 ---- 1644                         jsr         I2cTxByte
+00a4 ---- 6c85                         st          R6, [#readData/state/i2cStatus]
                ;? i2cRxAck(dummy);
-00a0 ---- 7000                         ld          R7, #0x0000
-00a1 ---- 6885                         ld          R6, [#readData/state/i2cStatus]
-00a2 ---- 1662                         jsr         I2cRxByte
-00a3 ---- 6c85                         st          R6, [#readData/state/i2cStatus]
+00a5 ---- 7000                         ld          R7, #0x0000
+00a6 ---- 6885                         ld          R6, [#readData/state/i2cStatus]
+00a7 ---- 1662                         jsr         I2cRxByte
+00a8 ---- 6c85                         st          R6, [#readData/state/i2cStatus]
                ;? i2cStop();
-00a4 ---- 6885                         ld          R6, [#readData/state/i2cStatus]
-00a5 ---- 1681                         jsr         I2cStop
-00a6 ---- 6c85                         st          R6, [#readData/state/i2cStatus]
+00a9 ---- 6885                         ld          R6, [#readData/state/i2cStatus]
+00aa ---- 1681                         jsr         I2cStop
+00ab ---- 6c85                         st          R6, [#readData/state/i2cStatus]
                ;? 
                ;? if(state.i2cStatus != 0x00){
-00a7 ---- 0885                         ld          R0, [#readData/state/i2cStatus]
-00a8 ---- 8a00                         cmp         R0, #0
-00a9 ---- b605                         beq         /id0170
+00ac ---- 0885                         ld          R0, [#readData/state/i2cStatus]
+00ad ---- 8a00                         cmp         R0, #0
+00ae ---- b605                         beq         /id0176
                ;?     if(output.I2CError == 0){
-00aa ---- 087f                             ld          R0, [#readData/output/I2CError]
-00ab ---- 8a00                             cmp         R0, #0
-00ac ---- be02                             bneq        /id0172
+00af ---- 087f                             ld          R0, [#readData/output/I2CError]
+00b0 ---- 8a00                             cmp         R0, #0
+00b1 ---- be02                             bneq        /id0178
                ;?         output.I2CError = 1;
-00ad ---- 0001                                 ld          R0, #1
-00ae ---- 0c7f                                 st          R0, [#readData/output/I2CError]
+00b2 ---- 0001                                 ld          R0, #1
+00b3 ---- 0c7f                                 st          R0, [#readData/output/I2CError]
                ;?     }
-               /id0172:
+               /id0178:
                ;? }
-               /id0170:
+               /id0176:
                ;? 
                ;? //Set the RGB Integration time
                ;? i2cStart();
-00af ---- 6000                         ld          R6, #0x0000
-00b0 ---- 162d                         jsr         I2cStart
-00b1 ---- 6c85                         st          R6, [#readData/state/i2cStatus]
+00b4 ---- 6000                         ld          R6, #0x0000
+00b5 ---- 162d                         jsr         I2cStart
+00b6 ---- 6c85                         st          R6, [#readData/state/i2cStatus]
                ;? i2cTx( (ADDRESS << 1) | I2C_OP_WRITE);
-00b2 ---- 7052                         ld          R7, #82
-00b3 ---- 6885                         ld          R6, [#readData/state/i2cStatus]
-00b4 ---- 1644                         jsr         I2cTxByte
-00b5 ---- 6c85                         st          R6, [#readData/state/i2cStatus]
+00b7 ---- 7052                         ld          R7, #82
+00b8 ---- 6885                         ld          R6, [#readData/state/i2cStatus]
+00b9 ---- 1644                         jsr         I2cTxByte
+00ba ---- 6c85                         st          R6, [#readData/state/i2cStatus]
                ;? i2cTx( (COMMAND_BYTE | A_TIME_REG) );
-00b6 ---- 7081                         ld          R7, #129
-00b7 ---- 6885                         ld          R6, [#readData/state/i2cStatus]
-00b8 ---- 1644                         jsr         I2cTxByte
-00b9 ---- 6c85                         st          R6, [#readData/state/i2cStatus]
+00bb ---- 7081                         ld          R7, #129
+00bc ---- 6885                         ld          R6, [#readData/state/i2cStatus]
+00bd ---- 1644                         jsr         I2cTxByte
+00be ---- 6c85                         st          R6, [#readData/state/i2cStatus]
                ;? i2cTx( (INTG_24) );
-00ba ---- 70ff                         ld          R7, #255
-00bb ---- 6885                         ld          R6, [#readData/state/i2cStatus]
-00bc ---- 1644                         jsr         I2cTxByte
-00bd ---- 6c85                         st          R6, [#readData/state/i2cStatus]
+00bf ---- 70ff                         ld          R7, #255
+00c0 ---- 6885                         ld          R6, [#readData/state/i2cStatus]
+00c1 ---- 1644                         jsr         I2cTxByte
+00c2 ---- 6c85                         st          R6, [#readData/state/i2cStatus]
                ;? i2cStop();
-00be ---- 6885                         ld          R6, [#readData/state/i2cStatus]
-00bf ---- 1681                         jsr         I2cStop
-00c0 ---- 6c85                         st          R6, [#readData/state/i2cStatus]
+00c3 ---- 6885                         ld          R6, [#readData/state/i2cStatus]
+00c4 ---- 1681                         jsr         I2cStop
+00c5 ---- 6c85                         st          R6, [#readData/state/i2cStatus]
                ;? 
                ;? if(state.i2cStatus != 0x00){
-00c1 ---- 0885                         ld          R0, [#readData/state/i2cStatus]
-00c2 ---- 8a00                         cmp         R0, #0
-00c3 ---- b605                         beq         /id0191
+00c6 ---- 0885                         ld          R0, [#readData/state/i2cStatus]
+00c7 ---- 8a00                         cmp         R0, #0
+00c8 ---- b605                         beq         /id0197
                ;?     if(output.I2CError == 0){
-00c4 ---- 087f                             ld          R0, [#readData/output/I2CError]
-00c5 ---- 8a00                             cmp         R0, #0
-00c6 ---- be02                             bneq        /id0193
+00c9 ---- 087f                             ld          R0, [#readData/output/I2CError]
+00ca ---- 8a00                             cmp         R0, #0
+00cb ---- be02                             bneq        /id0199
                ;?         output.I2CError = 2;
-00c7 ---- 0002                                 ld          R0, #2
-00c8 ---- 0c7f                                 st          R0, [#readData/output/I2CError]
+00cc ---- 0002                                 ld          R0, #2
+00cd ---- 0c7f                                 st          R0, [#readData/output/I2CError]
                ;?     }
-               /id0193:
+               /id0199:
                ;? }
-               /id0191:
+               /id0197:
                ;? 
                ;? //Set the RGB Integration time
                ;? i2cStart();
-00c9 ---- 6000                         ld          R6, #0x0000
-00ca ---- 162d                         jsr         I2cStart
-00cb ---- 6c85                         st          R6, [#readData/state/i2cStatus]
+00ce ---- 6000                         ld          R6, #0x0000
+00cf ---- 162d                         jsr         I2cStart
+00d0 ---- 6c85                         st          R6, [#readData/state/i2cStatus]
                ;? i2cTx( (ADDRESS << 1) | I2C_OP_WRITE);
-00cc ---- 7052                         ld          R7, #82
-00cd ---- 6885                         ld          R6, [#readData/state/i2cStatus]
-00ce ---- 1644                         jsr         I2cTxByte
-00cf ---- 6c85                         st          R6, [#readData/state/i2cStatus]
+00d1 ---- 7052                         ld          R7, #82
+00d2 ---- 6885                         ld          R6, [#readData/state/i2cStatus]
+00d3 ---- 1644                         jsr         I2cTxByte
+00d4 ---- 6c85                         st          R6, [#readData/state/i2cStatus]
                ;? i2cTx( (COMMAND_BYTE | CTRL_REG) );
-00d0 ---- 708f                         ld          R7, #143
-00d1 ---- 6885                         ld          R6, [#readData/state/i2cStatus]
-00d2 ---- 1644                         jsr         I2cTxByte
-00d3 ---- 6c85                         st          R6, [#readData/state/i2cStatus]
+00d5 ---- 708f                         ld          R7, #143
+00d6 ---- 6885                         ld          R6, [#readData/state/i2cStatus]
+00d7 ---- 1644                         jsr         I2cTxByte
+00d8 ---- 6c85                         st          R6, [#readData/state/i2cStatus]
                ;? i2cTx( (GAIN_4X) );
-00d4 ---- 7001                         ld          R7, #1
-00d5 ---- 6885                         ld          R6, [#readData/state/i2cStatus]
-00d6 ---- 1644                         jsr         I2cTxByte
-00d7 ---- 6c85                         st          R6, [#readData/state/i2cStatus]
+00d9 ---- 7001                         ld          R7, #1
+00da ---- 6885                         ld          R6, [#readData/state/i2cStatus]
+00db ---- 1644                         jsr         I2cTxByte
+00dc ---- 6c85                         st          R6, [#readData/state/i2cStatus]
                ;? i2cStop();
-00d8 ---- 6885                         ld          R6, [#readData/state/i2cStatus]
-00d9 ---- 1681                         jsr         I2cStop
-00da ---- 6c85                         st          R6, [#readData/state/i2cStatus]
+00dd ---- 6885                         ld          R6, [#readData/state/i2cStatus]
+00de ---- 1681                         jsr         I2cStop
+00df ---- 6c85                         st          R6, [#readData/state/i2cStatus]
                ;? 
                ;? if(state.i2cStatus != 0x00){
-00db ---- 0885                         ld          R0, [#readData/state/i2cStatus]
-00dc ---- 8a00                         cmp         R0, #0
-00dd ---- b605                         beq         /id0212
+00e0 ---- 0885                         ld          R0, [#readData/state/i2cStatus]
+00e1 ---- 8a00                         cmp         R0, #0
+00e2 ---- b605                         beq         /id0218
                ;?     if(output.I2CError == 0){
-00de ---- 087f                             ld          R0, [#readData/output/I2CError]
-00df ---- 8a00                             cmp         R0, #0
-00e0 ---- be02                             bneq        /id0214
+00e3 ---- 087f                             ld          R0, [#readData/output/I2CError]
+00e4 ---- 8a00                             cmp         R0, #0
+00e5 ---- be02                             bneq        /id0220
                ;?         output.I2CError = 3;
-00e1 ---- 0003                                 ld          R0, #3
-00e2 ---- 0c7f                                 st          R0, [#readData/output/I2CError]
+00e6 ---- 0003                                 ld          R0, #3
+00e7 ---- 0c7f                                 st          R0, [#readData/output/I2CError]
                ;?     }
-               /id0214:
+               /id0220:
                ;? }
-               /id0212:
+               /id0218:
                ;? 
                ;? //Enable the Power on
                ;? i2cStart();
-00e3 ---- 6000                         ld          R6, #0x0000
-00e4 ---- 162d                         jsr         I2cStart
-00e5 ---- 6c85                         st          R6, [#readData/state/i2cStatus]
+00e8 ---- 6000                         ld          R6, #0x0000
+00e9 ---- 162d                         jsr         I2cStart
+00ea ---- 6c85                         st          R6, [#readData/state/i2cStatus]
                ;? i2cTx( (ADDRESS << 1) | I2C_OP_WRITE);
-00e6 ---- 7052                         ld          R7, #82
-00e7 ---- 6885                         ld          R6, [#readData/state/i2cStatus]
-00e8 ---- 1644                         jsr         I2cTxByte
-00e9 ---- 6c85                         st          R6, [#readData/state/i2cStatus]
+00eb ---- 7052                         ld          R7, #82
+00ec ---- 6885                         ld          R6, [#readData/state/i2cStatus]
+00ed ---- 1644                         jsr         I2cTxByte
+00ee ---- 6c85                         st          R6, [#readData/state/i2cStatus]
                ;? i2cTx( (COMMAND_BYTE | ENABLE_REG) );
-00ea ---- 7080                         ld          R7, #128
-00eb ---- 6885                         ld          R6, [#readData/state/i2cStatus]
-00ec ---- 1644                         jsr         I2cTxByte
-00ed ---- 6c85                         st          R6, [#readData/state/i2cStatus]
+00ef ---- 7080                         ld          R7, #128
+00f0 ---- 6885                         ld          R6, [#readData/state/i2cStatus]
+00f1 ---- 1644                         jsr         I2cTxByte
+00f2 ---- 6c85                         st          R6, [#readData/state/i2cStatus]
                ;? i2cTx(ENABLE_PON);
-00ee ---- 7001                         ld          R7, #1
-00ef ---- 6885                         ld          R6, [#readData/state/i2cStatus]
-00f0 ---- 1644                         jsr         I2cTxByte
-00f1 ---- 6c85                         st          R6, [#readData/state/i2cStatus]
+00f3 ---- 7001                         ld          R7, #1
+00f4 ---- 6885                         ld          R6, [#readData/state/i2cStatus]
+00f5 ---- 1644                         jsr         I2cTxByte
+00f6 ---- 6c85                         st          R6, [#readData/state/i2cStatus]
                ;? i2cStop();
-00f2 ---- 6885                         ld          R6, [#readData/state/i2cStatus]
-00f3 ---- 1681                         jsr         I2cStop
-00f4 ---- 6c85                         st          R6, [#readData/state/i2cStatus]
+00f7 ---- 6885                         ld          R6, [#readData/state/i2cStatus]
+00f8 ---- 1681                         jsr         I2cStop
+00f9 ---- 6c85                         st          R6, [#readData/state/i2cStatus]
                ;? 
                ;? if(state.i2cStatus != 0x00){
-00f5 ---- 0885                         ld          R0, [#readData/state/i2cStatus]
-00f6 ---- 8a00                         cmp         R0, #0
-00f7 ---- b605                         beq         /id0233
+00fa ---- 0885                         ld          R0, [#readData/state/i2cStatus]
+00fb ---- 8a00                         cmp         R0, #0
+00fc ---- b605                         beq         /id0239
                ;?     if(output.I2CError == 0){
-00f8 ---- 087f                             ld          R0, [#readData/output/I2CError]
-00f9 ---- 8a00                             cmp         R0, #0
-00fa ---- be02                             bneq        /id0235
+00fd ---- 087f                             ld          R0, [#readData/output/I2CError]
+00fe ---- 8a00                             cmp         R0, #0
+00ff ---- be02                             bneq        /id0241
                ;?         output.I2CError = 4;
-00fb ---- 0004                                 ld          R0, #4
-00fc ---- 0c7f                                 st          R0, [#readData/output/I2CError]
+0100 ---- 0004                                 ld          R0, #4
+0101 ---- 0c7f                                 st          R0, [#readData/output/I2CError]
                ;?     }
-               /id0235:
+               /id0241:
                ;? }
-               /id0233:
+               /id0239:
                ;? 
                ;? //confirm what the delays should be here
-               ;? //fwDelayUs(100, FW_DELAY_RANGE_500_US);
-               ;? fwDelayUs(100000, FW_DELAY_RANGE_100_MS);
-00fd ---- 7093                         ld          R7, #(((100000 * 24 ) + ((1 << 14) - 1)) >> 14)
-00fe ---- 600e                         ld          R6, #14
-00ff ---- 1621                         jsr         FwDelay
+               ;? fwDelayUs(100, FW_DELAY_RANGE_500_US);
+0102 ---- 7026                         ld          R7, #(((100 * 24 ) + ((1 << 6) - 1)) >> 6)
+0103 ---- 6006                         ld          R6, #6
+0104 ---- 1621                         jsr         FwDelay
+               ;? //fwDelayUs(100000, FW_DELAY_RANGE_100_MS);
                ;? 
                ;? 
                ;? 
                ;? //Enable the Power on / AEN
                ;? i2cStart();
-0100 ---- 6000                         ld          R6, #0x0000
-0101 ---- 162d                         jsr         I2cStart
-0102 ---- 6c85                         st          R6, [#readData/state/i2cStatus]
+0105 ---- 6000                         ld          R6, #0x0000
+0106 ---- 162d                         jsr         I2cStart
+0107 ---- 6c85                         st          R6, [#readData/state/i2cStatus]
                ;? i2cTx( (ADDRESS << 1) | I2C_OP_WRITE);
-0103 ---- 7052                         ld          R7, #82
-0104 ---- 6885                         ld          R6, [#readData/state/i2cStatus]
-0105 ---- 1644                         jsr         I2cTxByte
-0106 ---- 6c85                         st          R6, [#readData/state/i2cStatus]
+0108 ---- 7052                         ld          R7, #82
+0109 ---- 6885                         ld          R6, [#readData/state/i2cStatus]
+010a ---- 1644                         jsr         I2cTxByte
+010b ---- 6c85                         st          R6, [#readData/state/i2cStatus]
                ;? i2cTx( (COMMAND_BYTE | ENABLE_REG) );
-0107 ---- 7080                         ld          R7, #128
-0108 ---- 6885                         ld          R6, [#readData/state/i2cStatus]
-0109 ---- 1644                         jsr         I2cTxByte
-010a ---- 6c85                         st          R6, [#readData/state/i2cStatus]
+010c ---- 7080                         ld          R7, #128
+010d ---- 6885                         ld          R6, [#readData/state/i2cStatus]
+010e ---- 1644                         jsr         I2cTxByte
+010f ---- 6c85                         st          R6, [#readData/state/i2cStatus]
                ;? i2cTx(ENABLE_PON | ENABLE_AEN);
-010b ---- 7003                         ld          R7, #3
-010c ---- 6885                         ld          R6, [#readData/state/i2cStatus]
-010d ---- 1644                         jsr         I2cTxByte
-010e ---- 6c85                         st          R6, [#readData/state/i2cStatus]
+0110 ---- 7003                         ld          R7, #3
+0111 ---- 6885                         ld          R6, [#readData/state/i2cStatus]
+0112 ---- 1644                         jsr         I2cTxByte
+0113 ---- 6c85                         st          R6, [#readData/state/i2cStatus]
                ;? i2cStop();
-010f ---- 6885                         ld          R6, [#readData/state/i2cStatus]
-0110 ---- 1681                         jsr         I2cStop
-0111 ---- 6c85                         st          R6, [#readData/state/i2cStatus]
+0114 ---- 6885                         ld          R6, [#readData/state/i2cStatus]
+0115 ---- 1681                         jsr         I2cStop
+0116 ---- 6c85                         st          R6, [#readData/state/i2cStatus]
                ;? 
                ;? if(state.i2cStatus != 0x00){
-0112 ---- 0885                         ld          R0, [#readData/state/i2cStatus]
-0113 ---- 8a00                         cmp         R0, #0
-0114 ---- b605                         beq         /id0256
+0117 ---- 0885                         ld          R0, [#readData/state/i2cStatus]
+0118 ---- 8a00                         cmp         R0, #0
+0119 ---- b605                         beq         /id0262
                ;?     if(output.I2CError == 0){
-0115 ---- 087f                             ld          R0, [#readData/output/I2CError]
-0116 ---- 8a00                             cmp         R0, #0
-0117 ---- be02                             bneq        /id0258
+011a ---- 087f                             ld          R0, [#readData/output/I2CError]
+011b ---- 8a00                             cmp         R0, #0
+011c ---- be02                             bneq        /id0264
                ;?         output.I2CError = 5;
-0118 ---- 0005                                 ld          R0, #5
-0119 ---- 0c7f                                 st          R0, [#readData/output/I2CError]
+011d ---- 0005                                 ld          R0, #5
+011e ---- 0c7f                                 st          R0, [#readData/output/I2CError]
                ;?     }
-               /id0258:
+               /id0264:
                ;? }
-               /id0256:
+               /id0262:
                ;? 
                ;? //confirm what the delays should be here
                ;? fwDelayUs(100, FW_DELAY_RANGE_500_US);
-011a ---- 7026                         ld          R7, #(((100 * 24 ) + ((1 << 6) - 1)) >> 6)
-011b ---- 6006                         ld          R6, #6
-011c ---- 1621                         jsr         FwDelay
-               ;? 
-               ;? // turn on the power for LED_DRIVER
-               ;? gpioSetOutput(cfg.pAuxioOLedDriver[0]);
-011d ---- 787a                         ld          R7, [#(readData/cfg/pAuxioOLedDriver + 0)]
-011e ---- 1619                         jsr         gpioSetOutput
-               ;? 
-               ;? //delay for the LED to turn on
-               ;? fwDelayUs(1000, FW_DELAY_RANGE_5_MS);
-011f ---- 702f                         ld          R7, #(((1000 * 24 ) + ((1 << 9) - 1)) >> 9)
-0120 ---- 6009                         ld          R6, #9
+011f ---- 7026                         ld          R7, #(((100 * 24 ) + ((1 << 6) - 1)) >> 6)
+0120 ---- 6006                         ld          R6, #6
 0121 ---- 1621                         jsr         FwDelay
+               ;? 
                ;? 
                ;? //Read the color values
                ;? U16 low;
@@ -694,9 +695,9 @@
 0168 ---- 168c                         jsr         gpioClearOutput
                ;? 
                ;? // Delay for LED to turn off
-               ;? fwDelayUs(5000, FW_DELAY_RANGE_5_MS);
-0169 ---- 70eb                         ld          R7, #(((5000 * 24 ) + ((1 << 9) - 1)) >> 9)
-016a ---- 6009                         ld          R6, #9
+               ;? fwDelayUs(50000, FW_DELAY_RANGE_100_MS);
+0169 ---- 704a                         ld          R7, #(((50000 * 24 ) + ((1 << 14) - 1)) >> 14)
+016a ---- 600e                         ld          R6, #14
 016b ---- 1621                         jsr         FwDelay
                ;? 
                ;? // Enable the ADC
@@ -1409,4 +1410,4 @@
                .segment end "Procedure Libary"
                
 
-; Generated by MCT163S08 at 2018-04-26 00:10:56.265
+; Generated by MCT163S08 at 2018-04-26 00:42:40.297
