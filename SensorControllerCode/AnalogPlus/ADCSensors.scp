@@ -82,7 +82,7 @@
         <resource_ref name="Digital Open-Source Pins" enabled="0"/>
         <resource_ref name="Digital Output Pins" enabled="1">
             <io_usage name="LED_DRIVER" label="DAY LIGHT">
-                <uattr name="Configuration on uninitialization">-1</uattr>
+                <uattr name="Configuration on uninitialization">0</uattr>
                 <uattr name="Output value on initialization">0</uattr>
                 <uattr name="Pin count">1</uattr>
                 <uattr name="Pin/0000">DIO6</uattr>
@@ -180,7 +180,8 @@ output.I2CError = 0;
 gpioSetOutput(cfg.pAuxioOAuxPowEn[0]);
 
 // delay between 1 to 5 ms
-fwDelayUs(1000, FW_DELAY_RANGE_5_MS);
+fwDelayUs(100000, FW_DELAY_RANGE_100_MS);
+//fwDelayUs(100000, FW_DELAY_RANGE_100_MS);
 
 //In order to prevent future errors with the I2C communication we need to read the water color ID register
 U16 dummy = 0;
@@ -239,7 +240,10 @@ if(state.i2cStatus != 0x00){
 }
 
 //confirm what the delays should be here
-fwDelayUs(100, FW_DELAY_RANGE_500_US);
+//fwDelayUs(100, FW_DELAY_RANGE_500_US);
+fwDelayUs(100000, FW_DELAY_RANGE_100_MS);
+
+
 
 //Enable the Power on / AEN
 i2cStart();
@@ -299,7 +303,7 @@ i2cStop();
 gpioClearOutput(cfg.pAuxioOLedDriver[0]);
 
 // Delay for LED to turn off
-fwDelayUs(1000, FW_DELAY_RANGE_5_MS);
+fwDelayUs(5000, FW_DELAY_RANGE_5_MS);
 
 // Enable the ADC
 adcEnableSync(ADC_REF_FIXED, ADC_SAMPLE_TIME_2P7_US,ADC_TRIGGER_MANUAL);
