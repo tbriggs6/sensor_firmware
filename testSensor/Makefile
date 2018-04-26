@@ -7,7 +7,7 @@ CONTIKI_PROJECT = testsensor
 
 
 APPDIRS += /home/contiki/git/firmware/apps/ 
-APPS += bcast-service message-service
+APPS += bcast-service message-service powertrace
 
 #include /home/contiki/git/firmware/apps/shared/Makefile.shared
 

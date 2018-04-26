@@ -17,6 +17,7 @@
 #include "message.h"
 #include "config.h"
 #include "neighbors.h"
+#include <powertrace.h>
 
 #define DEPLOYABLE
 
@@ -87,6 +88,13 @@ PROCESS_THREAD(test_bcast_cb, ev, data)
     sensor_aux_init();
 
     neighbors_init( );
+
+    PRINTF("Starting power trace, %u ticks per second\n", RTIMER_SECOND);
+    energest_init();
+    powertrace_start(60 * CLOCK_SECOND);
+
+
+
 
     bcast_init(0);
 

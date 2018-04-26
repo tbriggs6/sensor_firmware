@@ -8,6 +8,8 @@
 #include <message-service.h>
 #include <sys/clock.h>
 
+#include "energest.h"
+
 #include "message.h"
 #include "config.h"
 #include "neighbors.h"
@@ -172,31 +174,31 @@ static void command_handle_get(const command_set_t *const req, uip_ipaddr_t *rem
 
 	case CONFIG_ENERGEST_CPU:
 		PRINTF("[COMMAND HANDLE GET] Token is CONFIG_ENERGEST_CPU...\r\n");
-		ret.value.uivalue = 0xFF;
+		ret.value.uivalue = energest_type_time(ENERGEST_TYPE_CPU);
 		ret.length += sizeof(ret.value.uivalue);
 		break;
 
 	case CONFIG_ENERGEST_LPM:
 		PRINTF("[COMMAND HANDLE GET] Token is CONFIG_ENERGEST_LPM...\r\n");
-		ret.value.uivalue = 0xFF;
+		ret.value.uivalue = energest_type_time(ENERGEST_TYPE_LPM);
 		ret.length += sizeof(ret.value.uivalue);
 		break;
 
 	case CONFIG_ENERGEST_TRANSMIT:
 		PRINTF("[COMMAND HANDLE GET] Token is CONFIG_ENERGEST_TRANSMIT...\r\n");
-		ret.value.uivalue = 0xFF;
+		ret.value.uivalue = energest_type_time(ENERGEST_TYPE_TRANSMIT);
 		ret.length += sizeof(ret.value.uivalue);
 		break;
 
 	case CONFIG_ENERGEST_LISTEN:
 		PRINTF("[COMMAND HANDLE GET] Token is CONFIG_ENERGEST_LISTEN...\r\n");
-		ret.value.uivalue = 0xFF;
+		ret.value.uivalue = energest_type_time(ENERGEST_TYPE_LISTEN);
 		ret.length += sizeof(ret.value.uivalue);
 		break;
 
 	case CONFIG_ENERGEST_MAX:
 		PRINTF("[COMMAND HANDLE GET] Token is CONFIG_ENERGEST_MAX...\r\n");
-		ret.value.uivalue = 0xFF;
+		ret.value.uivalue = energest_type_time(ENERGEST_TYPE_MAX);
 		ret.length += sizeof(ret.value.uivalue);
 		break;
 
