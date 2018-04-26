@@ -7,7 +7,7 @@
     <pattr name="Chip revision">-</pattr>
     <pattr name="Code prefix">scs</pattr>
     <pattr name="Operating system">None</pattr>
-    <pattr name="Output directory">Z:/Research/Briggs_SensorCode/firmware/SensorControllerCode/AnalogPlus</pattr>
+    <pattr name="Output directory">C:/temp/firmware/SensorControllerCode/AnalogPlus</pattr>
     <task name="ReadData">
         <desc><![CDATA[]]></desc>
         <tattr name="ADDRESS" desc="Water color sensors address" type="dec" content="const" scope="task" min="0" max="65535">41</tattr>
@@ -106,7 +106,7 @@
         <resource_ref name="GPIO Event Trigger" enabled="0"/>
         <resource_ref name="I2C Master" enabled="1">
             <rattr name="SCL frequency">1</rattr>
-            <rattr name="SCL stretch timeout">10</rattr>
+            <rattr name="SCL stretch timeout">14</rattr>
             <io_usage>
                 <uattr name="SCL pin/0000">DIO4</uattr>
                 <uattr name="SDA pin/0000">DIO5</uattr>
@@ -155,6 +155,8 @@
         <sccode name="execute"><![CDATA[//Check with briggs if we should have outputs for error checking
 // Analog sensing logic - read the analog channel and save in output buffer
 output.I2CError = 0;
+
+gpioSetOutput(cfg.pAuxioXdAnaPower[0]);
 
 // delay between 1 to 5 ms
 fwDelayUs(1000, FW_DELAY_RANGE_5_MS);
@@ -389,9 +391,14 @@ output.HallSensor = (total >> 2);
 
 //End Reading ADC Sensors
 
+
 // disable ADC
 adcDisable( );
 
+// Power down the AUX POWER
+gpioClearOutput(cfg.pAuxioXdAnaPower[0]);
+
+// Generate interrupt
 fwGenAlertInterrupt();]]></sccode>
         <sccode name="initialize"><![CDATA[]]></sccode>
         <sccode name="terminate"><![CDATA[]]></sccode>
