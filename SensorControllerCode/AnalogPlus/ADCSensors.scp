@@ -56,12 +56,12 @@
         <resource_ref name="Delay Insertion" enabled="1"/>
         <resource_ref name="Differential Output Pins" enabled="0"/>
         <resource_ref name="Digital Input Pins" enabled="0"/>
-        <resource_ref name="Digital Open-Drain Pins" enabled="1">
+        <resource_ref name="Digital Open-Drain Pins" enabled="0">
             <io_usage name="ANA_POWER" label="The power rail for the sensors">
-                <uattr name="Configuration on uninitialization">0</uattr>
+                <uattr name="Configuration on uninitialization">-1</uattr>
                 <uattr name="Output value on initialization">0</uattr>
-                <uattr name="Pin count">1</uattr>
-                <uattr name="Pin/0000">DIO7</uattr>
+                <uattr name="Pin count">0</uattr>
+                <uattr name="Pin/0000">DIO1</uattr>
                 <uattr name="Pin/0001">DIO1</uattr>
                 <uattr name="Pin/0002">DIO2</uattr>
                 <uattr name="Pin/0003"></uattr>
@@ -86,6 +86,27 @@
                 <uattr name="Output value on initialization">0</uattr>
                 <uattr name="Pin count">1</uattr>
                 <uattr name="Pin/0000">DIO6</uattr>
+                <uattr name="Pin/0001"></uattr>
+                <uattr name="Pin/0002"></uattr>
+                <uattr name="Pin/0003"></uattr>
+                <uattr name="Pin/0004"></uattr>
+                <uattr name="Pin/0005"></uattr>
+                <uattr name="Pin/0006"></uattr>
+                <uattr name="Pin/0007"></uattr>
+                <uattr name="Pin/0008"></uattr>
+                <uattr name="Pin/0009"></uattr>
+                <uattr name="Pin/0010"></uattr>
+                <uattr name="Pin/0011"></uattr>
+                <uattr name="Pin/0012"></uattr>
+                <uattr name="Pin/0013"></uattr>
+                <uattr name="Pin/0014"></uattr>
+                <uattr name="Pin/0015"></uattr>
+            </io_usage>
+            <io_usage name="AUX_POW_EN" label="Turns on the aux power source">
+                <uattr name="Configuration on uninitialization">0</uattr>
+                <uattr name="Output value on initialization">0</uattr>
+                <uattr name="Pin count">1</uattr>
+                <uattr name="Pin/0000">DIO7</uattr>
                 <uattr name="Pin/0001"></uattr>
                 <uattr name="Pin/0002"></uattr>
                 <uattr name="Pin/0003"></uattr>
@@ -156,7 +177,7 @@
 // Analog sensing logic - read the analog channel and save in output buffer
 output.I2CError = 0;
 
-gpioSetOutput(cfg.pAuxioXdAnaPower[0]);
+gpioSetOutput(cfg.pAuxioOAuxPowEn[0]);
 
 // delay between 1 to 5 ms
 fwDelayUs(1000, FW_DELAY_RANGE_5_MS);
@@ -396,7 +417,7 @@ output.HallSensor = (total >> 2);
 adcDisable( );
 
 // Power down the AUX POWER
-gpioClearOutput(cfg.pAuxioXdAnaPower[0]);
+gpioClearOutput(cfg.pAuxioOAuxPowEn[0]);
 
 // Generate interrupt
 fwGenAlertInterrupt();]]></sccode>
