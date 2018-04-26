@@ -34,6 +34,15 @@
 #define BV(n)           (1 << (n))
 #endif
 
+#define DEBUG 1
+#if DEBUG
+#include <stdio.h>
+#define PRINTF(...) printf(__VA_ARGS__)
+#else
+#define PRINTF(...)
+#endif
+
+
 PROCESS(test_bcast_cb, "Test Sensor Broadcast Handler");
 
 AUTOSTART_PROCESSES(&test_bcast_cb);
@@ -84,6 +93,14 @@ PROCESS_THREAD(test_bcast_cb, ev, data)
     bcast_add_observer(&test_bcast_cb);
 
     message_init( );
+
+	command_set_t req;
+
+        PRINTF("[INFO] Sizeof header: %d\r\n", sizeof(req.header));
+        PRINTF("[INFO] Sizeof config_type: %d\r\n", sizeof(req.config_type));
+        PRINTF("[INFO] Sizeof token: %d\r\n", sizeof(req.token));
+        PRINTF("[INFO] Sizeof value: %d\r\n", sizeof(req.value));
+        PRINTF("[INFO] Sizeof command_set_t: %d\r\n", sizeof(command_set_t));
 
 
     messenger_add_handler(ECHO_REQ, sizeof(echo_t), sizeof(echo_t), echo_handler);

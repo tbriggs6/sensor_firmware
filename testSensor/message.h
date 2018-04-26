@@ -17,7 +17,7 @@ typedef enum cmd_type {
 } command_type_t;
 
 
-typedef struct __attribute__((__packed__)) {
+typedef struct {
         uint32_t header;
         command_type_t config_type;
         configtype_t token;
