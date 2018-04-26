@@ -90,14 +90,13 @@ static void command_handle_get(const command_set_t *const req, uip_ipaddr_t *rem
 
 	ret.header = CMD_RET_HEADER;
 	ret.token = req->token;
-	ret.length = 0;
+	ret.length = 4 * sizeof(uint32_t);
 	ret.valid = 1;
 
 	switch(req->token) {
 	case CONFIG_CTIME:
 		PRINTF("[COMMAND HANDLE GET] Token is CONFIG_CTIME...\r\n");
 		ret.value.uivalue = config_get_ctime_offset( );
-		ret.length = 4;
 		break;
 
 	case CONFIG_ROUTER:
@@ -110,59 +109,52 @@ static void command_handle_get(const command_set_t *const req, uip_ipaddr_t *rem
 	case CONFIG_DEVTYPE:
 		PRINTF("[COMMAND HANDLE GET] Token is CONFIG_DEVTYPE...\r\n");
 		ret.value.uivalue = config_get_devtype();
-		ret.length = 4;
 		break;
 
 	case CONFIG_UPTIME:
 		PRINTF("[COMMAND HANDLE GET] Token is CONFIG_UPTIME...\r\n");
-		ret.value.uivalue = 0;
 		ret.length = sizeof(command_ret_t);
 		break;
 
 	case CONFIG_BROADCAST_INTERVAL:
 		PRINTF("[COMMAND HANDLE GET] Token is CONFIG_BROADCAST_INTERVAL...\r\n");
 		ret.value.uivalue = config_get_bcast_interval();
-		ret.length = 4;
 		break;
 
 	case CONFIG_SENSOR_INTERVAL:
 		PRINTF("[COMMAND HANDLE GET] Token is CONFIG_SENSOR_INTERVAL...\r\n");
 		ret.value.uivalue = config_get_sensor_interval( );
-		ret.length = 4;
 		break;
 
 	case CONFIG_NEIGHBOR_INTERVAL:
 		PRINTF("[COMMAND HANDLE GET] Token is CONFIG_NEIGHBOR_INTERVAL...\r\n");
 		ret.value.uivalue = config_get_neighbor_interval( );
-		ret.length = 4;
 		break;
 
 	case CONFIG_NEIGHBOR_NUM:
 		PRINTF("[COMMAND HANDLE GET] Token is CONFIG_NEIGHBOR_NUM...\r\n");
 		ret.value.uivalue = neighbors_getnum( );
-		ret.length = 4;
 		break;
 
 	case CONFIG_NEIGHBOR_POS:
 		PRINTF("[COMMAND HANDLE GET] Token is CONFIG_NEIGHBOR_POS...\r\n");
 		neighbors_get(req->value.intval, &ret.value.ipaddr);
-		ret.length = sizeof(uip_ipaddr_t);
+		ret.length = sizeof(command_ret_t);
 		break;
 
 	case CONFIG_NEIGHBOR_RSSI:
 		PRINTF("[COMMAND HANDLE GET] Token is CONFIG_NEIGHBOR_RSSI...\r\n");
 		ret.value.uivalue = neighbors_get_rssi(req->value.intval);
-		ret.length = 4;
 		break;
 
 	case CONFIG_NEIGHBOR_ROUTER:
 		PRINTF("[COMMAND HANDLE GET] Token is CONFIG_NEIGHBOR_ROUTER...\r\n");
 		ret.value.uivalue = neighbors_get_router(req->value.intval);
-		ret.length = 4;
 		break;
 
 	default:
 		PRINTF("[COMMAND HANDLE GET] INVALID TOKEN %X. ABORTING RETURN MESSAGE...\r\n", req->token);
+		ret.length = 0;
 		ret.valid = 0;
 		break;
 	}

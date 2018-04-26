@@ -58,13 +58,13 @@ void echo_handler(uip_ipaddr_t *remote_addr, int remote_port, char *data, int le
 {
 	echo_t *echoreq = (echo_t *) data;
 
-	printf("echo handler invoked %x - %s from ", (unsigned int) echoreq->header, echoreq->message);
+	PRINTF("echo handler invoked %x - %s from ", (unsigned int) echoreq->header, echoreq->message);
 	PRINT6ADDR(remote_addr);
-	printf(" port %d\n", remote_port);
+	PRINTF(" port %d\n", remote_port);
 
 	if (length != sizeof(echo_t)) return;
 
-	printf("Sending reply\n");
+	PRINTF("Sending reply\n");
 
 	echo_t echo_rep;
 	memcpy(&echo_rep, echoreq, sizeof(echo_t));
@@ -80,7 +80,7 @@ PROCESS_THREAD(test_bcast_cb, ev, data)
 
     PROCESS_BEGIN( );
 
-    printf("\r\n[CONTIKI TEST BROADCAST PROCESS] Starting initializations...\r\n");
+    PRINTF("\r\n[CONTIKI TEST BROADCAST PROCESS] Starting initializations...\r\n");
 
     config_init( );
 
@@ -96,13 +96,6 @@ PROCESS_THREAD(test_bcast_cb, ev, data)
 
 	command_set_t req;
 
-        PRINTF("[INFO] Sizeof header: %d\r\n", sizeof(req.header));
-        PRINTF("[INFO] Sizeof config_type: %d\r\n", sizeof(req.config_type));
-        PRINTF("[INFO] Sizeof token: %d\r\n", sizeof(req.token));
-        PRINTF("[INFO] Sizeof value: %d\r\n", sizeof(req.value));
-        PRINTF("[INFO] Sizeof command_set_t: %d\r\n", sizeof(command_set_t));
-
-
     messenger_add_handler(ECHO_REQ, sizeof(echo_t), sizeof(echo_t), echo_handler);
 //    messenger_add_handler(CMD_SET_HEADER, sizeof(uint32_t) * 4, sizeof(command_set_t), command_handler);
 
@@ -115,23 +108,23 @@ PROCESS_THREAD(test_bcast_cb, ev, data)
     	datahandler_init();
 	#endif
 
-    printf("[CONTIKI TEST BROADCAST PROCESS] Broadcast CB started...\r\n");
+    PRINTF("[CONTIKI TEST BROADCAST PROCESS] Broadcast CB started...\r\n");
 
     while(1)
     {
         PROCESS_WAIT_EVENT();
         if (ev == bcast_event) {
             bcast_t *bcast = (bcast_t *) data;
-            printf("******************\r\n");
-            printf("bcast event: ");
-            printf("from: ");
+            PRINTF("******************\r\n");
+            PRINTF("bcast event: ");
+            PRINTF("from: ");
             uip_debug_ipaddr_print(&(bcast->sender_addr));
-            printf("  port: %d\r\n", bcast->sender_port);
+            PRINTF("  port: %d\r\n", bcast->sender_port);
 
-            printf("len: %d message: %s\r\n", bcast->datalen, bcast->data);
+            PRINTF("len: %d message: %s\r\n", bcast->datalen, bcast->data);
 	}
         else {
-            printf("Different event: %d\r\n", ev);
+            PRINTF("Different event: %d\r\n", ev);
         }
     }
 
