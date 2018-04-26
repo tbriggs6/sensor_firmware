@@ -183,9 +183,6 @@ void command_handler(uip_ipaddr_t *remote_addr, int remote_port, char *data, int
 		b++;
 	}
 
-	req->token = 0xd;
-	req->value.intval = 0;
-
 	if (req->config_type == CMD_SET_CONFIG) {
 		command_handle_set(req,remote_addr,remote_port);
 	}
