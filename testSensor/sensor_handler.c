@@ -48,7 +48,7 @@ void data_ack_handler2(uip_ipaddr_t *remote_addr, int remote_port, char *data, i
         return;
     }
 
-    PRINTF("[DATA ACK HANDLER] Data ack seq: %d\r\n", ack->ack_seq);
+    PRINTF("[DATA ACK HANDLER] Data ack seq: %u\r\n", ack->ack_seq);
     data_seq_acked = ack->ack_seq;
     process_post(&test_data2, PROCESS_EVENT_MSG, data);
 }

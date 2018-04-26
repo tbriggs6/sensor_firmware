@@ -17,7 +17,7 @@ typedef enum cmd_type {
 } command_type_t;
 
 
-typedef struct {
+typedef struct __attribute__((__packed__)) {
         uint32_t header;
         command_type_t config_type;
         configtype_t token;
@@ -29,7 +29,7 @@ typedef struct {
 
 
 #define CMD_RET_HEADER (0xdde323f3U)
-typedef struct {
+typedef struct __attribute__((__packed__)) {
         uint32_t header;
         uint32_t token;
         uint32_t valid;

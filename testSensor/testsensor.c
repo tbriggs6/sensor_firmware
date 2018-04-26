@@ -49,7 +49,7 @@ void echo_handler(uip_ipaddr_t *remote_addr, int remote_port, char *data, int le
 {
 	echo_t *echoreq = (echo_t *) data;
 
-	printf("echo handler invoked %x - %s from ", echoreq->header, echoreq->message);
+	printf("echo handler invoked %x - %s from ", (unsigned int) echoreq->header, echoreq->message);
 	PRINT6ADDR(remote_addr);
 	printf(" port %d\n", remote_port);
 
@@ -68,7 +68,6 @@ void echo_handler(uip_ipaddr_t *remote_addr, int remote_port, char *data, int le
 
 PROCESS_THREAD(test_bcast_cb, ev, data)
 {
-	static struct etimer et;
 
     PROCESS_BEGIN( );
 
@@ -88,7 +87,10 @@ PROCESS_THREAD(test_bcast_cb, ev, data)
 
 
     messenger_add_handler(ECHO_REQ, sizeof(echo_t), sizeof(echo_t), echo_handler);
-    messenger_add_handler(CMD_SET_HEADER, sizeof(uint32_t) * 4, sizeof(command_set_t), command_handler);
+//    messenger_add_handler(CMD_SET_HEADER, sizeof(uint32_t) * 4, sizeof(command_set_t), command_handler);
+
+    messenger_add_handler(CMD_RET_HEADER, 0, 1000000, command_handler);
+    messenger_add_handler(CMD_SET_HEADER, 0, 1000000, command_handler);
 
 	#ifdef DEPLOYABLE
     	datahandler_init2( );
