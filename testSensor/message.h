@@ -13,7 +13,7 @@
 #define CMD_SET_HEADER (0x0beed1eU)
 
 typedef enum cmd_type {
-        CMD_SET_CONFIG, CMD_REQ_CONFIG
+        CMD_SET_CONFIG, CMD_REQ_CONFIG, CMD_FORCE_32_BIT = 0x7FFFFFFF
 } command_type_t;
 
 
