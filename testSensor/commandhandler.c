@@ -6,6 +6,8 @@
  */
 
 #include <message-service.h>
+#include <sys/clock.h>
+
 #include "message.h"
 #include "config.h"
 #include "neighbors.h"
@@ -90,66 +92,112 @@ static void command_handle_get(const command_set_t *const req, uip_ipaddr_t *rem
 
 	ret.header = CMD_RET_HEADER;
 	ret.token = req->token;
-	ret.length = 4 * sizeof(uint32_t);
+	ret.length = 10; // this will need to be modified
 	ret.valid = 1;
 
 	switch(req->token) {
 	case CONFIG_CTIME:
 		PRINTF("[COMMAND HANDLE GET] Token is CONFIG_CTIME...\r\n");
 		ret.value.uivalue = config_get_ctime_offset( );
+		ret.length += sizeof(ret.value.uivalue);
 		break;
 
 	case CONFIG_ROUTER:
 		PRINTF("[COMMAND HANDLE GET] Token is CONFIG_ROUTER...\r\n");
 		config_get_receiver(&ret.value.ipaddr);
 		ret.valid = uip_ipaddr_cmp(&ret.value.ipaddr, &req->value.address);
-		ret.length = sizeof(uip_ipaddr_t);
+		ret.length += sizeof(ret.value.ipaddr);
 		break;
 
 	case CONFIG_DEVTYPE:
 		PRINTF("[COMMAND HANDLE GET] Token is CONFIG_DEVTYPE...\r\n");
 		ret.value.uivalue = config_get_devtype();
+		ret.length += sizeof(ret.value.uivalue);
 		break;
 
 	case CONFIG_UPTIME:
 		PRINTF("[COMMAND HANDLE GET] Token is CONFIG_UPTIME...\r\n");
-		ret.length = sizeof(command_ret_t);
+		ret.value.ulong = (unsigned long) clock_seconds(); // get current uptime
+		PRINTF("[COMMAND HANDLE GET] Current uptime is %X\r\n", ret.value.ulong);
+		ret.length += sizeof(ret.value.ulong);
 		break;
 
 	case CONFIG_BROADCAST_INTERVAL:
 		PRINTF("[COMMAND HANDLE GET] Token is CONFIG_BROADCAST_INTERVAL...\r\n");
 		ret.value.uivalue = config_get_bcast_interval();
+		ret.length += sizeof(ret.value.uivalue);
 		break;
 
 	case CONFIG_SENSOR_INTERVAL:
 		PRINTF("[COMMAND HANDLE GET] Token is CONFIG_SENSOR_INTERVAL...\r\n");
 		ret.value.uivalue = config_get_sensor_interval( );
+		ret.length += sizeof(ret.value.uivalue);
 		break;
 
 	case CONFIG_NEIGHBOR_INTERVAL:
 		PRINTF("[COMMAND HANDLE GET] Token is CONFIG_NEIGHBOR_INTERVAL...\r\n");
 		ret.value.uivalue = config_get_neighbor_interval( );
+		ret.length += sizeof(ret.value.uivalue);
 		break;
 
 	case CONFIG_NEIGHBOR_NUM:
 		PRINTF("[COMMAND HANDLE GET] Token is CONFIG_NEIGHBOR_NUM...\r\n");
 		ret.value.uivalue = neighbors_getnum( );
+		ret.length += sizeof(ret.value.uivalue);
 		break;
 
 	case CONFIG_NEIGHBOR_POS:
 		PRINTF("[COMMAND HANDLE GET] Token is CONFIG_NEIGHBOR_POS...\r\n");
 		neighbors_get(req->value.intval, &ret.value.ipaddr);
-		ret.length = sizeof(command_ret_t);
+		ret.length += sizeof(ret.value.ipaddr);
 		break;
 
 	case CONFIG_NEIGHBOR_RSSI:
 		PRINTF("[COMMAND HANDLE GET] Token is CONFIG_NEIGHBOR_RSSI...\r\n");
 		ret.value.uivalue = neighbors_get_rssi(req->value.intval);
+		ret.length += sizeof(ret.value.uivalue);
 		break;
 
 	case CONFIG_NEIGHBOR_ROUTER:
 		PRINTF("[COMMAND HANDLE GET] Token is CONFIG_NEIGHBOR_ROUTER...\r\n");
 		ret.value.uivalue = neighbors_get_router(req->value.intval);
+		ret.length += sizeof(ret.value.uivalue);
+		break;
+
+	case CONFIG_RTIMER_SECOND: // I don't know what this is supposed to do. -- Mic
+		PRINTF("[COMMAND HANDLE GET] Token is CONFIG_RTIMER_SECOND...\r\n");
+		ret.value.uivalue = 0xFF;
+		ret.length += sizeof(ret.value.uivalue);
+		break;
+
+	case CONFIG_ENERGEST_CPU:
+		PRINTF("[COMMAND HANDLE GET] Token is CONFIG_ENERGEST_CPU...\r\n");
+		ret.value.uivalue = 0xFF;
+		ret.length += sizeof(ret.value.uivalue);
+		break;
+
+	case CONFIG_ENERGEST_LPM:
+		PRINTF("[COMMAND HANDLE GET] Token is CONFIG_ENERGEST_LPM...\r\n");
+		ret.value.uivalue = 0xFF;
+		ret.length += sizeof(ret.value.uivalue);
+		break;
+
+	case CONFIG_ENERGEST_TRANSMIT:
+		PRINTF("[COMMAND HANDLE GET] Token is CONFIG_ENERGEST_TRANSMIT...\r\n");
+		ret.value.uivalue = 0xFF;
+		ret.length += sizeof(ret.value.uivalue);
+		break;
+
+	case CONFIG_ENERGEST_LISTEN:
+		PRINTF("[COMMAND HANDLE GET] Token is CONFIG_ENERGEST_LISTEN...\r\n");
+		ret.value.uivalue = 0xFF;
+		ret.length += sizeof(ret.value.uivalue);
+		break;
+
+	case CONFIG_ENERGEST_MAX:
+		PRINTF("[COMMAND HANDLE GET] Token is CONFIG_ENERGEST_MAX...\r\n");
+		ret.value.uivalue = 0xFF;
+		ret.length += sizeof(ret.value.uivalue);
 		break;
 
 	default:
@@ -158,6 +206,8 @@ static void command_handle_get(const command_set_t *const req, uip_ipaddr_t *rem
 		ret.valid = 0;
 		break;
 	}
+
+	PRINTF("[COMMAND HANDLE GET] Length of return message is %u...\r\n", ret.length);
 
 	commander_send(remote_addr, &ret, ret.length);
 }

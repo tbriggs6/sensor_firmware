@@ -94,10 +94,7 @@ PROCESS_THREAD(test_bcast_cb, ev, data)
 
     message_init( );
 
-	command_set_t req;
-
     messenger_add_handler(ECHO_REQ, sizeof(echo_t), sizeof(echo_t), echo_handler);
-//    messenger_add_handler(CMD_SET_HEADER, sizeof(uint32_t) * 4, sizeof(command_set_t), command_handler);
 
     messenger_add_handler(CMD_RET_HEADER, 0, 1000000, command_handler);
     messenger_add_handler(CMD_SET_HEADER, 0, 1000000, command_handler);
@@ -109,6 +106,8 @@ PROCESS_THREAD(test_bcast_cb, ev, data)
 	#endif
 
     PRINTF("[CONTIKI TEST BROADCAST PROCESS] Broadcast CB started...\r\n");
+
+    PRINTF("[CONTIKI TEST BROADCAST PROCESS] Size of unsigned long: %d\r\n", sizeof(unsigned long));
 
     while(1)
     {
