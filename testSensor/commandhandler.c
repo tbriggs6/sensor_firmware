@@ -174,9 +174,6 @@ void command_handler(uip_ipaddr_t *remote_addr, int remote_port, char *data, int
 {
 	command_set_t *req = (command_set_t *) data;
 
-	req->token = 0xd;
-	req->value.intval = 0;
-
 	PRINTF("[COMMAND HANDLER] Beginning function. header = 0x%X, config_type = 0x%X, token = 0x%X, intval = 0x%X\r\n", req->header, req->config_type, req->token, req->value.intval);
 	uint8_t *b = (uint8_t *) data;
 
@@ -186,17 +183,8 @@ void command_handler(uip_ipaddr_t *remote_addr, int remote_port, char *data, int
 		b++;
 	}
 
-//	PRINTF("[COMMAND HANDLER] Data (in uint32_t): 1: 0x%X\r\n", *b++);
-//	PRINTF("[COMMAND HANDLER] Data (in uint32_t): 2: 0x%X\r\n", *b++);
-//	PRINTF("[COMMAND HANDLER] Data (in uint32_t): 3: 0x%X\r\n", *b++);
-//	PRINTF("[COMMAND HANDLER] Data (in uint32_t): 4: 0x%X\r\n", *b++);
-
-	PRINTF("[COMMAND HANDLER] Sizeof header: %d\r\n", sizeof(req->header));
-	PRINTF("[COMMAND HANDLER] Sizeof config_type: %d\r\n", sizeof(req->config_type));
-	PRINTF("[COMMAND HANDLER] Sizeof token: %d\r\n", sizeof(req->token));
-	PRINTF("[COMMAND HANDLER] Sizeof value: %d\r\n", sizeof(req->value));
-	PRINTF("[COMMAND HANDLER] Sizeof command_set_t: %d\r\n", sizeof(command_set_t));
-
+	req->token = 0xd;
+	req->value.intval = 0;
 
 	if (req->config_type == CMD_SET_CONFIG) {
 		command_handle_set(req,remote_addr,remote_port);
