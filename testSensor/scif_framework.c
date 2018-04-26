@@ -1,30 +1,32 @@
 /// \addtogroup module_scif_generic_interface
 //@{
 #include "scif_framework.h"
-#undef DEVICE_FAMILY_PATH
-#ifdef DEVICE_FAMILY
-    #define DEVICE_FAMILY_PATH(x) <ti/devices/DEVICE_FAMILY/x>
-#else
-    #define DEVICE_FAMILY_PATH(x) <x>
-#endif
-#include DEVICE_FAMILY_PATH(inc/hw_types.h)
-#include DEVICE_FAMILY_PATH(inc/hw_memmap.h)
-#include DEVICE_FAMILY_PATH(inc/hw_aon_event.h)
-#include DEVICE_FAMILY_PATH(inc/hw_aon_rtc.h)
-#include DEVICE_FAMILY_PATH(inc/hw_aon_wuc.h)
-#include DEVICE_FAMILY_PATH(inc/hw_aux_sce.h)
-#include DEVICE_FAMILY_PATH(inc/hw_aux_smph.h)
-#include DEVICE_FAMILY_PATH(inc/hw_aux_evctl.h)
-#include DEVICE_FAMILY_PATH(inc/hw_aux_aiodio.h)
-#include DEVICE_FAMILY_PATH(inc/hw_aux_wuc.h)
-#include DEVICE_FAMILY_PATH(inc/hw_event.h)
-#include DEVICE_FAMILY_PATH(inc/hw_ints.h)
-#include DEVICE_FAMILY_PATH(inc/hw_ioc.h)
+#include <inc/hw_types.h>
+#include <inc/hw_memmap.h>
+#include <inc/hw_aon_event.h>
+#include <inc/hw_aon_rtc.h>
+#include <inc/hw_aon_wuc.h>
+#include <inc/hw_aux_sce.h>
+#include <inc/hw_aux_smph.h>
+#include <inc/hw_aux_evctl.h>
+#include <inc/hw_aux_aiodio.h>
+#include <inc/hw_aux_wuc.h>
+#include <inc/hw_event.h>
+#include <inc/hw_ints.h>
+#include <inc/hw_ioc.h>
 #include <string.h>
 #if defined(__IAR_SYSTEMS_ICC__)
     #include <intrinsics.h>
 #endif
 
+
+#define DEBUG 1
+#if DEBUG
+#include <stdio.h>
+#define PRINTF(...) printf(__VA_ARGS__)
+#else
+#define PRINTF(...)
+#endif
 
 /// Driver internal data (located in MCU domain RAM, not shared with the Sensor Controller)
 static SCIF_DATA_T scifData;
@@ -32,10 +34,10 @@ static SCIF_DATA_T scifData;
 
 /// Import OSAL
 #define SCIF_INCLUDE_OSAL_C_FILE
-#include "scif_osal_none.c"
+#include "scif_osal_contiki.c"
 
 
-// Workaround for register field renaming
+// Workaround for register field renaming (will be removed in release 1.1.0)
 #ifndef AUX_WUC_MODCLKEN0_ANAIF_M
     #define AUX_WUC_MODCLKEN0_ANAIF_M AUX_WUC_MODCLKEN0_SOC_M
 #endif
@@ -84,6 +86,8 @@ static SCIF_DATA_T scifData;
   *     Initial output value when the pin is configured as output, open-drain or open-source
   */
 void scifInitIo(uint32_t auxIoIndex, uint32_t ioMode, int pullLevel, uint32_t outputValue) {
+
+	scifOsalEnableAuxDomainAccess( );
 
     // Calculate access parameters from the AUX I/O index
     uint32_t auxAiodioBase = AUX_AIODIO0_BASE;
@@ -181,7 +185,7 @@ void scifUninitIo(uint32_t auxIoIndex, int pullLevel) {
   *     The bit-vector
   *
   * \return
-  *     The bit index of the least significant '1', for example 2 for 0x0004, or 32 if all bits are '0'
+  *     The bit index of the least significant '1', e.g. 2 for 0x0004, or 32 if all bits are '0'
   */
 static int scifFindLeastSignificant1(uint32_t x) {
 #if defined(__IAR_SYSTEMS_ICC__) || defined(DOXYGEN)
@@ -218,6 +222,8 @@ static int scifFindLeastSignificant1(uint32_t x) {
 SCIF_RESULT_T scifInit(const SCIF_DATA_T* pScifDriverSetup) {
     uint32_t key;
 
+  	scifOsalEnableAuxDomainAccess( );
+
     // Perform sanity checks: The Sensor Controller cannot already be active
     if (HWREG(AON_WUC_BASE + AON_WUC_O_AUXCTL) & AON_WUC_AUXCTL_SCE_RUN_EN_M) {
         return SCIF_ILLEGAL_OPERATION;
@@ -226,15 +232,16 @@ SCIF_RESULT_T scifInit(const SCIF_DATA_T* pScifDriverSetup) {
     // Copy the driver setup
     memcpy(&scifData, pScifDriverSetup, sizeof(SCIF_DATA_T));
 
-    // Enable clock for required AUX modules
-    HWREG(AUX_WUC_BASE + AUX_WUC_O_MODCLKEN0) = AUX_WUC_MODCLKEN0_SMPH_M |
-                                                AUX_WUC_MODCLKEN0_AIODIO0_M |
-                                                AUX_WUC_MODCLKEN0_AIODIO1_M |
-                                                AUX_WUC_MODCLKEN0_TIMER_M |
-                                                AUX_WUC_MODCLKEN0_ANAIF_M |
-                                                AUX_WUC_MODCLKEN0_TDC_M |
-                                                AUX_WUC_MODCLKEN0_AUX_DDI0_OSC_M |
-                                                AUX_WUC_MODCLKEN0_AUX_ADI4_M;
+// This is now handled in sensor_aux_init
+//    // Enable clock for required AUX modules
+//    HWREG(AUX_WUC_BASE + AUX_WUC_O_MODCLKEN0) = AUX_WUC_MODCLKEN0_SMPH_M |
+//                                                AUX_WUC_MODCLKEN0_AIODIO0_M |
+//                                                AUX_WUC_MODCLKEN0_AIODIO1_M |
+//                                                AUX_WUC_MODCLKEN0_TIMER_M |
+//                                                AUX_WUC_MODCLKEN0_ANAIF_M |
+//                                                AUX_WUC_MODCLKEN0_TDC_M |
+//                                                AUX_WUC_MODCLKEN0_AUX_DDI0_OSC_M |
+//                                                AUX_WUC_MODCLKEN0_AUX_ADI4_M;
 
     // Open the AUX I/O latches, which have undefined value after power-up. AUX_AIODIO will by default
     // drive '0' on all I/O pins, so AUX_AIODIO must be configured before IOC
@@ -259,7 +266,7 @@ SCIF_RESULT_T scifInit(const SCIF_DATA_T* pScifDriverSetup) {
     // Set the READY event
     HWREG(AUX_EVCTL_BASE + AUX_EVCTL_O_SWEVSET) = AUX_EVCTL_SWEVSET_SWEV0_M;
 
-    // Let AUX be powered down (clocks disabled, full retention) and the bus connection between the AUX
+       // Let AUX be powered down (clocks disabled, full retention) and the bus connection between the AUX
     // and MCU domains be disconnected by default. This may have been done already by the operating
     // system to be able to avoid framework dependencies on whether or not the Sensor Controller is used.
     HWREG(AUX_WUC_BASE + AUX_WUC_O_PWRDWNREQ) = 1;
@@ -278,13 +285,15 @@ SCIF_RESULT_T scifInit(const SCIF_DATA_T* pScifDriverSetup) {
     scifOsalLeaveCriticalSection(key);
     HWREG(AON_RTC_BASE + AON_RTC_O_SYNC);
 
-    // Register, clear and enable the interrupts
+    // Register and enable the interrupts. If warm, we probably have task ALERT event(s) pending, which
+    // will be triggered immediately. We need to clear the interrupts because they might have been used
+    // previously
     osalRegisterCtrlReadyInt();
     osalClearCtrlReadyInt();
     osalEnableCtrlReadyInt();
     osalRegisterTaskAlertInt();
     osalClearTaskAlertInt();
-    scifOsalEnableTaskAlertInt();
+    osalEnableTaskAlertInt();
 
     return SCIF_SUCCESS;
 
@@ -319,9 +328,7 @@ void scifUninit(void) {
 
     // Disable interrupts
     osalDisableCtrlReadyInt();
-    osalUnregisterCtrlReadyInt();
-    scifOsalDisableTaskAlertInt();
-    osalUnregisterTaskAlertInt();
+    osalDisableTaskAlertInt();
 
     // Perform task resource uninitialization
     scifData.fptrTaskResourceUninit();
@@ -389,7 +396,7 @@ void scifAckAlertEvents(void) {
     // Make sure that the CPU interrupt has been cleared before reenabling it
     osalClearTaskAlertInt();
     uint32_t key = scifOsalEnterCriticalSection();
-    scifOsalEnableTaskAlertInt();
+    osalEnableTaskAlertInt();
 
     // Set the ACK event to the Sensor Controller
     HWREGB(AUX_EVCTL_BASE + AUX_EVCTL_O_VECCFG1 + 1) = (AUX_EVCTL_VECCFG1_VEC3_EV_AON_SW | AUX_EVCTL_VECCFG1_VEC3_EN_M | AUX_EVCTL_VECCFG1_VEC3_POL_M) >> 8;
@@ -397,42 +404,6 @@ void scifAckAlertEvents(void) {
     scifOsalLeaveCriticalSection(key);
 
 } // scifAckAlertEvents
-
-
-
-
-/** \brief Selects whether or not the ALERT interrupt shall wake up the System CPU
-  *
-  * If the System CPU is in standby mode when the Sensor Controller generates an ALERT interrupt, the
-  * System CPU will wake up by default.
-  *
-  * Call this function to disable or re-enable System CPU wake-up on ALERT interrupt. This can be used to
-  * defer ALERT interrupt processing until the System CPU wakes up for other reasons, for example to
-  * handle radio events, and thereby avoid unnecessary wake-ups.
-  *
-  * Note that there can be increased current consumption in System CPU standby mode if the ALERT
-  * interrupt is disabled (by calling \ref scifOsalDisableTaskAlertInt()), but wake-up is enabled. This
-  * is because the wake-up signal will remain asserted until \ref scifAckAlertEvents() has been called
-  * for all pending ALERT events.
-  *
-  * The behavior resets to enabled when \ref scifInit() is called.
-  *
-  * \param[in]      enable
-  *     Set to false to disable System CPU wake-up on ALERT interrupt, or true to reenable wake-up.
-  */
-void scifSetWakeOnAlertInt(bool enable) {
-    uint32_t key = scifOsalEnterCriticalSection();
-    uint32_t mcuwusel = HWREG(AON_EVENT_BASE + AON_EVENT_O_MCUWUSEL) & ~(AON_EVENT_MCUWUSEL_WU0_EV_M << OSAL_MCUWUSEL_WU_EV_S);
-    if (enable) {
-        scifData.pIntData->alertCanPdAuxMask = 0x0000;
-        mcuwusel |= (AON_EVENT_MCUWUSEL_WU0_EV_AUX_SWEV1 << OSAL_MCUWUSEL_WU_EV_S);
-    } else {
-        scifData.pIntData->alertCanPdAuxMask = 0xFFFF;
-        mcuwusel |= (AON_EVENT_MCUWUSEL_WU0_EV_NONE << OSAL_MCUWUSEL_WU_EV_S);
-    }
-    HWREG(AON_EVENT_BASE + AON_EVENT_O_MCUWUSEL) = mcuwusel;
-    scifOsalLeaveCriticalSection(key);
-} // scifSetWakeOnAlertInt
 
 
 
@@ -689,25 +660,33 @@ static SCIF_RESULT_T scifCtrlTasksNbl(uint32_t bvTaskIds, uint32_t bvTaskReq) {
 
     // Prevent interruptions by concurrent scifCtrlTasksNbl() calls
     if (!osalLockCtrlTaskNbl()) {
+    		PRINTF("\nERR - Not ready.\n");
         return SCIF_NOT_READY;
     }
+
+    scifOsalEnableAuxDomainAccess( );
 
     // Perform sanity checks: Starting already active or dirty tasks is illegal
     if (bvTaskReq & 0x01) {
         if ((scifData.pTaskCtrl->bvActiveTasks | scifData.bvDirtyTasks) & bvTaskIds) {
             osalUnlockCtrlTaskNbl();
+        		PRINTF("\nERR - Illegal Operation.\n");
             return SCIF_ILLEGAL_OPERATION;
         }
     }
 
-    // Verify that the control interface is ready, then clear the READY interrupt source
-    if (HWREG(AUX_EVCTL_BASE + AUX_EVCTL_O_EVTOAONFLAGS) & AUX_EVCTL_EVTOAONFLAGS_SWEV0_M) {
-        HWREG(AUX_EVCTL_BASE + AUX_EVCTL_O_EVTOAONFLAGSCLR) = AUX_EVCTL_EVTOAONFLAGS_SWEV0_M;
-        while (HWREG(AUX_EVCTL_BASE + AUX_EVCTL_O_EVTOAONFLAGS) & AUX_EVCTL_EVTOAONFLAGS_SWEV0_M);
-    } else {
-        osalUnlockCtrlTaskNbl();
-        return SCIF_NOT_READY;
-    }
+//    // Verify that the control interface is ready, then clear the READY interrupt source
+//    if (HWREG(AUX_EVCTL_BASE + AUX_EVCTL_O_EVTOAONFLAGS) & AUX_EVCTL_EVTOAONFLAGS_SWEV0_M) {
+//        HWREG(AUX_EVCTL_BASE + AUX_EVCTL_O_EVTOAONFLAGSCLR) = AUX_EVCTL_EVTOAONFLAGS_SWEV0_M;
+//        while (HWREG(AUX_EVCTL_BASE + AUX_EVCTL_O_EVTOAONFLAGS) & AUX_EVCTL_EVTOAONFLAGS_SWEV0_M);
+//    } else {
+//        osalUnlockCtrlTaskNbl();
+//    		printf("\nERR - Not ready %d\n", __LINE__);
+//        return SCIF_NOT_READY;
+//    }
+
+//    while(!osalIsReady()) ;
+//    printf("OSAL reports AUX is ready\n");
 
     // Initialize tasks?
     if (bvTaskReq & 0x01) {
@@ -741,6 +720,8 @@ static SCIF_RESULT_T scifCtrlTasksNbl(uint32_t bvTaskIds, uint32_t bvTaskReq) {
     HWREG(AUX_EVCTL_BASE + AUX_EVCTL_O_VECCFG0) |= AUX_EVCTL_VECCFG0_VEC0_POL_M;
     HWREG(AUX_EVCTL_BASE + AUX_EVCTL_O_VECCFG0) &= ~AUX_EVCTL_VECCFG0_VEC0_POL_M;
     osalUnlockCtrlTaskNbl();
+
+    PRINTF("\r\n[SCIF TASKS NBL] scif - Returning OK\r\n");
     return SCIF_SUCCESS;
 
 } // scifCtrlTasksNbl
@@ -748,21 +729,18 @@ static SCIF_RESULT_T scifCtrlTasksNbl(uint32_t bvTaskIds, uint32_t bvTaskReq) {
 
 
 
-/** \brief Executes the specified tasks once, from an inactive state
+/** \brief Executes the specified tasks once
   *
-  * This triggers the Initialization, Execution and Termination code for each task ID specified in
+  * This triggers the initialization, execution and termination code for each task ID specified in
   * \a bvTaskIds. All selected code is completed for one task before proceeding with the next task. The
   * control READY event is generated when the tasks have been executed.
   *
   * This function should not be used to execute a task that implements the event handler code, because
-  * the execution method does not allow for running the Event Handler code.
+  * the execution method does not allow for running the event handler code.
   *
-  * \note This function must not be called for already active tasks.
+  * This function must not be called for already active tasks.
   *
-  * \note Task control does not interrupt ongoing code execution on the Sensor Controller, but it has
-  *       priority over other triggers/wake-up sources. Calling this function can therefore delay
-  *       upcoming Sensor Controller activities such as RTC-based task execution and Event Handler code
-  *       execution.
+  * \note Calling this function can delay the next (previously active) task to be executed, if any.
   *
   * \param[in]      bvTaskIds
   *     Bit-vector indicating which tasks should be executed (where bit N corresponds to task ID N)
@@ -786,10 +764,7 @@ SCIF_RESULT_T scifExecuteTasksOnceNbl(uint16_t bvTaskIds) {
   *
   * \note This function must not be called for already active tasks.
   *
-  * \note Task control does not interrupt ongoing code execution on the Sensor Controller, but it has
-  *       priority over other triggers/wake-up sources. Calling this function can therefore delay
-  *       upcoming Sensor Controller activities such as RTC-based task execution and Event Handler code
-  *       execution.
+  * \note Calling this function can delay the next (previously active) task to be executed, if any.
   *
   * \param[in]      bvTaskIds
   *     Bit-vector indicating which tasks to be started (where bit N corresponds to task ID N)
@@ -811,10 +786,7 @@ SCIF_RESULT_T scifStartTasksNbl(uint16_t bvTaskIds) {
   * This triggers the termination code for each task ID specified in \a bvTaskIds. The READY event is
   * generated when the tasks have been stopped.
   *
-  * \note Task control does not interrupt ongoing code execution on the Sensor Controller, but it has
-  *       priority over other triggers/wake-up sources. Calling this function can therefore delay
-  *       upcoming Sensor Controller activities such as RTC-based task execution and Event Handler code
-  *       execution.
+  * \note Calling this function can delay the next (still active) task to be executed, if any.
   *
   * \param[in]      bvTaskIds
   *     Bit-vector indicating which tasks to be stopped (where bit N corresponds to task ID N)
@@ -826,8 +798,6 @@ SCIF_RESULT_T scifStartTasksNbl(uint16_t bvTaskIds) {
 SCIF_RESULT_T scifStopTasksNbl(uint16_t bvTaskIds) {
     return scifCtrlTasksNbl(bvTaskIds, 0x04);
 } // scifStopTasksNbl
-
-
 
 
 /** \brief Triggers manually the Execution code blocks for the specified tasks
@@ -859,35 +829,14 @@ SCIF_RESULT_T scifSwTriggerExecutionCodeNbl(uint16_t bvTaskIds) {
 
 
 
-
-/** \brief Triggers manually the event handler code block
-  *
-  * This function forces execution of the Event Handler code, for whichever task it belongs to.
-  *
-  * Calling this function does not interrupt any ongoing activities on the Sensor Controller. It does
-  * however cancel any previous trigger setup by a \c evhSetupCompbTrigger(), \c evhSetupGpioTrigger()
-  * or \c evhSetupCompbTrigger() procedure call in task code.
-  *
-  * \note This function should only be called when the task using the event handler code is already
-  *       active.
-  */
-void scifSwTriggerEventHandlerCode(void) {
-    HWREGB(AUX_EVCTL_BASE + AUX_EVCTL_O_VECCFG1) = AUX_EVCTL_VECCFG1_VEC2_EV_AON_SW | AUX_EVCTL_VECCFG1_VEC2_EN_M | AUX_EVCTL_VECCFG1_VEC2_POL_M;
-} // scifSwTriggerEventHandlerCode
-
-
-
-
 /** \brief Waits for a non-blocking call to complete, with timeout
   *
   * The non-blocking task control functions, \ref scifExecuteTasksOnceNbl(), \ref scifStartTasksNbl()
   * and \ref scifStopTasksNbl(), may take some time to complete. This wait function can be used to make
-  * blocking calls, and allow an operating system to switch context when until the task control interface
-  * becomes ready again.
+  * blocking calls (i.e. where the OS switches thread when not ready).
   *
   * The function returns when the last non-blocking call has completed, or immediately if already
-  * completed. The function can also return immediately with the \ref SCIF_ILLEGAL_OPERATION error if
-  * called from multiple threads of execution with non-zero \a timeoutUs.
+  * completed.
   *
   * \b Important: Unlike the ALERT event, the READY event does not generate MCU domain and System CPU
   * wake-up. Depending on the SCIF OSAL implementation, this function might not return before the
@@ -901,15 +850,15 @@ void scifSwTriggerEventHandlerCode(void) {
   *     function (which also will return \ref SCIF_NOT_READY if not ready).
   *
   * \return
-  *     \ref SCIF_SUCCESS if the last call has completed, otherwise \ref SCIF_NOT_READY (the timeout
-  *     expired) or \ref SCIF_ILLEGAL_OPERATION (the OSAL does not allow this function to be called with
-  *     non-zero \a timeoutUs from multiple threads of execution).
+  *     \ref SCIF_SUCCESS if the last call has completed, otherwise \ref SCIF_NOT_READY.
   */
 SCIF_RESULT_T scifWaitOnNbl(uint32_t timeoutUs) {
-    if (HWREG(AUX_EVCTL_BASE + AUX_EVCTL_O_EVTOAONFLAGS) & AUX_EVCTL_EVTOAONFLAGS_SWEV0_M) {
+	scifOsalEnableAuxDomainAccess( );
+
+    if ((HWREG(AUX_EVCTL_BASE + AUX_EVCTL_O_EVTOAONFLAGS) & AUX_EVCTL_EVTOAONFLAGS_SWEV0_M) || osalWaitOnCtrlReady(timeoutUs)) {
         return SCIF_SUCCESS;
     } else {
-        return osalWaitOnCtrlReady(timeoutUs);
+        return SCIF_NOT_READY;
     }
 } // scifWaitOnNbl
 
@@ -931,6 +880,3 @@ uint16_t scifGetActiveTaskIds(void) {
 
 
 //@}
-
-
-// Generated by MCT163S08 at 2018-04-25 21:38:29.501
