@@ -204,6 +204,9 @@ if(state.i2cStatus != 0x00){
     output.I2CError = output.I2CError | (1 << 0);
 }
 
+//confirm what the delays should be here
+fwDelayUs(100, FW_DELAY_RANGE_500_US);
+
 //Set the RGB Integration time
 i2cStart();
 i2cTx( (ADDRESS << 1) | I2C_OP_WRITE);
@@ -215,6 +218,9 @@ if(state.i2cStatus != 0x00){
     output.I2CError = output.I2CError | (1 << 1);
 }
 
+//confirm what the delays should be here
+fwDelayUs(100, FW_DELAY_RANGE_500_US);
+
 //Set the RGB Integration time
 i2cStart();
 i2cTx( (ADDRESS << 1) | I2C_OP_WRITE);
@@ -225,6 +231,9 @@ i2cStop();
 if(state.i2cStatus != 0x00){
     output.I2CError = output.I2CError | (1 << 2);
 }
+
+//confirm what the delays should be here
+fwDelayUs(100, FW_DELAY_RANGE_500_US);
 
 //Enable the Power on
 i2cStart();
