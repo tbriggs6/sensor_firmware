@@ -127,7 +127,7 @@
         <resource_ref name="GPIO Event Trigger" enabled="0"/>
         <resource_ref name="I2C Master" enabled="1">
             <rattr name="SCL frequency">1</rattr>
-            <rattr name="SCL stretch timeout">14</rattr>
+            <rattr name="SCL stretch timeout">10</rattr>
             <io_usage>
                 <uattr name="SCL pin/0000">DIO4</uattr>
                 <uattr name="SDA pin/0000">DIO5</uattr>
@@ -205,7 +205,7 @@ if(state.i2cStatus != 0x00){
 }
 
 //confirm what the delays should be here
-fwDelayUs(100, FW_DELAY_RANGE_500_US);
+//fwDelayUs(100, FW_DELAY_RANGE_500_US);
 
 //Set the RGB Integration time
 i2cStart();
@@ -219,7 +219,7 @@ if(state.i2cStatus != 0x00){
 }
 
 //confirm what the delays should be here
-fwDelayUs(100, FW_DELAY_RANGE_500_US);
+//fwDelayUs(100, FW_DELAY_RANGE_500_US);
 
 //Set the RGB Integration time
 i2cStart();
@@ -233,7 +233,7 @@ if(state.i2cStatus != 0x00){
 }
 
 //confirm what the delays should be here
-fwDelayUs(100, FW_DELAY_RANGE_500_US);
+//fwDelayUs(100, FW_DELAY_RANGE_500_US);
 
 //Enable the Power on
 i2cStart();
@@ -247,7 +247,7 @@ if(state.i2cStatus != 0x00){
 }
 
 //confirm what the delays should be here
-fwDelayUs(100, FW_DELAY_RANGE_500_US);
+//fwDelayUs(100, FW_DELAY_RANGE_500_US);
 //fwDelayUs(100000, FW_DELAY_RANGE_100_MS);
 
 
@@ -264,7 +264,7 @@ if(state.i2cStatus != 0x00){
 }
 
 //confirm what the delays should be here
-fwDelayUs(100, FW_DELAY_RANGE_500_US);
+//fwDelayUs(100, FW_DELAY_RANGE_500_US);
 
 
 //Read the color values
