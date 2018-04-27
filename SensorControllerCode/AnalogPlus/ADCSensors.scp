@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <project name="ADCSensors" version="1.4.1.54">
     <desc><![CDATA[]]></desc>
-    <pattr name="Board">CC2650 LaunchPad</pattr>
-    <pattr name="Chip name">CC2650</pattr>
+    <pattr name="Board">CC1310 LaunchPad</pattr>
+    <pattr name="Chip name">CC1310</pattr>
     <pattr name="Chip package">QFN48 7x7 RGZ</pattr>
     <pattr name="Chip revision">-</pattr>
     <pattr name="Code prefix">scs</pattr>
@@ -185,6 +185,15 @@ fwDelayUs(100000, FW_DELAY_RANGE_100_MS);
 fwDelayUs(100000, FW_DELAY_RANGE_100_MS);
 fwDelayUs(100000, FW_DELAY_RANGE_100_MS);
 fwDelayUs(100000, FW_DELAY_RANGE_100_MS);
+
+// DELAY
+fwDelayUs(100000, FW_DELAY_RANGE_100_MS);
+fwDelayUs(100000, FW_DELAY_RANGE_100_MS);
+fwDelayUs(100000, FW_DELAY_RANGE_100_MS);
+fwDelayUs(100000, FW_DELAY_RANGE_100_MS);
+fwDelayUs(100000, FW_DELAY_RANGE_100_MS);
+
+
 
 // turn on the power for LED_DRIVER
 gpioSetOutput(cfg.pAuxioOLedDriver[0]);
