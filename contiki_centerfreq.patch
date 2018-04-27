@@ -1,0 +1,22 @@
+diff --git a/platform/srf06-cc26xx/contiki-conf.h b/platform/srf06-cc26xx/contik
+i-conf.h
+index 382b572..3439899 100644
+--- a/platform/srf06-cc26xx/contiki-conf.h
++++ b/platform/srf06-cc26xx/contiki-conf.h
+@@ -419,6 +419,15 @@ typedef uint32_t rtimer_clock_t;
+ /* board.h assumes that basic configuration is done */
+ #include "board.h"
+ /*---------------------------------------------------------------------------*/
++
++// MODIFICATION - CHANGING THE DEFAULT FREQUENCY FOR THE CC1310 BOARD
++
++
++#define DOT_15_4G_CONF_FREQUENCY_BAND_ID DOT_15_4G_FREQUENCY_BAND_915
++
++
++// END MODIFICATION
++
+ #endif /* CONTIKI_CONF_H */
+ 
+ /** @} */
+
