@@ -166,7 +166,7 @@ PROCESS_THREAD(test_data2, ev, data)
             	// how long it will wait until trying to resend the data
                 PRINTF("[DATA SENDER PROCESS] Sending data - attempt %d \r\n", count);
                 messenger_send(&server, &data, sizeof(data_t));
-                etimer_set(&et, 2 * CLOCK_SECOND);
+                etimer_set(&et, /*2 * CLOCK_SECOND*/ config_get_bcast_interval() );
             }
 
             // wait until the process receives an event

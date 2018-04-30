@@ -97,9 +97,9 @@ void config_init()
 	if (config.magic != CONFIG_MAGIC) {
 		PRINTF("[CONFIG INIT] Configuration magic (%-8.8X != %-8.8X) not found, using defaults\r\n", config.magic, CONFIG_MAGIC);
 		config.magic = CONFIG_MAGIC;
-		config.bcast_interval = SECONDS(30);
+		config.bcast_interval = SECONDS(20);
 		config.neighbor_interval = SECONDS(30);
-		config.sensor_interval = SECONDS(5);
+		config.sensor_interval = SECONDS(10);
 
 		config_write();
 		config_read();
