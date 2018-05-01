@@ -13,15 +13,17 @@
 #include <net/ip/uip-debug.h>
 #include <sys/compower.h>
 
-#define DEPLOYABLE 1
+#define DEPLOYABLE 0
 
 #if DEPLOYABLE
+
 #include <driverlib/flash.h>
 #include <driverlib/vims.h>
-#endif
+#include "sensor_handler.h"
+
+#endif // DEPLOYABLE
 
 #include "config.h"
-#include "sensor_handler.h"
 
 extern void * _uflash_base;
 extern void * _uflash_size;
@@ -144,7 +146,12 @@ void config_set_sensor_interval(const int interval)
 	config.sensor_interval = interval;
 	config_write();
 
+	#if DEPLOYABLE
+
 	process_poll(&sensor_timer);
+
+	#endif // DEPLOYABLE
+
 
 	return;
 }
