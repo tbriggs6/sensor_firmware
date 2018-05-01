@@ -21,6 +21,11 @@ CONTIKI_WITH_IPV6 = 1
 PROJECT_SOURCEFILES += neighbors.c config.c commandhandler.c datahandler.c \
 	scif_framework.c scif_scs.c scif_osal_contiki.c sensor_handler.c
 
+ifeq ($(DEPLOYABLE), yes)
+	PROJECT_SOURCEFILES += scif_framework.c scif_scs.c \
+	scif_osal_contiki.c sensor_handler.c
+endif
+
 
 
 CONTIKI = /home/contiki/contiki

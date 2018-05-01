@@ -1,5 +1,6 @@
 /// \addtogroup module_scif_generic_interface
 //@{
+
 #include "scif_framework.h"
 #include <inc/hw_types.h>
 #include <inc/hw_memmap.h>
@@ -14,6 +15,7 @@
 #include <inc/hw_event.h>
 #include <inc/hw_ints.h>
 #include <inc/hw_ioc.h>
+
 #include <string.h>
 #if defined(__IAR_SYSTEMS_ICC__)
     #include <intrinsics.h>

@@ -2,7 +2,6 @@
 //@{
 #ifdef SCIF_INCLUDE_OSAL_C_FILE
 
-
 #include <inc/hw_nvic.h>
 #include <inc/hw_aux_evctl.h>
 #include <inc/hw_aux_timer.h>
@@ -16,23 +15,19 @@
 //#include "sensor.h"
 //#include "sender.h"
 
-#define DEPLOYABLE
+#include "sensor_handler.h"
 
-#ifdef DEPLOYABLE
-	#include "sensor_handler.h"
-#endif
-
-#include <contiki.h>
 #include <dev/aux-ctrl.h>
 #include <sys/pt.h>
 #include <sys/pt-sem.h>
 #include <lpm.h>
+#include <ti-lib.h>
+
+#include <contiki.h>
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include <ti-lib.h>
 
 #ifndef BV
 #define BV(n)           (1 << (n))
@@ -575,7 +570,7 @@ int sensor_aux_init( )
 
 	aux_ctrl_register_consumer(&aux_consumer);
 
-	// start-up the interrupt threads
+	// start the interrupt threads
 	process_start(&ready_interrupt, NULL);
 	process_start(&alert_interrupt, NULL);
 

@@ -19,17 +19,16 @@
 #include "neighbors.h"
 #include <powertrace.h>
 
-#define DEPLOYABLE
+#define DEPLOYABLE 1
 
-#ifdef  DEPLOYABLE
+#if  DEPLOYABLE
 	#include "sensor_handler.h"
+	#include "scif_framework.h"
+	#include "scif_osal_contiki.h"
+	#include "scif_scs.h"
 #else
 	#include "datahandler.h"
 #endif
-
-#include "scif_framework.h"
-#include "scif_osal_contiki.h"
-#include "scif_scs.h"
 
 #ifndef BV
 #define BV(n)           (1 << (n))
@@ -85,16 +84,16 @@ PROCESS_THREAD(test_bcast_cb, ev, data)
 
     config_init( );
 
-    sensor_aux_init();
-
     neighbors_init( );
 
+    #if DEPLOYABLE
+
+    sensor_aux_init();
     PRINTF("Starting power trace, %u ticks per second\n", RTIMER_SECOND);
     energest_init();
     powertrace_start(60 * CLOCK_SECOND);
 
-
-
+    #endif
 
     bcast_init(0);
 
@@ -107,15 +106,13 @@ PROCESS_THREAD(test_bcast_cb, ev, data)
     messenger_add_handler(CMD_RET_HEADER, 0, 1000000, command_handler);
     messenger_add_handler(CMD_SET_HEADER, 0, 1000000, command_handler);
 
-	#ifdef DEPLOYABLE
-    	datahandler_init2( );
-	#else
-    	datahandler_init();
-	#endif
+    #if DEPLOYABLE
+    datahandler_init2();
+    #else
+    datahandler_init();
+    #endif
 
     PRINTF("[CONTIKI TEST BROADCAST PROCESS] Broadcast CB started...\r\n");
-
-    PRINTF("[CONTIKI TEST BROADCAST PROCESS] Size of unsigned long: %d\r\n", sizeof(unsigned long));
 
     while(1)
     {

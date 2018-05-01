@@ -13,8 +13,12 @@
 #include <net/ip/uip-debug.h>
 #include <sys/compower.h>
 
+#define DEPLOYABLE 1
+
+#if DEPLOYABLE
 #include <driverlib/flash.h>
 #include <driverlib/vims.h>
+#endif
 
 #include "config.h"
 #include "sensor_handler.h"
@@ -37,15 +41,21 @@ static dynamic_config_t dynconfig;
 
 static void config_read()
 {
+	#if DEPLOYABLE
+
 	config_t *statconfig = (config_t *) &_uflash_base;
 	config.magic = statconfig->magic;
 	config.bcast_interval = statconfig->bcast_interval;
 	config.sensor_interval = statconfig->sensor_interval;
 	config.neighbor_interval = statconfig->neighbor_interval;
+
+	#endif
 }
 
 static void config_write()
 {
+	#if DEPLOYABLE
+
 	uint32_t mybase = (uint32_t) &_uflash_base;
 	uint32_t mysize = (uint32_t) &_uflash_size;
 
@@ -82,6 +92,8 @@ static void config_write()
 
 	/* Re-enable the cache */
 	VIMSModeSet(VIMS_BASE, VIMS_MODE_ENABLED);
+
+	#endif
 }
 
 void config_init()
