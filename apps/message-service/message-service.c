@@ -124,55 +124,55 @@ static void message_receiver(struct simple_msg_connection *c,
          const uint8_t *data,
          uint16_t datalen)
 {
-  printf("\n\n**************************************************\r\n");
-  printf("**************************************************\r\n");
-  printf("**************************************************\r\n");
-  printf("[MESSAGE RECEIVER] Data received on port %d from port %d with length %d bytes\r\n",
+  PRINTF("\n\n**************************************************\r\n");
+  PRINTF("**************************************************\r\n");
+  PRINTF("**************************************************\r\n");
+  PRINTF("[MESSAGE RECEIVER] Data received on port %d from port %d with length %d bytes\r\n",
          receiver_port, sender_port, datalen);
 
   uint32_t *b = (uint32_t *) data;
-  printf("[MESSAGE RECEIVER] Data (in uint32_t): 1: 0x%X\r\n", *b++);
-  printf("[MESSAGE RECEIVER] Data (in uint32_t): 2: 0x%X\r\n", *b++);
-  printf("[MESSAGE RECEIVER] Data (in uint32_t): 3: 0x%X\r\n", *b++);
-  printf("[MESSAGE RECEIVER] Data (in uint32_t): 4: 0x%X\r\n", *b++);
+  PRINTF("[MESSAGE RECEIVER] Data (in uint32_t): 1: 0x%X\r\n", *b++);
+  PRINTF("[MESSAGE RECEIVER] Data (in uint32_t): 2: 0x%X\r\n", *b++);
+  PRINTF("[MESSAGE RECEIVER] Data (in uint32_t): 3: 0x%X\r\n", *b++);
+  PRINTF("[MESSAGE RECEIVER] Data (in uint32_t): 4: 0x%X\r\n", *b++);
 
 
       uint32_t *header = (uint32_t *) data;
       int length = datalen;
 
       struct listener *curr;
-      printf("[MESSAGE RECEIVER] Dispatching a received message with %d bytes to %d listeners\r\n", length, list_length(handlers_list));
+      PRINTF("[MESSAGE RECEIVER] Dispatching a received message with %d bytes to %d listeners\r\n", length, list_length(handlers_list));
       for (curr = list_head(handlers_list); curr != NULL; curr = list_item_next(curr))
       {
           if (curr->handler == NULL) {
-              printf("[MESSAGE RECEIVER] Handler is null\r\n");
+              PRINTF("[MESSAGE RECEIVER] Handler is null\r\n");
               continue;
           }
           if (curr->header != *header) {
-              printf("[MESSAGE RECEIVER] header %x != %x\r\n", curr->header, *header);
+              PRINTF("[MESSAGE RECEIVER] header %x != %x\r\n", curr->header, *header);
               continue;
           }
 
           if ((curr->min_len > 0) && (length < curr->min_len)) {
-              printf("[MESSAGE RECEIVER] length to small: %d < %d\r\n", length, curr->min_len);
+              PRINTF("[MESSAGE RECEIVER] length to small: %d < %d\r\n", length, curr->min_len);
               continue;
           }
           if ((curr->max_len > 0) && (length > curr->max_len)) {
-              printf("[MESSAGE RECEIVER] length is too large: %d > %d\r\n", length, curr->max_len);
+              PRINTF("[MESSAGE RECEIVER] length is too large: %d > %d\r\n", length, curr->max_len);
               continue;
           }
 
 
-          printf("[MESSAGE RECEIVER] Sending to %p\r\n", curr->handler);
+          PRINTF("[MESSAGE RECEIVER] Sending to %p\r\n", curr->handler);
           curr->handler(sender_addr, sender_port, (char *) uip_appdata, length);
           break;
       }
 
-     printf("[MESSAGE RECEIVER] Done dispatching message\r\n");
-     printf("************************************\r\n");
-     printf("************************************\r\n");
-     printf("************************************\r\n");
-     printf("************************************\r\n\n\n");
+     PRINTF("[MESSAGE RECEIVER] Done dispatching message\r\n");
+     PRINTF("************************************\r\n");
+     PRINTF("************************************\r\n");
+     PRINTF("************************************\r\n");
+     PRINTF("************************************\r\n\n\n");
 }
 
 
