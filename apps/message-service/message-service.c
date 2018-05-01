@@ -25,6 +25,8 @@
 #undef DEBUG
 #undef PRINTF
 
+//#define DEBUG 1
+
 #if DEBUG
 #define PRINTF(...) printf(__VA_ARGS__)
 #else
