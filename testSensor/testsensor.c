@@ -19,7 +19,7 @@
 #include "neighbors.h"
 #include <powertrace.h>
 
-#define DEPLOYABLE 0
+#define DEPLOYABLE 1
 
 #if  DEPLOYABLE
 	#include "sensor_handler.h"
