@@ -120,7 +120,7 @@ static void command_handle_get(const command_set_t *const req, uip_ipaddr_t *rem
 	case CONFIG_UPTIME:
 		PRINTF("[COMMAND HANDLE GET] Token is CONFIG_UPTIME...\r\n");
 		ret.value.ulong = (unsigned long) clock_seconds(); // get current uptime
-		PRINTF("[COMMAND HANDLE GET] Current uptime is %X\r\n", ret.value.ulong);
+		PRINTF("[COMMAND HANDLE GET] Current uptime is %X\r\n", (unsigned int) ret.value.ulong);
 		ret.length += sizeof(ret.value.ulong);
 		break;
 
@@ -209,7 +209,7 @@ static void command_handle_get(const command_set_t *const req, uip_ipaddr_t *rem
 		break;
 	}
 
-	PRINTF("[COMMAND HANDLE GET] Length of return message is %u...\r\n", ret.length);
+	PRINTF("[COMMAND HANDLE GET] Length of return message is %u...\r\n", (unsigned int) ret.length);
 
 	commander_send(remote_addr, &ret, ret.length);
 }
@@ -218,12 +218,12 @@ void command_handler(uip_ipaddr_t *remote_addr, int remote_port, char *data, int
 {
 	command_set_t *req = (command_set_t *) data;
 
-	PRINTF("[COMMAND HANDLER] Beginning function. header = 0x%X, config_type = 0x%X, token = 0x%X, intval = 0x%X\r\n", req->header, req->config_type, req->token, req->value.intval);
+	PRINTF("[COMMAND HANDLER] Beginning function. header = 0x%X, config_type = 0x%X, token = 0x%X, intval = 0x%X\r\n", (unsigned int) req->header, req->config_type, req->token, (unsigned int) req->value.intval);
 	uint8_t *b = (uint8_t *) data;
 
 	int i = 0;
 	for (i = 0; i < 16; i++){
-		PRINTF("[COMMAND HANDLER] Data (in uint8_t) at 0x%X: %d: 0x%X\r\n", b, i, *b);
+		PRINTF("[COMMAND HANDLER] Data (in uint8_t) at %p: %d: 0x%X\r\n",b, i, *b);
 		b++;
 	}
 

@@ -132,13 +132,6 @@ static void message_receiver(struct simple_msg_connection *c,
   PRINTF("[MESSAGE RECEIVER] Data received on port %d from port %d with length %d bytes\r\n",
          receiver_port, sender_port, datalen);
 
-  uint32_t *b = (uint32_t *) data;
-  PRINTF("[MESSAGE RECEIVER] Data (in uint32_t): 1: 0x%X\r\n", *b++);
-  PRINTF("[MESSAGE RECEIVER] Data (in uint32_t): 2: 0x%X\r\n", *b++);
-  PRINTF("[MESSAGE RECEIVER] Data (in uint32_t): 3: 0x%X\r\n", *b++);
-  PRINTF("[MESSAGE RECEIVER] Data (in uint32_t): 4: 0x%X\r\n", *b++);
-
-
       uint32_t *header = (uint32_t *) data;
       int length = datalen;
 
@@ -181,6 +174,6 @@ static void message_receiver(struct simple_msg_connection *c,
 
 void message_init()
 {
-    simple_udp_register( &cmd_conn, COMMAND_SERVER_PORT, NULL, COMMAND_SERVER_PORT, message_receiver);
-    simple_udp_register( &msg_conn, MESSAGE_SERVER_PORT, NULL, MESSAGE_SERVER_PORT, message_receiver);
+    simple_udp_register( &cmd_conn, COMMAND_SERVER_PORT, NULL, COMMAND_SERVER_PORT, (simple_udp_callback) message_receiver);
+    simple_udp_register( &msg_conn, MESSAGE_SERVER_PORT, NULL, MESSAGE_SERVER_PORT, (simple_udp_callback) message_receiver);
 }

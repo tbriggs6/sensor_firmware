@@ -48,7 +48,7 @@ void data_ack_handler2(uip_ipaddr_t *remote_addr, int remote_port, char *data, i
         return;
     }
 
-    PRINTF("[DATA ACK HANDLER] Data ack seq: %u\r\n", ack->ack_seq);
+    PRINTF("[DATA ACK HANDLER] Data ack seq: %u\r\n", (unsigned int) ack->ack_seq);
     data_seq_acked = ack->ack_seq;
     process_post(&test_data2, PROCESS_EVENT_MSG, data);
 }
@@ -141,8 +141,8 @@ PROCESS_THREAD(test_data2, ev, data)
         data.colors[3] = scData.colorBlue;
 
         PRINTF("\r\n\n\n[DATA SENDER PROCESS] Data to be broadcast:\r\n");
-        PRINTF("[DATA SENDER PROCESS] Header: %X\r\n", data.header);
-        PRINTF("[DATA SENDER PROCESS] Sequence: %u\r\n", data.sequence);
+        PRINTF("[DATA SENDER PROCESS] Header: %X\r\n", (unsigned int) data.header);
+        PRINTF("[DATA SENDER PROCESS] Sequence: %u\r\n", (unsigned int) data.sequence);
         PRINTF("[DATA SENDER PROCESS] Ambient Light: %u\r\n", data.adc[0]);
         PRINTF("[DATA SENDER PROCESS] Battery Sensor: %u\r\n", data.battery);
         PRINTF("[DATA SENDER PROCESS] Conductivity: %u\r\n", data.adc[1]);

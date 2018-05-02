@@ -33,6 +33,10 @@ static dynamic_config_t dynconfig;
 
 #define SECONDS(x) (x * CLOCK_SECOND)
 
+#ifdef PRINTF
+#undef PRINTF
+#endif
+
 #define DEBUG 1
 #if DEBUG
 #include <stdio.h>

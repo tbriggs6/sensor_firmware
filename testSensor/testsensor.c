@@ -34,6 +34,10 @@
 #define BV(n)           (1 << (n))
 #endif
 
+#ifdef PRINTF
+#undef PRINTF
+#endif
+
 #define DEBUG 1
 #if DEBUG
 #include <stdio.h>
