@@ -46,7 +46,7 @@ static void config_read()
 	#if DEPLOYABLE
 
 	// Copy the ram stored configs into the config struct
-	memcpy(&config, &_uflash_base, sizeof(config));
+	memcpy(&config, (config_t *) &_uflash_base, sizeof(config));
 
 	#endif
 }
