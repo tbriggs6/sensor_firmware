@@ -8,6 +8,8 @@
 #ifndef CONFIG_H_
 #define CONFIG_H_
 
+#define VERSION_NUM 3
+
 #include <contiki.h>
 #include <net/ip/uip.h>
 
@@ -42,10 +44,11 @@ typedef enum {
 #define CONFIG_MAGIC (0xB16B00B5)
 
 typedef struct {
+	float version_num;
 	int magic;
 	int bcast_interval;
 	int sensor_interval;
-	int neighbor_interval;
+	int neighbor_interva;
 } config_t;
 
 typedef struct {

@@ -38,6 +38,8 @@ static dynamic_config_t dynconfig;
 static void config_read()
 {
 	config_t *statconfig = (config_t *) &_uflash_base;
+	//memcpy(&config, statconfig, sizeof(config));
+	config.version_num = statconfig->version_num;
 	config.magic = statconfig->magic;
 	config.bcast_interval = statconfig->bcast_interval;
 	config.sensor_interval = statconfig->sensor_interval;
@@ -89,6 +91,7 @@ void config_init()
 	config_read();
 	// print config
 	PRINTF("[CONFIG INIT] Configuration:\r\n");
+	PRINTF("[CONFIG INIT] Version number: %d\r\n", config.version_num);
 	PRINTF("[CONFIG INIT] Magic: %X\r\n", config.magic);
 	PRINTF("[CONFIG INIT] Broadcast interval: %d\r\n", config.bcast_interval);
 	PRINTF("[CONFIG INIT] Neighbor interval: %d\r\n", config.neighbor_interval);
@@ -96,6 +99,7 @@ void config_init()
 
 	if (config.magic != CONFIG_MAGIC) {
 		PRINTF("[CONFIG INIT] Configuration magic (%-8.8X != %-8.8X) not found, using defaults\r\n", config.magic, CONFIG_MAGIC);
+		config.version_num = VERSION_NUM;
 		config.magic = CONFIG_MAGIC;
 		config.bcast_interval = SECONDS(30);
 		config.neighbor_interval = SECONDS(30);
@@ -106,12 +110,12 @@ void config_init()
 
 		// print config
 		PRINTF("[CONFIG INIT] Configuration:\r\n");
+		PRINTF("[CONFIG INIT] Version number: %d\r\n", config.version_num);
 		PRINTF("[CONFIG INIT] Magic: %X\r\n", config.magic);
 		PRINTF("[CONFIG INIT] Broadcast interval: %d\r\n", config.bcast_interval);
 		PRINTF("[CONFIG INIT] Neighbor interval: %d\r\n", config.neighbor_interval);
 		PRINTF("[CONFIG INIT] Sensor interval: %d\r\n\n", config.sensor_interval);
 	}
-
 	
 
 	memset(&dynconfig, 0, sizeof(dynconfig));
