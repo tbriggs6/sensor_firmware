@@ -60,12 +60,12 @@
         <resource_ref name="Delay Insertion" enabled="1"/>
         <resource_ref name="Differential Output Pins" enabled="0"/>
         <resource_ref name="Digital Input Pins" enabled="0"/>
-        <resource_ref name="Digital Open-Drain Pins" enabled="1">
+        <resource_ref name="Digital Open-Drain Pins" enabled="0">
             <io_usage name="LED_POWER" label="The power rail for the sensors">
                 <uattr name="Configuration on uninitialization">0</uattr>
                 <uattr name="Output value on initialization">0</uattr>
                 <uattr name="Pin count">0</uattr>
-                <uattr name="Pin/0000">DIO7</uattr>
+                <uattr name="Pin/0000">DIO6</uattr>
                 <uattr name="Pin/0001">DIO6</uattr>
                 <uattr name="Pin/0002"></uattr>
                 <uattr name="Pin/0003"></uattr>
@@ -85,12 +85,12 @@
         </resource_ref>
         <resource_ref name="Digital Open-Source Pins" enabled="0"/>
         <resource_ref name="Digital Output Pins" enabled="1">
-            <io_usage name="AUX_POWER" label="The MCUs pin to enable the AUX power">
+            <io_usage name="AUX_LINES" label="Pin to enable the AUX lines">
                 <uattr name="Configuration on uninitialization">0</uattr>
                 <uattr name="Output value on initialization">0</uattr>
-                <uattr name="Pin count">0</uattr>
-                <uattr name="Pin/0000">DIO6</uattr>
-                <uattr name="Pin/0001"></uattr>
+                <uattr name="Pin count">2</uattr>
+                <uattr name="Pin/0000">DIO7</uattr>
+                <uattr name="Pin/0001">DIO6</uattr>
                 <uattr name="Pin/0002"></uattr>
                 <uattr name="Pin/0003"></uattr>
                 <uattr name="Pin/0004"></uattr>
@@ -161,13 +161,10 @@
 output.I2CError = 0;
 
 //Set the AUX power enable pin to high
-gpioSetOutput(AUXIO_O_AUX_POWER);
-
-// turn on the output LED power rail
-gpioSetOutput(AUXIO_XD_LED_POWER);
+gpioSetOutput(cfg.pAuxioOAuxLines[0]);
 
 // delay 2ms
-fwDelayUs(2000, FW_DELAY_RANGE_5_MS);
+fwDelayUs(6500, FW_DELAY_RANGE_50_MS);
 
 U16 cmd_type = 0;
 
@@ -222,9 +219,12 @@ if(state.i2cStatus != 0x00){
     output.I2CError = (output.I2CError | (1 << 3) );
 }
 
+//Turn on the output LED power rail
+gpioSetOutput(cfg.pAuxioOAuxLines[1]);
+
 // delay 3ms
 for (U16 n = 0; n < POW_DELAY; n++) {
-//confirm what the delays should be here
+    //confirm what the delays should be here
     fwDelayUs(1000, FW_DELAY_RANGE_100_MS);
 }
 
@@ -241,7 +241,7 @@ if(state.i2cStatus != 0x00){
 
 // delay 24ms
 for (U16 n = 0; n < INTG_DELAY; n++) {
-//confirm what the delays should be here
+    //confirm what the delays should be here
     fwDelayUs(1000, FW_DELAY_RANGE_100_MS);
 }
 
@@ -280,10 +280,10 @@ i2cStop();
 
 // power down analog LED power rail
 //TODO: Confirm if it should be configured in Open-Drain
-gpioClearOutput(AUXIO_XD_LED_POWER);
+gpioClearOutput(cfg.pAuxioOAuxLines[1]);
 
 //confirm what the delays should be here
-fwDelayUs(100, FW_DELAY_RANGE_500_US);
+fwDelayUs(1000, FW_DELAY_RANGE_5_MS);
 
 // Enable the ADC
 adcEnableSync(ADC_REF_FIXED, ADC_SAMPLE_TIME_2P7_US, ADC_TRIGGER_MANUAL);
@@ -406,7 +406,7 @@ output.HallSensor = (total >> 2);
 adcDisable( );
 
 //Clear the AUX power enable pin (low)
-gpioClearOutput(AUXIO_O_AUX_POWER);
+gpioClearOutput(cfg.pAuxioOAuxLines[0]);
 
 fwGenAlertInterrupt();]]></sccode>
         <sccode name="initialize"><![CDATA[]]></sccode>
