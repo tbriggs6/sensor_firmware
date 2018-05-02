@@ -17,22 +17,35 @@
 #include "message.h"
 #include "config.h"
 #include "neighbors.h"
+#include "datahandler.h"
+#include <powertrace.h>
 
-#define DEPLOYABLE
+#define DEPLOYABLE 0
 
-#ifdef  DEPLOYABLE
-	#include "sensor_handler.h"
-#else
-	#include "datahandler.h"
-#endif
+#if  DEPLOYABLE
 
 #include "scif_framework.h"
 #include "scif_osal_contiki.h"
 #include "scif_scs.h"
 
+#endif // DEPLOYABLE
+
 #ifndef BV
 #define BV(n)           (1 << (n))
 #endif
+
+#ifdef PRINTF
+#undef PRINTF
+#endif
+
+#define DEBUG 1
+#if DEBUG
+#include <stdio.h>
+#define PRINTF(...) printf(__VA_ARGS__)
+#else
+#define PRINTF(...)
+#endif
+
 
 PROCESS(test_bcast_cb, "Test Sensor Broadcast Handler");
 
@@ -49,13 +62,13 @@ void echo_handler(uip_ipaddr_t *remote_addr, int remote_port, char *data, int le
 {
 	echo_t *echoreq = (echo_t *) data;
 
-	printf("echo handler invoked %x - %s from ", echoreq->header, echoreq->message);
+	PRINTF("echo handler invoked %x - %s from ", (unsigned int) echoreq->header, echoreq->message);
 	PRINT6ADDR(remote_addr);
-	printf(" port %d\n", remote_port);
+	PRINTF(" port %d\n", remote_port);
 
 	if (length != sizeof(echo_t)) return;
 
-	printf("Sending reply\n");
+	PRINTF("Sending reply\n");
 
 	echo_t echo_rep;
 	memcpy(&echo_rep, echoreq, sizeof(echo_t));
@@ -68,17 +81,23 @@ void echo_handler(uip_ipaddr_t *remote_addr, int remote_port, char *data, int le
 
 PROCESS_THREAD(test_bcast_cb, ev, data)
 {
-	static struct etimer et;
 
     PROCESS_BEGIN( );
 
-    printf("\r\n[CONTIKI TEST BROADCAST PROCESS] Starting initializations...\r\n");
+    PRINTF("\r\n[CONTIKI TEST BROADCAST PROCESS] Starting initializations...\r\n");
 
     config_init( );
 
-    sensor_aux_init();
-
     neighbors_init( );
+
+    #if DEPLOYABLE
+
+    sensor_aux_init();
+    PRINTF("Starting power trace, %u ticks per second\n", RTIMER_SECOND);
+    energest_init();
+    powertrace_start(60 * CLOCK_SECOND);
+
+    #endif
 
     bcast_init(0);
 
@@ -86,33 +105,30 @@ PROCESS_THREAD(test_bcast_cb, ev, data)
 
     message_init( );
 
-
     messenger_add_handler(ECHO_REQ, sizeof(echo_t), sizeof(echo_t), echo_handler);
-    messenger_add_handler(CMD_SET_HEADER, sizeof(uint32_t) * 4, sizeof(command_set_t), command_handler);
 
-	#ifdef DEPLOYABLE
-    	datahandler_init2( );
-	#else
-    	datahandler_init();
-	#endif
+    messenger_add_handler(CMD_RET_HEADER, 0, 1000000, command_handler);
+    messenger_add_handler(CMD_SET_HEADER, 0, 1000000, command_handler);
 
-    printf("[CONTIKI TEST BROADCAST PROCESS] Broadcast CB started...\r\n");
+    datahandler_init();
+
+    PRINTF("[CONTIKI TEST BROADCAST PROCESS] Broadcast CB started...\r\n");
 
     while(1)
     {
         PROCESS_WAIT_EVENT();
         if (ev == bcast_event) {
             bcast_t *bcast = (bcast_t *) data;
-            printf("******************\r\n");
-            printf("bcast event: ");
-            printf("from: ");
+            PRINTF("******************\r\n");
+            PRINTF("bcast event: ");
+            PRINTF("from: ");
             uip_debug_ipaddr_print(&(bcast->sender_addr));
-            printf("  port: %d\r\n", bcast->sender_port);
+            PRINTF("  port: %d\r\n", bcast->sender_port);
 
-            printf("len: %d message: %s\r\n", bcast->datalen, bcast->data);
+            PRINTF("len: %d message: %s\r\n", bcast->datalen, bcast->data);
 	}
         else {
-            printf("Different event: %d\r\n", ev);
+            PRINTF("Different event: %d\r\n", ev);
         }
     }
 

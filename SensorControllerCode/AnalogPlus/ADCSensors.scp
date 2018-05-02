@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <project name="ADCSensors" version="1.4.1.54">
     <desc><![CDATA[]]></desc>
-    <pattr name="Board">None</pattr>
+    <pattr name="Board">CC1310 LaunchPad</pattr>
     <pattr name="Chip name">CC1310</pattr>
     <pattr name="Chip package">QFN48 7x7 RGZ</pattr>
     <pattr name="Chip revision">-</pattr>
@@ -127,7 +127,7 @@
         <resource_ref name="GPIO Event Trigger" enabled="0"/>
         <resource_ref name="I2C Master" enabled="1">
             <rattr name="SCL frequency">1</rattr>
-            <rattr name="SCL stretch timeout">14</rattr>
+            <rattr name="SCL stretch timeout">10</rattr>
             <io_usage>
                 <uattr name="SCL pin/0000">DIO4</uattr>
                 <uattr name="SDA pin/0000">DIO5</uattr>
@@ -179,9 +179,21 @@ output.I2CError = 0;
 
 gpioSetOutput(cfg.pAuxioOAuxPowEn[0]);
 
-// delay between 1 to 5 ms
+// delay between 5000ms
 fwDelayUs(100000, FW_DELAY_RANGE_100_MS);
-//fwDelayUs(100000, FW_DELAY_RANGE_100_MS);
+fwDelayUs(100000, FW_DELAY_RANGE_100_MS);
+fwDelayUs(100000, FW_DELAY_RANGE_100_MS);
+fwDelayUs(100000, FW_DELAY_RANGE_100_MS);
+fwDelayUs(100000, FW_DELAY_RANGE_100_MS);
+
+// DELAY
+fwDelayUs(100000, FW_DELAY_RANGE_100_MS);
+fwDelayUs(100000, FW_DELAY_RANGE_100_MS);
+fwDelayUs(100000, FW_DELAY_RANGE_100_MS);
+fwDelayUs(100000, FW_DELAY_RANGE_100_MS);
+fwDelayUs(100000, FW_DELAY_RANGE_100_MS);
+
+
 
 // turn on the power for LED_DRIVER
 gpioSetOutput(cfg.pAuxioOLedDriver[0]);
@@ -204,6 +216,9 @@ if(state.i2cStatus != 0x00){
     output.I2CError = output.I2CError | (1 << 0);
 }
 
+//confirm what the delays should be here
+//fwDelayUs(100, FW_DELAY_RANGE_500_US);
+
 //Set the RGB Integration time
 i2cStart();
 i2cTx( (ADDRESS << 1) | I2C_OP_WRITE);
@@ -215,6 +230,9 @@ if(state.i2cStatus != 0x00){
     output.I2CError = output.I2CError | (1 << 1);
 }
 
+//confirm what the delays should be here
+//fwDelayUs(100, FW_DELAY_RANGE_500_US);
+
 //Set the RGB Integration time
 i2cStart();
 i2cTx( (ADDRESS << 1) | I2C_OP_WRITE);
@@ -225,6 +243,9 @@ i2cStop();
 if(state.i2cStatus != 0x00){
     output.I2CError = output.I2CError | (1 << 2);
 }
+
+//confirm what the delays should be here
+//fwDelayUs(100, FW_DELAY_RANGE_500_US);
 
 //Enable the Power on
 i2cStart();
@@ -418,7 +439,7 @@ gpioClearOutput(cfg.pAuxioOAuxPowEn[0]);
 fwGenAlertInterrupt();]]></sccode>
         <sccode name="initialize"><![CDATA[]]></sccode>
         <sccode name="terminate"><![CDATA[]]></sccode>
-        <tt_iter>run_execute,if_noalertgen_start,wait_1s,if_noalertgen_end</tt_iter>
-        <tt_struct>output.colorBlue,output.colorClear,output.colorGreen,output.colorRed,state.i2cStatus</tt_struct>
+        <tt_iter>run_execute,wait_1s</tt_iter>
+        <tt_struct>output.I2CError,output.colorBlue,output.colorClear,output.colorGreen,output.colorRed,state.i2cStatus</tt_struct>
     </task>
 </project>

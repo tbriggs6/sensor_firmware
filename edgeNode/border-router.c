@@ -58,6 +58,8 @@
 
 #include "bcast-forwarder.h"
 
+#define RPL_RESET_INTERVAL (60 * CLOCK_SECOND)
+
 #define DEBUG DEBUG_NONE
 #include "net/ip/uip-debug.h"
 
@@ -451,11 +453,13 @@ PROCESS_THREAD(border_router_process, ev, data)
 #endif
 
   while(1) {
-    PROCESS_YIELD();
-    if (ev == sensors_event && data == &button_sensor) {
-      PRINTF("Initiating global repair\n");
+    etimer_set(&et, RPL_RESET_INTERVAL);
+    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
+    //PROCESS_YIELD();
+    //if (ev == sensors_event && data == &button_sensor) {
+      printf("Initiating global repair\n");
       rpl_repair_root(RPL_DEFAULT_INSTANCE);
-    }
+    //}
   }
 
   PROCESS_END();

@@ -118,7 +118,7 @@ PROCESS_THREAD(broadcast_source, ev, data) {
 		PROCESS_YIELD(	);
 
 		if (ev == bcast_send_event) {
-			PRINTF("Handling posted bcast event %p data\n");
+			PRINTF("Handling posted bcast event %p data\n", data);
 			PRINTF("len: %d string: %s\n", ((bcast_send_t * )data)->length,
 					((bcast_send_t * )data)->data);
 			bcast_source((bcast_send_t *) data);

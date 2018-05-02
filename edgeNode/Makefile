@@ -25,6 +25,11 @@ ifeq ($(MAKE_WITH_NON_STORING),1)
 CFLAGS += -DWITH_NON_STORING=1
 endif
 
+ifeq ($(DEPLOYABLE), yes)
+	TARGET = srf06-cc26xx
+	BOARD = launchpad/cc1310
+endif
+
 WITH_WEBSERVER=1
 ifeq ($(WITH_WEBSERVER),1)
 CFLAGS += -DUIP_CONF_TCP=1
@@ -53,7 +58,7 @@ $(CONTIKI)/tools/tunslip6:	$(CONTIKI)/tools/tunslip6.c
 	(cd $(CONTIKI)/tools && $(MAKE) tunslip6)
 
 connect-router:	$(CONTIKI)/tools/tunslip6
-	sudo $(CONTIKI)/tools/tunslip6 $(PREFIX)
+	sudo $(CONTIKI)/tools/tunslip6 -s /dev/ttyACM0 -v $(PREFIX)
 
 connect-router-cooja:	$(CONTIKI)/tools/tunslip6
 	sudo $(CONTIKI)/tools/tunslip6 -a 127.0.0.1 $(PREFIX)

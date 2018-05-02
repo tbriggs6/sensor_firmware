@@ -25,6 +25,8 @@
 #undef DEBUG
 #undef PRINTF
 
+//#define DEBUG 1
+
 #if DEBUG
 #define PRINTF(...) printf(__VA_ARGS__)
 #else
@@ -101,16 +103,22 @@ void messenger_remove_handler(handler_t handler)
 
 
 
-static struct simple_udp_connection udp_conn;
+static struct simple_udp_connection msg_conn, cmd_conn;
 
 void messenger_send(const uip_ipaddr_t const *remote_addr, const void * const data, int length)
 {
-    simple_udp_sendto(&udp_conn, data, length, remote_addr);
+    simple_udp_sendto(&msg_conn, data, length, remote_addr);
+}
+
+void commander_send(const uip_ipaddr_t const *remote_addr, const void * const data, int length)
+{
+  simple_udp_sendto(&cmd_conn, data, length, remote_addr);
+
 }
 
 
 
-static void message_receiver(struct simple_udp_connection *c,
+static void message_receiver(struct simple_msg_connection *c,
          const uip_ipaddr_t *sender_addr,
          uint16_t sender_port,
          const uip_ipaddr_t *receiver_addr,
@@ -118,46 +126,54 @@ static void message_receiver(struct simple_udp_connection *c,
          const uint8_t *data,
          uint16_t datalen)
 {
-  printf("Data received on port %d from port %d with length %d\n",
+  PRINTF("\n\n**************************************************\r\n");
+  PRINTF("**************************************************\r\n");
+  PRINTF("**************************************************\r\n");
+  PRINTF("[MESSAGE RECEIVER] Data received on port %d from port %d with length %d bytes\r\n",
          receiver_port, sender_port, datalen);
 
       uint32_t *header = (uint32_t *) data;
       int length = datalen;
 
       struct listener *curr;
-      printf("Dispatching a received message with %d bytes to %d listeners\n", length, list_length(handlers_list));
+      PRINTF("[MESSAGE RECEIVER] Dispatching a received message with %d bytes to %d listeners\r\n", length, list_length(handlers_list));
       for (curr = list_head(handlers_list); curr != NULL; curr = list_item_next(curr))
       {
           if (curr->handler == NULL) {
-              printf("Handler is null\n");
+              PRINTF("[MESSAGE RECEIVER] Handler is null\r\n");
               continue;
           }
           if (curr->header != *header) {
-              printf("header %x != %x\n", curr->header, *header);
+              PRINTF("[MESSAGE RECEIVER] header %x != %x\r\n", curr->header, *header);
               continue;
           }
 
           if ((curr->min_len > 0) && (length < curr->min_len)) {
-              printf("length to small: %d < %d\n", length, curr->min_len);
+              PRINTF("[MESSAGE RECEIVER] length to small: %d < %d\r\n", length, curr->min_len);
               continue;
           }
           if ((curr->max_len > 0) && (length > curr->max_len)) {
-              printf("length is too large: %d > %d\n", length, curr->max_len);
+              PRINTF("[MESSAGE RECEIVER] length is too large: %d > %d\r\n", length, curr->max_len);
               continue;
           }
 
 
-          printf("Sending to %p\n", curr->handler);
+          PRINTF("[MESSAGE RECEIVER] Sending to %p\r\n", curr->handler);
           curr->handler(sender_addr, sender_port, (char *) uip_appdata, length);
           break;
       }
 
-      printf("Done dispatching message\n");
+     PRINTF("[MESSAGE RECEIVER] Done dispatching message\r\n");
+     PRINTF("************************************\r\n");
+     PRINTF("************************************\r\n");
+     PRINTF("************************************\r\n");
+     PRINTF("************************************\r\n\n\n");
 }
 
 
 
-void message_init( )
+void message_init()
 {
-    simple_udp_register( &udp_conn, MESSAGE_SERVER_PORT, NULL, MESSAGE_SERVER_PORT, message_receiver);
+    simple_udp_register( &cmd_conn, COMMAND_SERVER_PORT, NULL, COMMAND_SERVER_PORT, (simple_udp_callback) message_receiver);
+    simple_udp_register( &msg_conn, MESSAGE_SERVER_PORT, NULL, MESSAGE_SERVER_PORT, (simple_udp_callback) message_receiver);
 }

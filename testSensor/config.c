@@ -13,11 +13,17 @@
 #include <net/ip/uip-debug.h>
 #include <sys/compower.h>
 
+#define DEPLOYABLE 0
+
+#if DEPLOYABLE
+
 #include <driverlib/flash.h>
 #include <driverlib/vims.h>
 
+#endif // DEPLOYABLE
+
 #include "config.h"
-#include "sensor_handler.h"
+#include "datahandler.h"
 
 extern void * _uflash_base;
 extern void * _uflash_size;
@@ -26,6 +32,10 @@ static config_t config;
 static dynamic_config_t dynconfig;
 
 #define SECONDS(x) (x * CLOCK_SECOND)
+
+#ifdef PRINTF
+#undef PRINTF
+#endif
 
 #define DEBUG 1
 #if DEBUG
@@ -37,17 +47,18 @@ static dynamic_config_t dynconfig;
 
 static void config_read()
 {
-	config_t *statconfig = (config_t *) &_uflash_base;
-	//memcpy(&config, statconfig, sizeof(config));
-	config.version_num = statconfig->version_num;
-	config.magic = statconfig->magic;
-	config.bcast_interval = statconfig->bcast_interval;
-	config.sensor_interval = statconfig->sensor_interval;
-	config.neighbor_interval = statconfig->neighbor_interval;
+	#if DEPLOYABLE
+
+	// Copy the ram stored configs into the config struct
+	memcpy(&config, (config_t *) &_uflash_base, sizeof(config));
+
+	#endif
 }
 
 static void config_write()
 {
+	#if DEPLOYABLE
+
 	uint32_t mybase = (uint32_t) &_uflash_base;
 	uint32_t mysize = (uint32_t) &_uflash_size;
 
@@ -84,6 +95,8 @@ static void config_write()
 
 	/* Re-enable the cache */
 	VIMSModeSet(VIMS_BASE, VIMS_MODE_ENABLED);
+
+	#endif
 }
 
 void config_init()
@@ -101,9 +114,9 @@ void config_init()
 		PRINTF("[CONFIG INIT] Configuration magic (%-8.8X != %-8.8X) not found, using defaults\r\n", config.magic, CONFIG_MAGIC);
 		config.version_num = VERSION_NUM;
 		config.magic = CONFIG_MAGIC;
-		config.bcast_interval = SECONDS(30);
+		config.bcast_interval = SECONDS(20);
 		config.neighbor_interval = SECONDS(30);
-		config.sensor_interval = SECONDS(5);
+		config.sensor_interval = SECONDS(10);
 
 		config_write();
 		config_read();
@@ -136,7 +149,12 @@ void config_set_sensor_interval(const int interval)
 	config.sensor_interval = interval;
 	config_write();
 
+	#if DEPLOYABLE
+
 	process_poll(&sensor_timer);
+
+	#endif // DEPLOYABLE
+
 
 	return;
 }

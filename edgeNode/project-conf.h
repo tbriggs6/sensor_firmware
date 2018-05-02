@@ -31,6 +31,9 @@
 #ifndef PROJECT_ROUTER_CONF_H_
 #define PROJECT_ROUTER_CONF_H_
 
+#define NETSTACK_CONF_RDC nullrdc_driver
+#define RF_CORE_CONF_CHANNEL 25
+
 #ifndef WITH_NON_STORING
 #define WITH_NON_STORING 0 /* Set this to run with non-storing mode */
 #endif /* WITH_NON_STORING */
