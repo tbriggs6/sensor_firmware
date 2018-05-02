@@ -13,17 +13,17 @@
 #include <net/ip/uip-debug.h>
 #include <sys/compower.h>
 
-#define DEPLOYABLE 1
+#define DEPLOYABLE 0
 
 #if DEPLOYABLE
 
 #include <driverlib/flash.h>
 #include <driverlib/vims.h>
-#include "sensor_handler.h"
 
 #endif // DEPLOYABLE
 
 #include "config.h"
+#include "datahandler.h"
 
 extern void * _uflash_base;
 extern void * _uflash_size;

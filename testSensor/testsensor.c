@@ -17,18 +17,18 @@
 #include "message.h"
 #include "config.h"
 #include "neighbors.h"
+#include "datahandler.h"
 #include <powertrace.h>
 
-#define DEPLOYABLE 1
+#define DEPLOYABLE 0
 
 #if  DEPLOYABLE
-	#include "sensor_handler.h"
-	#include "scif_framework.h"
-	#include "scif_osal_contiki.h"
-	#include "scif_scs.h"
-#else
-	#include "datahandler.h"
-#endif
+
+#include "scif_framework.h"
+#include "scif_osal_contiki.h"
+#include "scif_scs.h"
+
+#endif // DEPLOYABLE
 
 #ifndef BV
 #define BV(n)           (1 << (n))
@@ -110,11 +110,7 @@ PROCESS_THREAD(test_bcast_cb, ev, data)
     messenger_add_handler(CMD_RET_HEADER, 0, 1000000, command_handler);
     messenger_add_handler(CMD_SET_HEADER, 0, 1000000, command_handler);
 
-    #if DEPLOYABLE
-    datahandler_init2();
-    #else
     datahandler_init();
-    #endif
 
     PRINTF("[CONTIKI TEST BROADCAST PROCESS] Broadcast CB started...\r\n");
 

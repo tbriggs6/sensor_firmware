@@ -15,7 +15,7 @@
 //#include "sensor.h"
 //#include "sender.h"
 
-#include "sensor_handler.h"
+#include "datahandler.h"
 
 #include <dev/aux-ctrl.h>
 #include <sys/pt.h>
@@ -274,7 +274,7 @@ PROCESS_THREAD(alert_interrupt, ev, data)
 		scifAckAlertEvents();
 
 		PRINTF("[CONTIKI ALERT PROCESS] Calling broadcast process...\r\n");
-		process_poll(&test_data2);
+		process_poll(&test_data);
 
 	}
 

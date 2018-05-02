@@ -11,4 +11,7 @@
 void datahandler_init( );
 void data_ack_handler(uip_ipaddr_t *remote_addr, int remote_port, char *data, int length);
 
+PROCESS_NAME(sensor_timer);
+PROCESS_NAME(test_data);
+
 #endif /* TESTSENSOR_DATAHANDLER_H_ */
