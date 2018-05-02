@@ -48,7 +48,7 @@ typedef struct {
 	int magic;
 	int bcast_interval;
 	int sensor_interval;
-	int neighbor_interva;
+	int neighbor_interval;
 } config_t;
 
 typedef struct {
