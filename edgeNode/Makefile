@@ -25,6 +25,11 @@ ifeq ($(MAKE_WITH_NON_STORING),1)
 CFLAGS += -DWITH_NON_STORING=1
 endif
 
+ifeq ($(DEPLOYABLE), yes)
+	TARGET = srf06-cc26xx
+	BOARD = launchpad/cc1310
+endif
+
 WITH_WEBSERVER=1
 ifeq ($(WITH_WEBSERVER),1)
 CFLAGS += -DUIP_CONF_TCP=1
