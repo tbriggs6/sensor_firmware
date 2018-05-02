@@ -49,11 +49,8 @@ static void config_read()
 {
 	#if DEPLOYABLE
 
-	config_t *statconfig = (config_t *) &_uflash_base;
-	config.magic = statconfig->magic;
-	config.bcast_interval = statconfig->bcast_interval;
-	config.sensor_interval = statconfig->sensor_interval;
-	config.neighbor_interval = statconfig->neighbor_interval;
+	// Copy the ram stored configs into the config struct
+	memcpy(&config, (config_t *) &_uflash_base, sizeof(config));
 
 	#endif
 }
