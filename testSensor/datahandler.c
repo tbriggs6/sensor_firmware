@@ -16,7 +16,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define DEPLOYABLE 0
+#define DEPLOYABLE 1
 
 #if DEPLOYABLE
 
@@ -195,8 +195,8 @@ PROCESS_THREAD(test_data, ev, data)
         PRINTF("[DATA SENDER PROCESS] Temperature Sensor: %u\r\n", data.temperature);
         PRINTF("[DATA SENDER PROCESS] colorClear: %u\r\n", data.colors[0]);
         PRINTF("[DATA SENDER PROCESS] colorRed: %u\r\n", data.colors[1]);
-        PRINTF("[DATA SENDER PROCESS] colorRed: %u\r\n", data.colors[2]);
-        PRINTF("[DATA SENDER PROCESS] colorRed: %u\r\n", data.colors[3]);
+        PRINTF("[DATA SENDER PROCESS] colorGreen: %u\r\n", data.colors[2]);
+        PRINTF("[DATA SENDER PROCESS] colorBlue: %u\r\n", data.colors[3]);
 
 
         count = 0;
@@ -209,7 +209,8 @@ PROCESS_THREAD(test_data, ev, data)
                 // how long it will wait until trying to resend the data
                 PRINTF("[DATA SENDER PROCESS] Sending data - attempt %d \r\n", count);
                 messenger_send(&server, &data, sizeof(data_t));
-                etimer_set(&et, /*2 * CLOCK_SECOND*/ config_get_bcast_interval() );
+                etimer_set(&et, 2 * CLOCK_SECOND /* config_get_bcast_interval()*/ );
+                count++;
             }
 
             // wait until the process receives an event
@@ -229,7 +230,6 @@ PROCESS_THREAD(test_data, ev, data)
             // if the timer for waiting for an acknowledgment has expired
             else if (etimer_expired(&et)) {
                 PRINTF("[DATA SENDER PROCESS] Timeout waiting for ACK\r\n");
-                count++;
             }
 
             // an event was posted to this process that was not the expiration

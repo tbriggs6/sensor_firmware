@@ -13,7 +13,7 @@
 #include <net/ip/uip-debug.h>
 #include <sys/compower.h>
 
-#define DEPLOYABLE 0
+#define DEPLOYABLE 1 
 
 #if DEPLOYABLE
 
