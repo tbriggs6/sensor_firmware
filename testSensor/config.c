@@ -223,6 +223,30 @@ int config_get_neighbor_interval()
 
 	return config.neighbor_interval;
 }
+
+
+void config_set_major_version(uint32_t major_ver)
+{
+	config.major_version = major_ver;
+	config_write();
+}
+
+uint32_t config_get_major_version( )
+{
+	return config.major_version;
+}
+
+void config_set_minor_version(uint32_t minor_ver)
+{
+	config.minor_version = minor_ver;
+	config_write();
+}
+
+uint32_t config_get_minor_version( )
+{
+	return config.minor_version;
+}
+
 int config_get_devtype( )
 {
 	return CONFIG_DEVTYPE;

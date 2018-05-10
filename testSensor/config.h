@@ -44,7 +44,8 @@ typedef enum {
 #define CONFIG_MAGIC (0xB16B00B5)
 
 typedef struct {
-	float version_num;
+	uint32_t major_version;
+	uint32_t minor_version;
 	int magic;
 	int bcast_interval;
 	int sensor_interval;
@@ -63,9 +64,13 @@ int config_get_ctime_offset( ) ;
 void config_set_bcast_interval(const int interval);
 int config_get_bcast_interval( );
 void config_set_sensor_interval(const int interval);
-int config_get_sensor_interval();
+int config_get_sensor_interval( );
 void config_set_neighbor_interval(const int interval);
-int config_get_neighbor_interval();
+int config_get_neighbor_interval( );
+void config_set_major_version(uint32_t major_ver);
+uint32_t config_get_major_version( );
+void config_set_minor_version(uint32_t minor_ver);
+uint32_t config_get_minor_version( );
 
 int config_get_devtype( );
 
