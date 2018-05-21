@@ -10,18 +10,19 @@
  *
  */
 
-#include "../message-service-tcp/message-service.h"
+#include "../messenger/message-service.h"
 
 #include <contiki.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
-
+#include <contiki-net.h>
+#include <net/ipv6/tcpip.h>
 #include "sys/log.h"
 
 #define LOG_MODULE "MESSAGE"
-#define LOG_LEVEL LOG_LEVEL_INFO
+#define LOG_LEVEL LOG_LEVEL_DBG
 
 #if !NETSTACK_CONF_WITH_IPV6 || !UIP_CONF_ROUTER || !UIP_CONF_IPV6_RPL
 #error "This example can not work with the current contiki configuration"
@@ -92,198 +93,226 @@ void messenger_remove_handler(handler_t handler)
 }
 
 
-/* ****************************************************************
- * TCP Sender Process
- * **************************************************************** */
-static process_event_t message_send_event = process_alloc_event();
+#define MAX_SEND_BUFFER 128
+#define MAX_RECV_BUFFER 32
+static uint8_t send_buffer[MAX_SEND_BUFFER];
+static uint8_t rcv_buffer[MAX_RECV_BUFFER];
+static int send_length, recv_length;
+static volatile int send_started = 0;
+static struct tcp_socket snd_socket;
+static uip_ipaddr_t message_addr;
+static struct process *requestor;
 
-typedef struct {
-    const uip_ipaddr_t *remote_addr;
-    const void *data;
-    int port;
-    size_t length;
-} message_t;
+static process_event_t sender_start_event;
+static process_event_t sender_fin_event;
 
-static enum states { IDLE, CONNECTING, SENDING } sender_state = IDLE;
-static struct psock message_sock;
+PROCESS(messenger_sender, "Messenger Sender");
 
-PROCESS(message_sender,"Sends messages to collector.");
-PROCESS_THREAD(message_sender, ev, data)
+int messenger_send_result(void * data, int *max_length)
 {
-    static message_t *message;
+    if (recv_length < 0) {
+        *max_length = 0;
+        return 0;
+    }
 
-    PROCESS_BEGIN( );
+    if (*max_length < recv_length)
+        recv_length = *max_length;
 
-    while (1) {
+    memcpy(data, rcv_buffer, recv_length);
+    return 1;
+}
 
-        PROCESS_WAIT_EVENT();
-        LOG_DBG("Event %d", ev);
+void messenger_send(const uip_ipaddr_t const *remote_addr, const void * const data, int length)
+{
+    if (send_started != 0) {
+        LOG_ERR("Send already in progress...");
+        return;
+    }
 
-        switch(sender_state) {
-        case IDLE:
-            sender_state = IDLE;
-            if (ev == message_send_event) {
-                message = (message_t *) data;
-                if (message->length == 0) {
-                    LOG_ERR("message_length is 0");
-                }
-                else if (message->data == NULL) {
-                    LOG_ERR("message_data is a NULL pointer");
-                }
-                else {
-                    tcp_connect(message->remote_addr);
-                    sender_state = CONNECTING;
-                }
-            }
-            else {
-                LOG_ERR("ERR - Unknown event %d", ev);
-            }
-            break;
+    send_started = 1;
+    if (length > MAX_SEND_BUFFER) {
+        LOG_ERR("Request exceeds maximum transfer (%d > %d)", length, MAX_SEND_BUFFER);
+    }
 
-        case CONNECTING:
-            sender_state = IDLE;
-            if (ev == tcpip_event)
-            {
-                if (uip_aborted()) {
-                    LOG_ERR("ERR - Connection aborted");
-                }
-                else if (uip_timedout()) {
-                    LOG_ERR("ERR - Connection timedout");
-                }
-                else if (uip_closed()) {
-                    LOG_ERR("ERR - Connection closed");
-                }
-                else if (uip_connected()) {
-                    LOG_INFO("Connection established... sending."));
-                    PSOCK_INIT(&message_sock);
-                    PSOCK_SEND(&message_sock, message->data, message->length);
-                    PSOCK_END();
-                    sender_state = SENDING;
-                }
-                else {
-                    LOG_ERR("ERR - Unknown TCP state\n");
-                }
-            }
-            else {
-                LOG_ERR("ERR - Cannot handle other events while waiting for TCP");
-                sender_state = CONNECTING;
-            }
-            break;
+    requestor = process_current;
 
-        case SENDING:
-            sender_state = IDLE;
-            if (ev == tcpip_event) {
-                if (uip_closed()) {
-                    LOG_INFO("Connection closed.");
-                }
-                else if (uip_aborted()) {
-                    LOG_ERR("Error - connection aborted");
-                }
-                else if (uip_timedout()) {
-                    LOG_ERR("Error - connection timed out");
-                }
-            }
-            else {
-                LOG_ERR("Error - unexpected event %d\n", ev);
-                sender_state = SENDING;
-            }
+    memcpy(&message_addr, remote_addr, sizeof(uip_ipaddr_t));
+    memcpy(send_buffer, data, length);
+    send_length = length;
 
+    process_post_synch(&messenger_sender, sender_start_event, NULL);
+}
+
+
+
+/* ****************************************************************
+ *
+ * TCP Sending agent
+ *
+ * **************************************************************** */
+static int sender_recv_bytes(struct tcp_socket *s, void *ptr,
+                             const uint8_t *inputptr, int inputdatalen)
+{
+
+    recv_length = inputdatalen;
+    tcp_socket_close(s);
+
+    return 0;
+}
+
+static void sender_recv_event(struct tcp_socket *s, void *ptr, tcp_socket_event_t ev)
+{
+    switch(ev) {
+    case TCP_SOCKET_CONNECTED:
+        LOG_DBG("Socket connected event");
+        tcp_socket_send(s, send_buffer, send_length);
+        break;
+
+    case TCP_SOCKET_DATA_SENT:
+          LOG_DBG("Data sent");
+          break;
+
+    case TCP_SOCKET_CLOSED:
+        LOG_DBG("Socket closed event");
+        send_started = 0;
+        break;
+
+    case TCP_SOCKET_TIMEDOUT:
+        LOG_DBG("Socket timed out");
+        send_started = 0;
+        send_length = -1;
+        break;
+
+    case TCP_SOCKET_ABORTED:
+        LOG_DBG("Socket aborted");
+        send_started = 0;
+        send_length = -1;
+        break;
+
+
+    }
+
+    if (send_started == 0) {
+        process_post(&messenger_sender, sender_fin_event, NULL);
+    }
+}
+
+
+PROCESS_THREAD(messenger_sender, ev, data)
+{
+    PROCESS_BEGIN();
+
+    tcp_socket_register(&snd_socket, NULL,
+                     send_buffer, sizeof(send_buffer),
+                     rcv_buffer, sizeof(rcv_buffer),
+                     sender_recv_bytes, sender_recv_event);
+
+    while(1) {
+
+        PROCESS_WAIT_EVENT_UNTIL(ev == sender_start_event);
+        LOG_DBG("Message receiver starting on %d\n", COMMAND_SERVER_PORT);
+
+        tcp_connect(&message_addr, MESSAGE_SERVER_PORT, NULL);
+
+        PROCESS_WAIT_EVENT_UNTIL(ev == sender_fin_event);
+        process_post(requestor, PROCESS_EVENT_MSG, NULL);
+
+    }
+    PROCESS_END();
+}
+
+
+static struct tcp_socket rcv_socket;
+
+#define INPUTBUFSIZE 128
+static uint8_t inputbuf[INPUTBUFSIZE];
+
+#define OUTPUTBUFSIZE 128
+static uint8_t outputbuf[OUTPUTBUFSIZE];
+
+
+
+static int message_recv_bytes(struct tcp_socket *s, void *ptr,
+                             const uint8_t *inputptr, int inputdatalen)
+{
+    LOG_DBG("Rcvd %d bytes", inputdatalen);
+
+    uint32_t *header = (uint32_t *) inputptr;
+    struct listener *curr;
+    for (curr = list_head(handlers_list); curr != NULL; curr = list_item_next(curr))
+    {
+        if (inputdatalen > curr->max_len) continue;
+        if (inputdatalen < curr->min_len) continue;
+
+        if (inputptr == NULL) continue;
+        if (*header != curr->header) continue;
+
+        LOG_DBG("Matched handler %p (%d <= %d) (%d >= %d) (%x == %x)",
+                curr->handler,
+                inputdatalen, curr->max_len,
+                inputdatalen, curr->min_len,
+                *header, curr->header);
+
+        int outputlen = sizeof(outputbuf);
+        int rc = curr->handler(inputptr, inputdatalen, (uint8_t *) &outputbuf, &outputlen);
+
+        LOG_DBG("Handler reported RC=%d and %d bytes\n", rc, outputlen);
+
+        if ((rc == 1) && (outputlen > 0)) {
+            LOG_DBG("Sending response to remote\n");
+            tcp_socket_send(s, (uint8_t *) &outputbuf, outputlen);
             break;
         }
     }
+
+    if (curr == NULL) {
+        LOG_DBG("No handlers for the message %x %d\n",*header,inputdatalen);
+    }
+
+    tcp_socket_close(s);
+
+    // consume all bytes
+    return 0;
+}
+
+static void message_recv_event(struct tcp_socket *s, void *ptr, tcp_socket_event_t ev)
+{
+    switch(ev) {
+    case TCP_SOCKET_CONNECTED: LOG_DBG("Socket connected event"); break;
+    case TCP_SOCKET_CLOSED: LOG_DBG("Socket closed event"); break;
+    case TCP_SOCKET_TIMEDOUT: LOG_DBG("Socket timed out"); break;
+    case TCP_SOCKET_ABORTED: LOG_DBG("Socket aborted"); break;
+    case TCP_SOCKET_DATA_SENT: LOG_DBG("Data sent"); break;
+    }
+}
+
+
+PROCESS(messenger_receiver, "Messenger Receiver");
+PROCESS_THREAD(messenger_receiver, ev, data)
+{
+    PROCESS_BEGIN();
+
+    LOG_DBG("Message receiver starting on %d\n", COMMAND_SERVER_PORT);
+    tcp_socket_register(&rcv_socket, NULL,
+                  inputbuf, sizeof(inputbuf),
+                  outputbuf, sizeof(outputbuf),
+                  message_recv_bytes, message_recv_event);
+     tcp_socket_listen(&rcv_socket, COMMAND_SERVER_PORT);
+
+     while(1) {
+         PROCESS_PAUSE();
+     }
+
 
     PROCESS_END();
 }
 
 
-
-
-/* **************************************************************** */
-
-
-void messenger_send(const uip_ipaddr_t const *remote_addr, const void * const data, int length)
-{
-    if (sender_state != IDLE) {
-        LOG_ERR("Error - aborted, send in progress.");
-        return;
-    }
-    message_t message;
-    message.remote_addr = remote_addr;
-    message.port = MESSAGE_SERVER_PORT;
-    message.data = data;
-    message.length = length;
-
-    process_post_synch(&message_sender, message_send_event, &message)
-
-
-}
-
-void commander_send(const uip_ipaddr_t const *remote_addr, const void * const data, int length)
-{
-        if (sender_state != IDLE) {
-            LOG_ERR("Error - aborted, send in progress.");
-            return;
-        }
-        message_t message;
-        message.remote_addr = remote_addr;
-        message.port = COMMAND_SERVER_PORT;
-        message.data = data;
-        message.length = length;
-
-        process_post_synch(&message_sender, message_send_event, &message)
-
-}
-
-
-
-static void message_receiver(struct simple_msg_connection *c,
-         const uip_ipaddr_t *sender_addr,
-         uint16_t sender_port,
-         const uip_ipaddr_t *receiver_addr,
-         uint16_t receiver_port,
-         const uint8_t *data,
-         uint16_t datalen)
-{
-    LOG_INFO("[RECEIVER] Data received on port %d from port %d with length %d bytes\r\n",
-         receiver_port, sender_port, datalen);
-
-      uint32_t *header = (uint32_t *) data;
-      int length = datalen;
-
-      struct listener *curr;
-      LOG_INFO("[RECEIVER] Dispatching a received message with %d bytes to %d listeners\r\n", length, list_length(handlers_list));
-      for (curr = list_head(handlers_list); curr != NULL; curr = list_item_next(curr))
-      {
-          if (curr->handler == NULL) {
-              LOG_DBG("[RECEIVER] Handler is null\r\n");
-              continue;
-          }
-          if (curr->header != *header) {
-              LOG_DBG("[RECEIVER] header %x != %x\r\n", curr->header, *header);
-              continue;
-          }
-
-          if ((curr->min_len > 0) && (length < curr->min_len)) {
-              LOG_DBG("[RECEIVER] length to small: %d < %d\r\n", length, curr->min_len);
-              continue;
-          }
-          if ((curr->max_len > 0) && (length > curr->max_len)) {
-              LOG_DBG("[RECEIVER] length is too large: %d > %d\r\n", length, curr->max_len);
-              continue;
-          }
-
-
-          LOG_DBG("[RECEIVER] Sending to %p\r\n", curr->handler);
-          curr->handler(sender_addr, sender_port, (char *) uip_appdata, length);
-          break;
-      }
-
-     LOG_DBG("[RECEIVER] Done dispatching message\r\n");
-     }
-
-
-
 void message_init()
 {
-    process_start(&message_sender);
+    sender_start_event = process_alloc_event( );
+    sender_fin_event = process_alloc_event( );
+
+    process_start(&messenger_sender, NULL);
+    process_start(&messenger_receiver, NULL);
 }
