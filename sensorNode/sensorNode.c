@@ -9,14 +9,16 @@
 #include <contiki.h>
 #include <sys/clock.h>
 #include <stdio.h> /* For printf() */
+#include <sys/energest.h>
 
 #include "../modules/config/config.h"
 #include "../modules/echo/echo.h"
 #include "../modules/messenger/message-service.h"
+#include "../modules/command/command.h"
 #include "sys/log.h"
 #define LOG_MODULE "MESSAGE"
 #define LOG_LEVEL LOG_LEVEL_DBG
-
+#include "../modules/command/message.h"
 
 /*---------------------------------------------------------------------------*/
 PROCESS(hello_world_process, "Hello world process");
@@ -31,6 +33,8 @@ PROCESS_THREAD(hello_world_process, ev, data)
   config_init( );
   messenger_init();
   echo_init();
+  command_init( );
+  energest_init( );
 
   LOG_DBG("Size of addr: %u\n", (unsigned int) sizeof(uip_ipaddr_t));
 
@@ -44,6 +48,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
   for (i = 0; i < 8; i++) {
 	  LOG_DBG("%d - %x\n", i, addr.u16[i]);
   }
+  //static int seq = 0;
   while(1) {
 
     /* Wait for the periodic timer to expire and then restart the timer. */
@@ -51,12 +56,27 @@ PROCESS_THREAD(hello_world_process, ev, data)
     etimer_reset(&timer);
 
     LOG_INFO("Sending message: hello world");
-    const char *msg = "Hello";
 
-    uiplib_ip6addrconv("fd00::1", &addr);
-    messenger_send(&addr, msg, strlen(msg));
+//    data_t data;
+//    data.header = DATA_HEADER;
+//    data.sequence = seq++;
+//    data.adc[0] =  32;
+//    data.adc[1] =  35;
+//    data.adc[2] =  34;
+//    data.adc[3] =  35;
+//    data.colors[0] = 0x33;
+//    data.colors[1] = 0x34;
+//    data.colors[2] = 0x35;
+//    data.colors[3] = 0x36;
+//    data.temperature = 32;
+//    data.I2CError = 0;
+//    data.battery = 323;
+//
+//    uiplib_ip6addrconv("fd00::1", &addr);
+//    messenger_send(&addr, &data, sizeof(data));
 
   }
 
   PROCESS_END();
 }
+

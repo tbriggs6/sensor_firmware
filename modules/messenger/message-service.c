@@ -42,6 +42,7 @@
 #include <contiki-net.h>
 #include <net/ipv6/tcpip.h>
 
+#define DEBUG
 // contiki-ism for logging the data -
 #include "sys/log.h"
 #define LOG_MODULE "MESSAGE"
@@ -157,7 +158,7 @@ static int message_recv_bytes(struct tcp_socket *s, void *ptr,
 
         LOG_DBG("Handler reported RC=%d and %d bytes\n", rc, outputlen);
 
-        if ((rc == 1) && (outputlen > 0)) {
+        if ((rc >0) && (outputlen > 0)) {
             LOG_DBG("Sending response to remote\n");
             tcp_socket_send(s, (uint8_t *) &outputbuf, outputlen);
             break;

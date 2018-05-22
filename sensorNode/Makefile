@@ -2,11 +2,13 @@
 CONTIKI_PROJECT = sensorNode
 all: $(CONTIKI_PROJECT)
 
-MODULES += os/services/shell
+MODULES += os/services/shell os/sys/energest 
 
 include ../modules/config/Makefile.config
 include ../modules/echo/Makefile.echo
 include ../modules/messenger/Makefile.messenger
+include ../modules/command/Makefile.command
+
 
 #PROJECT_SOURCEFILES += utils.c 
 

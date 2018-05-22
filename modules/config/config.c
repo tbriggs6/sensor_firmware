@@ -12,8 +12,6 @@
 #include <contiki-net.h>
 #include <sys/compower.h>
 
-#define DEBUG
-
 // contiki-ism for logging the data -
 #include "sys/log.h"
 #define LOG_MODULE "CONFIG"
