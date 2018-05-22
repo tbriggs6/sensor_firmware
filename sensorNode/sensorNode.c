@@ -7,9 +7,11 @@
 
 
 #include <contiki.h>
+#include <sys/clock.h>
 #include <stdio.h> /* For printf() */
 #include <message-service.h>
 #include <echo.h>
+#include <config.h>
 
 #include "sys/log.h"
 #define LOG_MODULE "MESSAGE"
@@ -26,6 +28,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 
   PROCESS_BEGIN();
 
+  config_init( );
   messenger_init();
   echo_init();
 

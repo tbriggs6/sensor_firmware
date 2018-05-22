@@ -15,6 +15,7 @@
 #include "../messenger/message-service.h"
 
 #include <contiki.h>
+#include <sys/clock.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -45,7 +46,7 @@ static uint8_t rcv_buffer[MAX_RECV_BUFFER];
 static int send_length, recv_length;
 static volatile int send_started = 0;
 static struct tcp_socket snd_socket;
-static uip_ipaddr_t message_addr;
+static uip_ip6addr_t message_addr;
 static struct process *requestor;
 
 static process_event_t sender_start_event;

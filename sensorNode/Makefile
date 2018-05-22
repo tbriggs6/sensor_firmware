@@ -6,6 +6,8 @@ MODULES += os/services/shell
 
 MODULES_REL += /home/contiki/git/firmware/apps/messenger
 MODULES_REL += /home/contiki/git/firmware/apps/echo
+MODULES_REL += /home/contiki/git/firmware/apps/config
+
 MODULES_REL += $(TARGET)
 
 #PROJECT_SOURCEFILES += utils.c 

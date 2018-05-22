@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include <contiki.h>
 #include "../apps/messenger/message-service.h"
 
