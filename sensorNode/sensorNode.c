@@ -15,6 +15,7 @@
 #define LOG_MODULE "MESSAGE"
 #define LOG_LEVEL LOG_LEVEL_DBG
 
+#include "utils.h"
 /*---------------------------------------------------------------------------*/
 PROCESS(hello_world_process, "Hello world process");
 AUTOSTART_PROCESSES(&hello_world_process);
@@ -25,19 +26,34 @@ PROCESS_THREAD(hello_world_process, ev, data)
 
   PROCESS_BEGIN();
 
-  message_init();
+  messenger_init();
   echo_init();
+
+  LOG_DBG("Size of addr: %lu\n", sizeof(uip_ipaddr_t));
 
   /* Setup a periodic timer that expires after 10 seconds. */
   etimer_set(&timer, CLOCK_SECOND * 10);
+  uip_ip6addr_t addr;
+  ip6addr_filladdr((uint16_t *)&addr, "fd00::1");
 
+  uiplib_ip6addrconv("fd00::1", &addr);
+
+  int i;
+  for (i = 0; i < 8; i++) {
+	  LOG_DBG("%d - %x\n", i, addr.u16[i]);
+  }
   while(1) {
-    LOG_INFO("Sending message: hello world");
-    messenger_send(remote_addr, data, length)
 
     /* Wait for the periodic timer to expire and then restart the timer. */
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer));
     etimer_reset(&timer);
+
+    LOG_INFO("Sending message: hello world");
+    const char *msg = "Hello";
+
+    uiplib_ip6addrconv("fd00::1", &addr);
+    messenger_send(&addr, msg, strlen(msg));
+
   }
 
   PROCESS_END();

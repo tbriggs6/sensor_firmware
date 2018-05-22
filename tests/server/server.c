@@ -38,11 +38,12 @@ int main()
     struct sockaddr_in6 addr;
     int pid;
 
+    printf("Listening for incoming on 5555\n");
     s = socket(AF_INET6, SOCK_STREAM, 0);
     setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &reuseaddr, sizeof(reuseaddr));
 
     addr.sin6_family = AF_INET6;
-    addr.sin6_port = htons(5323);
+    addr.sin6_port = htons(5555);
     addr.sin6_addr = in6addr_any;
 
     bind(s, (struct sockaddr *)&addr, sizeof(addr));

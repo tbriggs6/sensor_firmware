@@ -3,10 +3,32 @@
  * @author Tom Briggs
  * @brief The message service manager
  *
- * This service manages the exchanging messages.  Other
- * services register themselves by submitting a handler
- * type and length, and this process will dispatch
- * matching datagrams.
+ * The message service comprises two functions:
+ * * A server socket that listens for incoming connections
+ * * A list of call-back handlers that will be invoked when
+ *   a matching message is received.
+ *
+ * At initialization (through a call to message_init()), the
+ * service creates a TCP socket and listens for incoming
+ * connections on port (COMMAND_SERVER_PORT in message-service.h).
+ *
+ * Applications register call-backs through calls to messenger_add_handler()
+ * and messenger_remove_handler().  When a message is received, the service
+ * will iterate through the list of registered handlers and compare the
+ * matching criteria.  The first handler to match the criteria will be
+ * invoked.  At this time, only the first matching handler will be called.
+ *
+ * The matching criteria are:
+ * * Pre-amble of the message (the first 32-bits must match)
+ * * minimum message length
+ * * maximum message length
+ *
+ * As an example, the "echo" service registers itself with this module:
+ *      messenger_add_handler(0x6f686365,   4,  99, echo_handler);
+ * Where the pre-able is the ASCII characters "echo", and the message
+ * must be between 4 and 99 bytes (inclusively).  When a TCP datagram
+ * matches this, the function echo_handler() will be called with arguments
+ * containing a pointer to the datagram and the number of received bytes.
  *
  */
 
@@ -19,17 +41,23 @@
 #include <stdint.h>
 #include <contiki-net.h>
 #include <net/ipv6/tcpip.h>
-#include "sys/log.h"
 
+// contiki-ism for logging the data -
+#include "sys/log.h"
 #define LOG_MODULE "MESSAGE"
+#define LOG_LEVEL LOG_LEVEL_INFO
+
+#ifdef DEBUG
+#undef LOG_LEVEL
 #define LOG_LEVEL LOG_LEVEL_DBG
+#endif
 
 #if !NETSTACK_CONF_WITH_IPV6 || !UIP_CONF_ROUTER || !UIP_CONF_IPV6_RPL
 #error "This example can not work with the current contiki configuration"
 #error "Check the values of: NETSTACK_CONF_WITH_IPV6, UIP_CONF_ROUTER, UIP_CONF_IPV6_RPL"
 #endif
 
-#define UIP_IP_BUF   ((struct uip_udpip_hdr *)&uip_buf[UIP_LLH_LEN])
+
 
 /**
  * @brief Listener services
@@ -93,135 +121,6 @@ void messenger_remove_handler(handler_t handler)
 }
 
 
-#define MAX_SEND_BUFFER 128
-#define MAX_RECV_BUFFER 32
-static uint8_t send_buffer[MAX_SEND_BUFFER];
-static uint8_t rcv_buffer[MAX_RECV_BUFFER];
-static int send_length, recv_length;
-static volatile int send_started = 0;
-static struct tcp_socket snd_socket;
-static uip_ipaddr_t message_addr;
-static struct process *requestor;
-
-static process_event_t sender_start_event;
-static process_event_t sender_fin_event;
-
-PROCESS(messenger_sender, "Messenger Sender");
-
-int messenger_send_result(void * data, int *max_length)
-{
-    if (recv_length < 0) {
-        *max_length = 0;
-        return 0;
-    }
-
-    if (*max_length < recv_length)
-        recv_length = *max_length;
-
-    memcpy(data, rcv_buffer, recv_length);
-    return 1;
-}
-
-void messenger_send(const uip_ipaddr_t const *remote_addr, const void * const data, int length)
-{
-    if (send_started != 0) {
-        LOG_ERR("Send already in progress...");
-        return;
-    }
-
-    send_started = 1;
-    if (length > MAX_SEND_BUFFER) {
-        LOG_ERR("Request exceeds maximum transfer (%d > %d)", length, MAX_SEND_BUFFER);
-    }
-
-    requestor = process_current;
-
-    memcpy(&message_addr, remote_addr, sizeof(uip_ipaddr_t));
-    memcpy(send_buffer, data, length);
-    send_length = length;
-
-    process_post_synch(&messenger_sender, sender_start_event, NULL);
-}
-
-
-
-/* ****************************************************************
- *
- * TCP Sending agent
- *
- * **************************************************************** */
-static int sender_recv_bytes(struct tcp_socket *s, void *ptr,
-                             const uint8_t *inputptr, int inputdatalen)
-{
-
-    recv_length = inputdatalen;
-    tcp_socket_close(s);
-
-    return 0;
-}
-
-static void sender_recv_event(struct tcp_socket *s, void *ptr, tcp_socket_event_t ev)
-{
-    switch(ev) {
-    case TCP_SOCKET_CONNECTED:
-        LOG_DBG("Socket connected event");
-        tcp_socket_send(s, send_buffer, send_length);
-        break;
-
-    case TCP_SOCKET_DATA_SENT:
-          LOG_DBG("Data sent");
-          break;
-
-    case TCP_SOCKET_CLOSED:
-        LOG_DBG("Socket closed event");
-        send_started = 0;
-        break;
-
-    case TCP_SOCKET_TIMEDOUT:
-        LOG_DBG("Socket timed out");
-        send_started = 0;
-        send_length = -1;
-        break;
-
-    case TCP_SOCKET_ABORTED:
-        LOG_DBG("Socket aborted");
-        send_started = 0;
-        send_length = -1;
-        break;
-
-
-    }
-
-    if (send_started == 0) {
-        process_post(&messenger_sender, sender_fin_event, NULL);
-    }
-}
-
-
-PROCESS_THREAD(messenger_sender, ev, data)
-{
-    PROCESS_BEGIN();
-
-    tcp_socket_register(&snd_socket, NULL,
-                     send_buffer, sizeof(send_buffer),
-                     rcv_buffer, sizeof(rcv_buffer),
-                     sender_recv_bytes, sender_recv_event);
-
-    while(1) {
-
-        PROCESS_WAIT_EVENT_UNTIL(ev == sender_start_event);
-        LOG_DBG("Message receiver starting on %d\n", COMMAND_SERVER_PORT);
-
-        tcp_connect(&message_addr, MESSAGE_SERVER_PORT, NULL);
-
-        PROCESS_WAIT_EVENT_UNTIL(ev == sender_fin_event);
-        process_post(requestor, PROCESS_EVENT_MSG, NULL);
-
-    }
-    PROCESS_END();
-}
-
-
 static struct tcp_socket rcv_socket;
 
 #define INPUTBUFSIZE 128
@@ -235,7 +134,7 @@ static uint8_t outputbuf[OUTPUTBUFSIZE];
 static int message_recv_bytes(struct tcp_socket *s, void *ptr,
                              const uint8_t *inputptr, int inputdatalen)
 {
-    LOG_DBG("Rcvd %d bytes", inputdatalen);
+    LOG_DBG("Rcvd %d bytes\n", inputdatalen);
 
     uint32_t *header = (uint32_t *) inputptr;
     struct listener *curr;
@@ -247,7 +146,7 @@ static int message_recv_bytes(struct tcp_socket *s, void *ptr,
         if (inputptr == NULL) continue;
         if (*header != curr->header) continue;
 
-        LOG_DBG("Matched handler %p (%d <= %d) (%d >= %d) (%x == %x)",
+        LOG_DBG("Matched handler %p (%d <= %d) (%d >= %d) (%x == %x)\n",
                 curr->handler,
                 inputdatalen, curr->max_len,
                 inputdatalen, curr->min_len,
@@ -278,11 +177,11 @@ static int message_recv_bytes(struct tcp_socket *s, void *ptr,
 static void message_recv_event(struct tcp_socket *s, void *ptr, tcp_socket_event_t ev)
 {
     switch(ev) {
-    case TCP_SOCKET_CONNECTED: LOG_DBG("Socket connected event"); break;
-    case TCP_SOCKET_CLOSED: LOG_DBG("Socket closed event"); break;
-    case TCP_SOCKET_TIMEDOUT: LOG_DBG("Socket timed out"); break;
-    case TCP_SOCKET_ABORTED: LOG_DBG("Socket aborted"); break;
-    case TCP_SOCKET_DATA_SENT: LOG_DBG("Data sent"); break;
+    case TCP_SOCKET_CONNECTED: LOG_DBG("Socket connected event\n"); break;
+    case TCP_SOCKET_CLOSED: LOG_DBG("Socket closed event\n"); break;
+    case TCP_SOCKET_TIMEDOUT: LOG_DBG("Socket timed out\n"); break;
+    case TCP_SOCKET_ABORTED: LOG_DBG("Socket aborted\n"); break;
+    case TCP_SOCKET_DATA_SENT: LOG_DBG("Data sent\n"); break;
     }
 }
 
@@ -292,7 +191,7 @@ PROCESS_THREAD(messenger_receiver, ev, data)
 {
     PROCESS_BEGIN();
 
-    LOG_DBG("Message receiver starting on %d\n", COMMAND_SERVER_PORT);
+    LOG_DBG("Command receiver starting on %d\n", COMMAND_SERVER_PORT);
     tcp_socket_register(&rcv_socket, NULL,
                   inputbuf, sizeof(inputbuf),
                   outputbuf, sizeof(outputbuf),
@@ -307,12 +206,11 @@ PROCESS_THREAD(messenger_receiver, ev, data)
     PROCESS_END();
 }
 
+void messenger_sender_init( );
 
-void message_init()
+void messenger_init()
 {
-    sender_start_event = process_alloc_event( );
-    sender_fin_event = process_alloc_event( );
+	messenger_sender_init( );
+	process_start(&messenger_receiver, NULL);
 
-    process_start(&messenger_sender, NULL);
-    process_start(&messenger_receiver, NULL);
 }
