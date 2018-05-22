@@ -15,7 +15,7 @@
 #define LOG_MODULE "MESSAGE"
 #define LOG_LEVEL LOG_LEVEL_DBG
 
-#include "utils.h"
+
 /*---------------------------------------------------------------------------*/
 PROCESS(hello_world_process, "Hello world process");
 AUTOSTART_PROCESSES(&hello_world_process);
@@ -34,7 +34,6 @@ PROCESS_THREAD(hello_world_process, ev, data)
   /* Setup a periodic timer that expires after 10 seconds. */
   etimer_set(&timer, CLOCK_SECOND * 10);
   uip_ip6addr_t addr;
-  ip6addr_filladdr((uint16_t *)&addr, "fd00::1");
 
   uiplib_ip6addrconv("fd00::1", &addr);
 
