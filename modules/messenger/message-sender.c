@@ -12,7 +12,7 @@
 
 #define DEBUG
 
-#include "../messenger/message-service.h"
+#include "../../modules/messenger/message-service.h"
 
 #include <contiki.h>
 #include <sys/clock.h>

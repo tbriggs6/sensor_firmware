@@ -9,10 +9,10 @@
 #include <contiki.h>
 #include <sys/clock.h>
 #include <stdio.h> /* For printf() */
-#include <message-service.h>
-#include <echo.h>
-#include <config.h>
 
+#include "../modules/config/config.h"
+#include "../modules/echo/echo.h"
+#include "../modules/messenger/message-service.h"
 #include "sys/log.h"
 #define LOG_MODULE "MESSAGE"
 #define LOG_LEVEL LOG_LEVEL_DBG
@@ -32,7 +32,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
   messenger_init();
   echo_init();
 
-  LOG_DBG("Size of addr: %lu\n", sizeof(uip_ipaddr_t));
+  LOG_DBG("Size of addr: %u\n", (unsigned int) sizeof(uip_ipaddr_t));
 
   /* Setup a periodic timer that expires after 10 seconds. */
   etimer_set(&timer, CLOCK_SECOND * 10);

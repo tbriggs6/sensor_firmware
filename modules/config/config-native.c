@@ -8,9 +8,10 @@
 #include <stdio.h>
 #include <contiki.h>
 #include <string.h>
-#include "config.h"
 
-// contiki-ism for logging the data -
+#define DEBUG
+
+#include "../../modules/config/config.h"
 #include "sys/log.h"
 #define LOG_MODULE "MESSAGE"
 #define LOG_LEVEL LOG_LEVEL_INFO
@@ -25,6 +26,7 @@
 
 void config_read()
 {
+	LOG_DBG("Reading configuration from %s\n", FILE_NAME);
 	FILE *fp = fopen(FILE_NAME,"r");
 	if (fp == NULL) {
 		LOG_ERR("Could not open file config file!");
@@ -35,10 +37,10 @@ void config_read()
 	uip_ip6addr_t server;
 
 	uint32_t value;
-	while (strlen(str) > 0) {
 
-		memset(str,0, sizeof(str));
-		fgets(str,254,fp);
+	while (fgets(str,254,fp) != NULL) {
+
+		LOG_DBG("Found string: (%s)\n",str);
 
 		if (str[0] == '#') continue;
 		if (str[0] == '\n') continue;
@@ -93,10 +95,11 @@ void config_write()
 	uip_ip6addr_t addr;
 	config_get_receiver(&addr);
 
+
 	fprintf(fp,"SERVER=");
 	for (int i = 0; i < 8; i++) {
 		if (i > 0) fprintf(fp,":");
-		fprintf(fp,"%x", addr.u16[i]);
+		fprintf(fp,"%x", uip_ntohs(addr.u16[i]));
 	}
 	fprintf(fp,"\n");
 

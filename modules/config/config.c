@@ -12,9 +12,11 @@
 #include <contiki-net.h>
 #include <sys/compower.h>
 
+#define DEBUG
+
 // contiki-ism for logging the data -
 #include "sys/log.h"
-#define LOG_MODULE "MESSAGE"
+#define LOG_MODULE "CONFIG"
 #define LOG_LEVEL LOG_LEVEL_INFO
 
 #ifdef DEBUG
@@ -22,10 +24,10 @@
 #define LOG_LEVEL LOG_LEVEL_DBG
 #endif
 
-#include "config.h"
+#include "../../modules/config/config.h"
 
-static config_t config;
-static dynamic_config_t dynconfig;
+config_t config;
+dynamic_config_t dynconfig;
 
 #define SECONDS(x) (x * CLOCK_SECOND)
 
@@ -41,14 +43,14 @@ void config_init()
 
 	// print config
 	LOG_DBG("Configuration:\r\n");
-	LOG_DBG("Version number: %d.%d\r\n", config.major_version, config.minor_version);
+	LOG_DBG("Version number: %u.%u\r\n", (unsigned int) config.major_version, (unsigned int) config.minor_version);
 	LOG_DBG("Magic: %X\r\n", config.magic);
 	LOG_DBG("Broadcast interval: %d\r\n", config.bcast_interval);
 	LOG_DBG("Neighbor interval: %d\r\n", config.neighbor_interval);
 	LOG_DBG("Sensor interval: %d\r\n\n", config.sensor_interval);
 
 	if (config.magic != CONFIG_MAGIC) {
-		LOG_INFO("[CONFIG INIT] Configuration magic (%-8.8X != %-8.8X) not found, using defaults\r\n", config.magic, CONFIG_MAGIC);
+		LOG_INFO("Configuration magic (%-8.8X != %-8.8X) not found, using defaults\r\n", config.magic, CONFIG_MAGIC);
 
 		config.magic = CONFIG_MAGIC;
 
@@ -57,13 +59,16 @@ void config_init()
 		config_set_bcast_interval(20);
 		config_set_neighbor_interval(20);
 		config_set_sensor_interval(10);
+		uip_ip6addr_t server;
+		uiplib_ip6addrconv("fd00::1", &server);
+		config_set_receiver(&server);
 
 		config_write();
 		config_read();
 
 		// print config
 		LOG_INFO("Configuration:\r\n");
-		LOG_INFO("Version number: %d.%d\r\n", config.major_version, config.minor_version);
+		LOG_INFO("Version number: %u.%u\r\n", (unsigned int) config.major_version, (unsigned int) config.minor_version);
 		LOG_INFO("Magic: %X\r\n", config.magic);
 		LOG_INFO("Broadcast interval: %d\r\n", config.bcast_interval);
 		LOG_INFO("Neighbor interval: %d\r\n", config.neighbor_interval);

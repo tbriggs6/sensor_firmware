@@ -32,7 +32,7 @@
  *
  */
 
-#include "../messenger/message-service.h"
+#include "../../modules/messenger/message-service.h"
 
 #include <contiki.h>
 #include <stdio.h>
@@ -146,11 +146,11 @@ static int message_recv_bytes(struct tcp_socket *s, void *ptr,
         if (inputptr == NULL) continue;
         if (*header != curr->header) continue;
 
-        LOG_DBG("Matched handler %p (%d <= %d) (%d >= %d) (%x == %x)\n",
-                curr->handler,
-                inputdatalen, curr->max_len,
-                inputdatalen, curr->min_len,
-                *header, curr->header);
+        LOG_DBG("Matched handler %p (%u <= %u) (%u >= %u) (%x == %x)\n",
+                (void *) curr->handler,
+                (unsigned int) inputdatalen, (unsigned int)  curr->max_len,
+				(unsigned int)  inputdatalen, (unsigned int) curr->min_len,
+                (unsigned int) *header, (unsigned int) curr->header);
 
         int outputlen = sizeof(outputbuf);
         int rc = curr->handler(inputptr, inputdatalen, (uint8_t *) &outputbuf, &outputlen);
@@ -165,7 +165,7 @@ static int message_recv_bytes(struct tcp_socket *s, void *ptr,
     }
 
     if (curr == NULL) {
-        LOG_DBG("No handlers for the message %x %d\n",*header,inputdatalen);
+        LOG_DBG("No handlers for the message %x %u\n",(unsigned int) *header,(unsigned int) inputdatalen);
     }
 
     tcp_socket_close(s);

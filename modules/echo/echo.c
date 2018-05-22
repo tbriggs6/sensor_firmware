@@ -1,6 +1,6 @@
 #include <stdint.h>
 #include <contiki.h>
-#include "../apps/messenger/message-service.h"
+#include "../../modules/messenger/message-service.h"
 
 
 int echo_handler(const uint8_t *inputdata, int inputlength, uint8_t *outputdata, int *maxoutputlen)

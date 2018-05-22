@@ -4,11 +4,9 @@ all: $(CONTIKI_PROJECT)
 
 MODULES += os/services/shell
 
-MODULES_REL += /home/contiki/git/firmware/apps/messenger
-MODULES_REL += /home/contiki/git/firmware/apps/echo
-MODULES_REL += /home/contiki/git/firmware/apps/config
-
-MODULES_REL += $(TARGET)
+include ../modules/config/Makefile.config
+include ../modules/echo/Makefile.echo
+include ../modules/messenger/Makefile.messenger
 
 #PROJECT_SOURCEFILES += utils.c 
 
@@ -17,6 +15,12 @@ CONTIKI = /home/contiki/contiki-ng
 
 include $(CONTIKI)/Makefile.include
 
+patch:
+	P=`pwd`
+	@echo Applying patches to $(CONTIKI)
+	cd $(CONTIKI)/arch/cpu/cc26xx-cc13xx
+	patch < $P/cc1310-config.patch 
+	
 
 setcap:
 	@echo "Make sure to add"
@@ -26,3 +30,6 @@ setcap:
 	@echo "to /etc/sudoers"
 	sudo setcap all=epi sensorNode.native
 	
+foo:
+	@echo $(TARGET)
+	@echo $(PROJECT_SOURCEFILES)
