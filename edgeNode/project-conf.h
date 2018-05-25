@@ -31,6 +31,8 @@
 #ifndef PROJECT_CONF_H_
 #define PROJECT_CONF_H_
 
+#include "../rf-conf.h"
+
 #ifndef WEBSERVER_CONF_CFS_CONNS
 #define WEBSERVER_CONF_CFS_CONNS 2
 #endif
@@ -42,5 +44,41 @@
 #if BORDER_ROUTER_CONF_WEBSERVER
 #define UIP_CONF_TCP 1
 #endif
+
+/* For Imin: Use 16 over NullRDC, 64 over Contiki MAC */
+#define ROLL_TM_CONF_IMIN_1         64
+
+#ifndef WITH_NON_STORING
+#define WITH_NON_STORING 0 /* Set this to run with non-storing mode */
+#endif /* WITH_NON_STORING */
+
+#if WITH_NON_STORING
+#undef RPL_NS_CONF_LINK_NUM
+#define RPL_NS_CONF_LINK_NUM 40 /* Number of links maintained at the root */
+#undef UIP_CONF_MAX_ROUTES
+#define UIP_CONF_MAX_ROUTES 0 /* No need for routes */
+#undef RPL_CONF_MOP
+#define RPL_CONF_MOP RPL_MOP_NON_STORING /* Mode of operation*/
+#endif /* WITH_NON_STORING */
+
+#ifndef UIP_FALLBACK_INTERFACE
+#define UIP_FALLBACK_INTERFACE rpl_interface
+#endif
+
+
+
+#undef UIP_CONF_IPV6_RPL
+#undef UIP_CONF_ND6_SEND_RA
+#undef UIP_CONF_ROUTER
+#define UIP_CONF_ND6_SEND_RA         0
+#define UIP_CONF_ROUTER              1
+#define UIP_MCAST6_ROUTE_CONF_ROUTES 1
+
+/* Code/RAM footprint savings so that things will fit on our device */
+#undef NBR_TABLE_CONF_MAX_NEIGHBORS
+#undef UIP_CONF_MAX_ROUTES
+#define NBR_TABLE_CONF_MAX_NEIGHBORS  10
+#define UIP_CONF_MAX_ROUTES           10
+
 
 #endif /* PROJECT_CONF_H_ */

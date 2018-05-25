@@ -36,44 +36,36 @@ PROCESS_THREAD(hello_world_process, ev, data)
   command_init( );
   energest_init( );
 
-  LOG_DBG("Size of addr: %u\n", (unsigned int) sizeof(uip_ipaddr_t));
-
   /* Setup a periodic timer that expires after 10 seconds. */
-  etimer_set(&timer, CLOCK_SECOND * 10);
+  etimer_set(&timer, CLOCK_SECOND * 60);
   uip_ip6addr_t addr;
 
   uiplib_ip6addrconv("fd00::1", &addr);
 
-  int i;
-  for (i = 0; i < 8; i++) {
-	  LOG_DBG("%d - %x\n", i, addr.u16[i]);
-  }
-  //static int seq = 0;
+  static int seq = 0;
   while(1) {
 
     /* Wait for the periodic timer to expire and then restart the timer. */
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer));
     etimer_reset(&timer);
 
-    LOG_INFO("Sending message: hello world");
-
-//    data_t data;
-//    data.header = DATA_HEADER;
-//    data.sequence = seq++;
-//    data.adc[0] =  32;
-//    data.adc[1] =  35;
-//    data.adc[2] =  34;
-//    data.adc[3] =  35;
-//    data.colors[0] = 0x33;
-//    data.colors[1] = 0x34;
-//    data.colors[2] = 0x35;
-//    data.colors[3] = 0x36;
-//    data.temperature = 32;
-//    data.I2CError = 0;
-//    data.battery = 323;
-//
-//    uiplib_ip6addrconv("fd00::1", &addr);
-//    messenger_send(&addr, &data, sizeof(data));
+    data_t data;
+    data.header = DATA_HEADER;
+    data.sequence = seq++;
+    data.adc[0] =  32;
+    data.adc[1] =  35;
+    data.adc[2] =  34;
+    data.adc[3] =  35;
+    data.colors[0] = 0x33;
+    data.colors[1] = 0x34;
+    data.colors[2] = 0x35;
+    data.colors[3] = 0x36;
+    data.temperature = 32;
+    data.I2CError = 0;
+    data.battery = 323;
+    LOG_INFO("Sending fake data\n");
+    uiplib_ip6addrconv("fd00::1", &addr);
+    messenger_send(&addr, &data, sizeof(data));
 
   }
 

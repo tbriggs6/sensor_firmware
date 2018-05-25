@@ -5,11 +5,11 @@
 #include "message.h"
 #include <sys/energest.h>
 
-#define DEBUG
+//#define DEBUG
 
 // contiki-ism for logging the data -
 #include "sys/log.h"
-#define LOG_MODULE "CONFIG"
+#define LOG_MODULE "CMD"
 #define LOG_LEVEL LOG_LEVEL_INFO
 
 #ifdef DEBUG
@@ -82,6 +82,8 @@ static void command_handle_set(const command_set_t *const req, command_ret_t *re
 
 static void command_handle_get(const command_set_t *const req, command_ret_t *ret, int *num_bytes)
 {
+	float value;
+
 	ret->header = CMD_RET_HEADER;
 	ret->token = req->token;
 	ret->length = 0; // this will need to be modified
@@ -167,31 +169,50 @@ static void command_handle_get(const command_set_t *const req, command_ret_t *re
 
 	case CONFIG_ENERGEST_CPU:
 		LOG_INFO("Get CONFIG_ENERGEST_CPU...\n");
-		ret->value.uivalue = energest_type_time(ENERGEST_TYPE_CPU);
+
+		value = energest_type_time(ENERGEST_TYPE_CPU);
+		value = value / (float) ENERGEST_GET_TOTAL_TIME();
+		ret->value.uivalue = (int)(value * 100.0);
+
 		ret->length += sizeof(ret->value.uivalue);
 		break;
 
 	case CONFIG_ENERGEST_LPM:
 		LOG_INFO("Get CONFIG_ENERGEST_LPM...\n");
-		ret->value.uivalue = energest_type_time(ENERGEST_TYPE_LPM);
+
+		value = energest_type_time(ENERGEST_TYPE_LPM);
+		value = value / (float) ENERGEST_GET_TOTAL_TIME();
+		ret->value.uivalue = (int)(value * 100.0);
+
 		ret->length += sizeof(ret->value.uivalue);
 		break;
 
 	case CONFIG_ENERGEST_TRANSMIT:
 		LOG_INFO("Get CONFIG_ENERGEST_TRANSMIT...\n");
-		ret->value.uivalue = energest_type_time(ENERGEST_TYPE_TRANSMIT);
+
+		value = energest_type_time(ENERGEST_TYPE_TRANSMIT);
+		value = value / (float) ENERGEST_GET_TOTAL_TIME();
+		ret->value.uivalue = (int)(value * 100.0);
+
 		ret->length += sizeof(ret->value.uivalue);
 		break;
 
 	case CONFIG_ENERGEST_LISTEN:
 		LOG_INFO("Get CONFIG_ENERGEST_LISTEN...\n");
-		ret->value.uivalue = energest_type_time(ENERGEST_TYPE_LISTEN);
+
+		value = energest_type_time(ENERGEST_TYPE_LISTEN);
+		value = value / (float) ENERGEST_GET_TOTAL_TIME();
+		ret->value.uivalue = (int)(value * 100.0);
+
 		ret->length += sizeof(ret->value.uivalue);
 		break;
 
-	case CONFIG_ENERGEST_MAX:
-		LOG_INFO("Get CONFIG_ENERGEST_MAX...\n");
-		ret->value.uivalue = energest_type_time(ENERGEST_TYPE_MAX);
+	case CONFIG_ENERGEST_DEEP_LPM:
+		LOG_INFO("Get CONFIG_ENERGEST_DEEP_LPM...\n");
+
+		value = energest_type_time(ENERGEST_TYPE_DEEP_LPM);
+		value = value / (float) ENERGEST_GET_TOTAL_TIME();
+		ret->value.uivalue = (int)(value * 100.0);
 		ret->length += sizeof(ret->value.uivalue);
 		break;
 
@@ -208,8 +229,20 @@ static void command_handle_get(const command_set_t *const req, command_ret_t *re
 
 int command_handler(const uint8_t *inputdata, int inputlength, uint8_t *outputdata, int *maxoutputlen)
 {
+	int i;
+	LOG_DBG("HANDLER INPUT: (%d) ", inputlength);
+	for (i = 0; i < inputlength; i++)
+		LOG_DBG_("%-2.2x ", inputdata[i]);
+	LOG_DBG_("\n");
+
 	const command_set_t *req = (const command_set_t *) inputdata;
 	command_ret_t *response = (command_ret_t *) outputdata;
+
+	LOG_DBG("COMMAND REQ: \n");
+	LOG_DBG("  HEADER: 0x%x\n", (unsigned int) req->header);
+	LOG_DBG("  TYPE: %d\n", (unsigned int) req->config_type);
+	LOG_DBG("  TOKEN: 0x%x\n", (unsigned int) req->token);
+	LOG_DBG("  VALUE: 0x%x\n", (unsigned int) req->value.intval);
 
 	if (*maxoutputlen < sizeof(command_ret_t)) {
 		LOG_ERR("Error - output buffer is too small!!\n");
@@ -234,8 +267,16 @@ int command_handler(const uint8_t *inputdata, int inputlength, uint8_t *outputda
 }
 
 
+#define ADDR_DIFF(x,y) ((int) &x.y - (int) &x)
 void command_init( )
 {
+
+	command_set_t test;
+	LOG_DBG("Starts / sizes: total (%u)\n", sizeof(test));
+	LOG_DBG("   header %d - %d\n", ADDR_DIFF(test,header), sizeof(test.header));
+	LOG_DBG("   type   %d - %d\n", ADDR_DIFF(test,config_type), sizeof(test.config_type));
+	LOG_DBG("   token  %d - %d\n", ADDR_DIFF(test,token), sizeof(test.token));
+	LOG_DBG("   intval %d - %d\n", ADDR_DIFF(test,value.intval), sizeof(test.value.intval));
 
     messenger_add_handler(0x0beed1eU,   4,  sizeof(command_set_t), command_handler);
 }

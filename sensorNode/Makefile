@@ -4,10 +4,16 @@ all: $(CONTIKI_PROJECT)
 
 MODULES += os/services/shell os/sys/energest 
 
+#MAKE_MAC=MAKE_MAC_NULLMAC
+
+
+UNIFLASH=/home/contiki/prog
+
 include ../modules/config/Makefile.config
 include ../modules/echo/Makefile.echo
 include ../modules/messenger/Makefile.messenger
 include ../modules/command/Makefile.command
+
 
 
 #PROJECT_SOURCEFILES += utils.c 
@@ -31,7 +37,17 @@ setcap:
 	@echo
 	@echo "to /etc/sudoers"
 	sudo setcap all=epi sensorNode.native
+
+
+
+prog: all
+	@echo Programming 2000063 in $(UNIFLASH)
+	cp sensorNode.hex $(UNIFLASH)/2000063/user_files/images
+	(cd /home/contiki/prog/2000063 && ./dslite.sh)
 	
-foo:
-	@echo $(TARGET)
-	@echo $(PROJECT_SOURCEFILES)
+	@echo Programming 2000063 in $(UNIFLASH)
+	cp sensorNode.hex $(UNIFLASH)/L1001924/user_files/images
+	(cd $(UNIFLASH)/L1001924 && ./dslite.sh)
+	
+	
+	
