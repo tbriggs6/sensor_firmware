@@ -6,6 +6,7 @@ MODULES += os/services/shell os/sys/energest
 
 #MAKE_MAC=MAKE_MAC_NULLMAC
 
+CFLAGS += -ggdb
 
 UNIFLASH=/home/contiki/prog
 
@@ -15,6 +16,11 @@ include ../modules/messenger/Makefile.messenger
 include ../modules/command/Makefile.command
 
 
+
+
+ifeq ($(TARGET),srf06-cc26xx)
+PROJECT_SOURCEFILES += scif_framework.c scif_osal_contiki.c scif_scs.c  sensor-cc1310.c
+endif
 
 #PROJECT_SOURCEFILES += utils.c 
 
