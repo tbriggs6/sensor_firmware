@@ -1,6 +1,6 @@
 
 CONTIKI_PROJECT = sensorNode
-all: $(CONTIKI_PROJECT)
+all: scsdir $(CONTIKI_PROJECT)
 
 MODULES += os/services/shell os/sys/energest 
 
@@ -16,10 +16,9 @@ include ../modules/messenger/Makefile.messenger
 include ../modules/command/Makefile.command
 
 
-
-
 ifeq ($(TARGET),srf06-cc26xx)
-PROJECT_SOURCEFILES += scif_framework.c scif_osal_contiki.c scif_scs.c  sensor-cc1310.c
+CFLAGS += -I$(CURDIR)/scs
+PROJECT_SOURCEFILES += scs/scif_framework.c scs/scif_scs.c scs/scif_osal_none.c sensor-cc1310.c
 endif
 
 #PROJECT_SOURCEFILES += utils.c 
@@ -35,6 +34,9 @@ patch:
 	cd $(CONTIKI)/arch/cpu/cc26xx-cc13xx
 	patch < $P/cc1310-config.patch 
 	
+scsdir:
+	@echo "Ensure scs dir"
+
 
 setcap:
 	@echo "Make sure to add"
