@@ -49,8 +49,8 @@ static struct tcp_socket snd_socket;
 static uip_ip6addr_t message_addr;
 static struct process *requestor;
 
-static process_event_t sender_start_event;
-static process_event_t sender_fin_event;
+process_event_t sender_start_event;
+process_event_t sender_fin_event;
 
 PROCESS(messenger_sender, "Messenger Sender");
 
@@ -96,14 +96,14 @@ void messenger_send(const uip_ipaddr_t const *remote_addr, const void * const da
 }
 
 
-int messenger_get_last_result(int maxlen, void *dest)
+void messenger_get_last_result(int *sendlen, int *recvlen, int maxlen, void *dest)
 {
 	if (maxlen > recv_length)
 		maxlen = recv_length;
 
 	memcpy(dest, rcv_buffer,maxlen);
-
-	return maxlen;
+	*sendlen = send_length;
+	*recvlen = recv_length;
 }
 
 

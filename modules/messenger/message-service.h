@@ -20,6 +20,8 @@
 // the remote server port to *connect* to sent messages
 #define MESSAGE_SERVER_PORT (5555)
 
+extern process_event_t sender_start_event;
+extern process_event_t sender_fin_event;
 
 /*
  * The call-back template for the messenger service
@@ -38,7 +40,7 @@ void messenger_init( void );
 void messenger_send(const uip_ipaddr_t const *remote_addr, const void const *data, int length);
 
 // get result of the last send (including any data received from the remote
-int messenger_get_last_result(int maxlen, void *dest);
+void messenger_get_last_result(int *sendlen, int *recvlen, int maxlen, void *dest);
 
 // add a callback handler to the list
 void messenger_add_handler(uint32_t header, uint32_t min_len, uint32_t max_len, handler_t handler);
