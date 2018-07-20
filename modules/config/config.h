@@ -9,7 +9,7 @@
 #define CONFIG_H_
 
 #define VERSION_MAJOR 3
-#define VERSION_MINOR 0
+#define VERSION_MINOR 1
 
 #include <contiki.h>
 #include <contiki-net.h>
@@ -41,7 +41,7 @@ typedef enum {
 } configtype_t;
 
 // see wikipedia - https://en.wikipedia.org/wiki/Hexspeak
-#define CONFIG_MAGIC (0xB16B00B5)
+#define CONFIG_MAGIC (0x0B160000 | (VERSION_MAJOR << 4) | VERSION_MINOR)
 
 typedef struct {
 	uint32_t major_version;

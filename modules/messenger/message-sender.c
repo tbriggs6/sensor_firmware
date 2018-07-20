@@ -203,7 +203,6 @@ PROCESS_THREAD(messenger_sender, ev, data)
         {
 			while(1) {
 				PROCESS_WAIT_EVENT();
-				LOG_DBG("Back from sender - ev=%d send_started=%d send_length=%d recv_length=%d\n", ev, send_started, send_length, recv_length);
 
 				if (ev == PROCESS_EVENT_TIMER) {
 					LOG_INFO("Error - connect timed out\n");

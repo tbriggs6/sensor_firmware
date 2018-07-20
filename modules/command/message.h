@@ -53,11 +53,16 @@ typedef struct __attribute__((__packed__)) {
 typedef struct {
         uint32_t header;
         uint32_t sequence;
+        uint16_t ambient;
         uint16_t battery;
+        uint16_t color_blue;
+        uint16_t color_clear;
+        uint16_t color_green;
+        uint16_t color_red;
+        uint16_t conductivity;
+        uint16_t hall;
+        uint16_t i2cerror;
         uint16_t temperature;
-        uint16_t adc[4];
-        uint16_t colors[4];
-        uint16_t I2CError;
 } data_t;
 
 #define DATA_ACK_HEADER (0x90983323U)

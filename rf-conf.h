@@ -57,9 +57,6 @@
 #define IEEE802154_CONF_PANID            0xDEED
 #define RPL_CONF_WITH_PROBING                 1
 
-#ifndef MAKE_MAC
-#define MAKE_MAC MAKE_MAC_NULLMAC
-#endif
 
 /*---------------------------------------------------------------------------*/
 /* Enable the ROM bootloader */

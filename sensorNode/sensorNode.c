@@ -44,6 +44,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
   uip_ip6addr_t addr;
 
   uiplib_ip6addrconv("fd00::1", &addr);
+  config_set_receiver(&addr);
 
   while(1) {
 

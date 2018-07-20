@@ -36,6 +36,7 @@ patch:
 	
 scsdir:
 	@echo "Ensure scs dir"
+	mkdir -p obj_srf06-cc26xx/scs
 
 
 setcap:
