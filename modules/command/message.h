@@ -63,15 +63,38 @@ typedef struct {
         uint16_t hall;
         uint16_t i2cerror;
         uint16_t temperature;
+        uint32_t pressure;
+        uint32_t temppressure;
 } data_t;
 
-#define DATA_ACK_HEADER (0x90983323U)
+
+
+#define AIRBORNE_CAL_HEADER (0x65bce4f0U)
+typedef struct {
+    uint32_t header;
+    uint32_t sequence;
+    uint16_t caldata[7];
+} airborne_cal_t;
+
+#define AIRBORNE_HEADER (0x54ab23efU)
+typedef struct {
+    uint32_t header;
+    uint32_t sequence;
+    uint32_t ms5637_pressure;
+    uint32_t ms5637_temp;
+    uint32_t si7020_humid;
+    uint32_t si7020_temp;
+    uint16_t battery;
+    uint16_t i2cerror;
+} airborne_t;
+
+#define DATA_ACK_HEADER (0x45ba32feU)
 typedef struct {
         uint32_t header;
         uint32_t sequence;
         uint32_t ack_seq;
         uint32_t ack_value;
-} data_ack_t;
+} airborne_ack_t;
 
 void message_print_data(const data_t *data);
 

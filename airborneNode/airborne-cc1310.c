@@ -10,7 +10,7 @@
 #include "scif_scs.h"
 
 #include <contiki.h>
-#include "sensor.h"
+#include "airborne.h"
 #include "../modules/messenger/message-service.h"
 #include "../modules/command/message.h"
 
@@ -23,7 +23,9 @@
 #define LOG_MODULE "SENSOR"
 #define LOG_LEVEL LOG_LEVEL_INFO
 
-volatile static data_t sensor_data;
+volatile static airborne_t sensor_data;
+volatile static airborne_cal_t cal_data;
+volatile static int first_callback = 0;
 
 PROCESS(sensor_timer, "Sensor Timer");
 PROCESS_THREAD(sensor_timer, ev, data)
@@ -44,7 +46,7 @@ PROCESS_THREAD(sensor_timer, ev, data)
       if (ev == PROCESS_EVENT_TIMER)
 	{
 	  LOG_DBG("Starting SCS\n");
-	  scifSwTriggerExecutionCodeNbl (1 << SCIF_SCS_READ_DATA_TASK_ID);
+	  scifSwTriggerExecutionCodeNbl (1 << SCIF_SCS_READ_SENSORS_TASK_ID);
 	}
     }
 
@@ -72,23 +74,29 @@ static uip_ip6addr_t addr;
 
       if (ev == PROCESS_EVENT_POLL)
 	{
+
+
 	  leds_off (LEDS_CONF_RED);
 	  leds_off (LEDS_CONF_GREEN);
-	  LOG_INFO(
-	      "Sending data: seq=%d, temp=%d, cond=%d, amb=%d, hall=%d, rgb(%d,%d,%d,%d), pressure=%u temp=%u\n",
-	      (int ) sensor_data.sequence, sensor_data.temperature,
-	      sensor_data.conductivity, sensor_data.ambient, sensor_data.hall,
-	      sensor_data.color_red, sensor_data.color_green,
-	      sensor_data.color_blue, sensor_data.color_clear,
-	      (unsigned int) sensor_data.pressure, (unsigned int) sensor_data.temppressure);
 
-	  LOG_INFO("to: ");
-	  LOG_6ADDR(LOG_LEVEL_INFO, &addr);
-	  LOG_INFO_("\n");
+	  if (first_callback == 0) {
+	      LOG_INFO("Sending calibration data to server\n");
+	      messenger_send (&addr, (void *) &cal_data, sizeof(cal_data));
+	  }
+	  else {
+	    LOG_INFO(
+		"Sending data: seq=%u, ms5637(press=%u,temp=%u), si7020(humid=%u,temp=%u)\n",
+		(unsigned int) sensor_data.sequence,
+		(unsigned int) sensor_data.ms5637_pressure, (unsigned int) sensor_data.ms5637_temp,
+		(unsigned int) sensor_data.si7020_humid, (unsigned int) sensor_data.si7020_temp);
 
-	  // send the data
-	  messenger_send (&addr, (void *) &sensor_data, sizeof(sensor_data));
+	    LOG_INFO("to: ");
+	    LOG_6ADDR(LOG_LEVEL_INFO, &addr);
+	    LOG_INFO_("\n");
 
+	    // send the data
+	    messenger_send (&addr, (void *) &sensor_data, sizeof(sensor_data));
+	  }
 	}
 
       else if (sender_fin_event)
@@ -98,6 +106,10 @@ static uip_ip6addr_t addr;
 
 	  messenger_get_last_result (&sent_len, &recv_len, sizeof(result),
 				     &result);
+
+	  if (first_callback == 0)
+	 	first_callback = 1;
+
 	  if (sent_len < 0)
 	    {
 	      // there was an error sending data
@@ -105,6 +117,7 @@ static uip_ip6addr_t addr;
 	    }
 	  else
 	    {
+
 	      leds_on (LEDS_CONF_GREEN);
 	      leds_off (LEDS_CONF_RED);
 	    }
@@ -140,6 +153,8 @@ while (1)
 PROCESS_END( );
 }
 
+
+
 PROCESS(sensor_alert, "Sensor Alert");
 PROCESS_THREAD(sensor_alert, ev, data)
 {
@@ -154,27 +169,32 @@ while (1)
     {
       LOG_DBG("Received alert callback\n");
 
-      sensor_data.header = DATA_HEADER;
+      cal_data.header = AIRBORNE_CAL_HEADER;
+      cal_data.sequence++;
+      for (int i = 0; i < 7; i++) {
+	  cal_data.caldata[i] = scifScsTaskData.readSensors.output.ms5637cal[i];
+      }
+
+
+      sensor_data.header = AIRBORNE_HEADER;
       sensor_data.sequence++;
 // copy the data from the sensor space
+      sensor_data.ms5637_pressure = scifScsTaskData.readSensors.output.ms5637press[2] << 16;
+      sensor_data.ms5637_pressure |= scifScsTaskData.readSensors.output.ms5637press[1] << 8;
+      sensor_data.ms5637_pressure |= scifScsTaskData.readSensors.output.ms5637press[0];
 
-      sensor_data.ambient = scifScsTaskData.readData.output.AmbLight;
-      sensor_data.battery = scifScsTaskData.readData.output.BatterySensor;
-      sensor_data.color_blue = scifScsTaskData.readData.output.colorBlue;
-      sensor_data.color_clear = scifScsTaskData.readData.output.colorClear;
-      sensor_data.color_green = scifScsTaskData.readData.output.colorGreen;
-      sensor_data.color_red = scifScsTaskData.readData.output.colorRed;
-      sensor_data.conductivity = scifScsTaskData.readData.output.Conductivity;
-      sensor_data.hall = scifScsTaskData.readData.output.HallSensor;
-      sensor_data.i2cerror = scifScsTaskData.readData.output.I2CError;
-      sensor_data.temperature =
-	  scifScsTaskData.readData.output.TemperatureSensor;
-      sensor_data.pressure = scifScsTaskData.readData.output.pressure[2] << 16 |
-	  scifScsTaskData.readData.output.pressure[1] << 8 |
-	  scifScsTaskData.readData.output.pressure[0];
-      sensor_data.temppressure = scifScsTaskData.readData.output.temp[2] << 16 |
-      	  scifScsTaskData.readData.output.temp[1] << 8 |
-      	  scifScsTaskData.readData.output.temp[0];
+      sensor_data.ms5637_temp = scifScsTaskData.readSensors.output.ms5637temp[2] << 16;
+      sensor_data.ms5637_temp |= scifScsTaskData.readSensors.output.ms5637temp[1] << 8;
+      sensor_data.ms5637_temp |= scifScsTaskData.readSensors.output.ms5637temp[0];
+
+      sensor_data.si7020_humid = scifScsTaskData.readSensors.output.si7020humid[1] << 8;
+      sensor_data.si7020_humid |= scifScsTaskData.readSensors.output.si7020humid[0] << 0;
+
+      sensor_data.si7020_temp = scifScsTaskData.readSensors.output.si7020temp[1] << 8;
+      sensor_data.si7020_temp |= scifScsTaskData.readSensors.output.si7020temp[0] << 0;
+
+      sensor_data.battery = scifScsTaskData.readSensors.output.vbat << 0;
+      sensor_data.i2cerror = scifScsTaskData.readSensors.output.i2cerror << 0;
 
 
       scifClearAlertIntSource ();

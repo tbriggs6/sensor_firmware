@@ -17,6 +17,7 @@
     <task name="ReadData">
         <desc><![CDATA[]]></desc>
         <tattr name="ADDRESS" desc="The I2C address of the color sensor" type="hex" content="const" scope="task" min="0000" max="ffff">0029</tattr>
+        <tattr name="ARRAY_LEN" desc="Length of pressure sensor array" type="dec" content="const" scope="task" min="0" max="65535">3</tattr>
         <tattr name="ATIME_24MS" desc="The value to set the timing register to 24ms" type="hex" content="const" scope="task" min="0000" max="ffff">00f6</tattr>
         <tattr name="AUTO_INCRO" desc="Auto-incroment  through the registerrs" type="expr_hex" content="const" scope="task" min="0" max="65535">0x01 &lt;&lt; 5</tattr>
         <tattr name="BIG_DELAY" type="dec" content="const" scope="task" min="0" max="65535">300</tattr>
@@ -31,6 +32,10 @@
         <tattr name="ID_REG" desc="The value necessary to talk to the ID register" type="hex" content="const" scope="task" min="0000" max="ffff">0012</tattr>
         <tattr name="INTG_DELAY" desc="The number of 1ms delays needed for ADC integration" type="dec" content="const" scope="task" min="0" max="65535">24</tattr>
         <tattr name="MAGIC_TIMING" type="dec" content="const" scope="task" min="0" max="65535">246</tattr>
+        <tattr name="MS5637_ADDR" desc="Address" type="hex" content="const" scope="task" min="0000" max="ffff">0076</tattr>
+        <tattr name="MS5637_CMD_D1_256" desc="Read pressure" type="hex" content="const" scope="task" min="0000" max="ffff">0040</tattr>
+        <tattr name="MS5637_CMD_D2_256" desc="Read temperature" type="hex" content="const" scope="task" min="0000" max="ffff">0050</tattr>
+        <tattr name="MS5637_CMD_RESET" desc="reset command" type="hex" content="const" scope="task" min="0000" max="ffff">001e</tattr>
         <tattr name="POW_DELAY" desc="The number of 1ms Delays needed for Power on" type="dec" content="const" scope="task" min="0" max="65535">5</tattr>
         <tattr name="RPT" desc="Repeated byte protocol transaction" type="expr_hex" content="const" scope="task" min="0" max="65535">0x00 &lt;&lt; 5</tattr>
         <tattr name="TIMING_REG" desc="RGBC Timing Register" type="hex" content="const" scope="task" min="0000" max="ffff">0001</tattr>
@@ -45,6 +50,8 @@
         <tattr name="output.colorClear" desc="The clear color reported by the color sensor" type="dec" content="struct" scope="task" min="0" max="65535">0</tattr>
         <tattr name="output.colorGreen" desc="The amount of green reported by the color sensor" type="dec" content="struct" scope="task" min="0" max="65535">0</tattr>
         <tattr name="output.colorRed" desc="The amount of red reported by the color sensor" type="dec" content="struct" scope="task" min="0" max="65535">0</tattr>
+        <tattr name="output.pressure" desc="pressure measurement" size="ARRAY_LEN" type="dec" content="struct_array" scope="task" min="0" max="65535">0</tattr>
+        <tattr name="output.temp" desc="Temperature sensor from pressure transducer" size="ARRAY_LEN" type="dec" content="struct_array" scope="task" min="0" max="65535">0</tattr>
         <resource_ref name="ADC" enabled="1"/>
         <resource_ref name="AON Domain Functionality" enabled="0"/>
         <resource_ref name="Accumulator-Based Math" enabled="0"/>
@@ -334,9 +341,68 @@ output.colorBlue = (high << 8) | low;
 
 i2cStop();
 
+
+
+
 // power down analog LED power rail
 //TODO: Confirm if it should be configured in Open-Drain
 gpioClearOutput(cfg.pAuxioOAuxLines[1]);
+
+
+///////////////////////////////////////////////////////////////////////////////
+i2cStart();
+i2cTx((MS5637_ADDR << 1) | I2C_OP_WRITE);
+i2cTx(MS5637_CMD_RESET);
+i2cStop();
+
+fwDelayUs(5000, FW_DELAY_RANGE_100_MS);
+
+/// Read internal pressure & temperature sensor
+i2cStart();
+i2cTx((MS5637_ADDR << 1) | I2C_OP_WRITE);
+i2cTx(MS5637_CMD_D1_256);
+i2cStop();
+
+
+fwDelayUs(5000, FW_DELAY_RANGE_100_MS);
+
+i2cStart();
+i2cTx((MS5637_ADDR << 1) | I2C_OP_WRITE);
+i2cTx(0);
+i2cStop();
+
+i2cStart();
+i2cTx((MS5637_ADDR << 1) | I2C_OP_READ);
+i2cRxAck(output.pressure[2]);
+i2cRxAck(output.pressure[1]);
+i2cRxNack(output.pressure[0]);
+i2cStop();
+
+
+i2cStart();
+i2cTx((MS5637_ADDR << 1) | I2C_OP_WRITE);
+i2cTx(MS5637_CMD_D2_256);
+i2cStop();
+
+fwDelayUs(5000, FW_DELAY_RANGE_100_MS);
+
+i2cStart();
+i2cTx((MS5637_ADDR << 1) | I2C_OP_WRITE);
+i2cTx(0);
+i2cStop();
+
+i2cStart();
+i2cTx((MS5637_ADDR << 1) | I2C_OP_READ);
+i2cRxAck(output.temp[0]);
+i2cRxAck(output.temp[1]);
+i2cRxNack(output.temp[2]);
+i2cStop();
+
+
+/////////////////////////////////////////////////////////////////////////////////
+
+
+
 
 //confirm what the delays should be here
 fwDelayUs(1000, FW_DELAY_RANGE_5_MS);
@@ -392,27 +458,6 @@ adcReadFifo(value);
 total = total + value;
 
 output.TemperatureSensor = (total >> 2);
-
-//Read ADC Sensor AmbLight
-total = 0;
-adcSelectGpioInput(cfg.pAuxioAAnaInput[2]);
-adcGenManualTrigger();
-adcReadFifo(value);
-total = total + value;
-
-adcGenManualTrigger();
-adcReadFifo(value);
-total = total + value;
-
-adcGenManualTrigger();
-adcReadFifo(value);
-total = total + value;
-
-adcGenManualTrigger();
-adcReadFifo(value);
-total = total + value;
-
-output.AmbLight = (total >> 2);
 
 //Read ADC Sensor Battery
 total = 0;
@@ -471,7 +516,7 @@ fwGenAlertInterrupt();]]></sccode>
         <sccode name="terminate" init_power_mode="0"><![CDATA[]]></sccode>
         <event_trigger active_count="1">0,1,2,3</event_trigger>
         <tt_iter>run_execute,if_noalertgen_start,wait_1s,if_noalertgen_end</tt_iter>
-        <tt_struct>output.colorBlue,output.colorGreen,output.colorRed</tt_struct>
+        <tt_struct>output.HallSensor,output.pressure.[0],output.pressure.[1],output.pressure.[2],output.temp.[0],output.temp.[1],output.temp.[2]</tt_struct>
         <rtl_struct></rtl_struct>
         <rtl_task_sel en="1" struct_log_list="output"/>
     </task>
