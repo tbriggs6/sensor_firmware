@@ -147,7 +147,7 @@ void dma_init( )
   uDMAChannelTransferSet(
       UDMA0_BASE, UDMA_CHAN_SSI0_RX | UDMA_PRI_SELECT,
 			  UDMA_MODE_BASIC, (void *) (SSI0_BASE | SSI_O_DR),
-			  rxcmd, 4);
+			  rxcmd, 8);
 
   uDMAChannelAttributeDisable(
       UDMA0_BASE, UDMA_CHAN_SSI0_TX,
@@ -163,7 +163,7 @@ void dma_init( )
 
   uDMAChannelTransferSet (UDMA0_BASE, UDMA_CHAN_SSI0_TX | UDMA_PRI_SELECT,
 			  UDMA_MODE_BASIC, txres, (void *) (SSI0_BASE | SSI_O_DR),
-			  4);
+			  8);
 
   uDMAChannelEnable (UDMA0_BASE, UDMA_CHAN_SSI0_RX);
   uDMAChannelEnable (UDMA0_BASE, UDMA_CHAN_SSI0_TX);
@@ -202,8 +202,18 @@ PROCESS_THREAD(contiki_ng_br, ev, data)
 //      if (circbuff_isempty(&rxqueue)) {
 //	  // wait for an interrupt
       PROCESS_WAIT_EVENT_UNTIL(ev == PROCESS_EVENT_POLL);
-      printf("Received DMA interrupt callback\n");
+      printf("Received DMA interrupt callback : writing %x %x %x %x \n", txres[0], txres[1], txres[2], txres[3]);
 
+      NOROM_uDMAChannelControlSet (
+          UDMA0_BASE, UDMA_CHAN_SSI0_TX | UDMA_PRI_SELECT,
+          UDMA_SIZE_8 | UDMA_SRC_INC_8 | UDMA_DST_INC_NONE | UDMA_ARB_1);
+
+          uDMAChannelTransferSet (UDMA0_BASE, UDMA_CHAN_SSI0_TX | UDMA_PRI_SELECT,
+          			  UDMA_MODE_BASIC, txres, (void *) (SSI0_BASE | SSI_O_DR),
+          			  8);
+
+          uDMAChannelEnable(UDMA0_BASE, UDMA_CHAN_SSI0_TX);
+          SSIDMAEnable(SSI0_BASE,SSI_DMA_TX);
     }
 PROCESS_END();
 }
@@ -211,6 +221,7 @@ PROCESS_END();
 //void uDMAIntHandler(void)
 void SSI0IntHandler(void)
 {
+  static int int_count = 0;
   //uDMAIntClear (UDMA0_BASE, UDMA_CHAN_SSI0_TX | UDMA_CHAN_SSI0_RX);
 
   uint32_t flags = SSIIntStatus(SSI0_BASE, 1);
@@ -224,17 +235,23 @@ void SSI0IntHandler(void)
       uDMAChannelTransferSet(
             UDMA0_BASE, UDMA_CHAN_SSI0_RX | UDMA_PRI_SELECT,
       			  UDMA_MODE_BASIC, (void *) (SSI0_BASE | SSI_O_DR),
-      			  rxcmd, 4);
+      			  rxcmd, 8);
+
+      memcpy(txres, &int_count, 4);
+      memcpy(txres+4, rxcmd+4, 4);
+      int_count++;
 
       uDMAChannelEnable(UDMA0_BASE, UDMA_CHAN_SSI0_RX);
+
+      process_poll (&contiki_ng_br);
   }
 
-
-  SSIDMADisable(SSI0_BASE,SSI_DMA_TX);
+  else {
+      SSIDMADisable(SSI0_BASE,SSI_DMA_TX);
+      uDMAChannelDisable(UDMA0_BASE, UDMA_CHAN_SSI0_TX);
+  }
 
   uDMAIntClear(UDMA0_BASE, 0xffffffff);
 
-
-  process_poll (&contiki_ng_br);
 }
 
