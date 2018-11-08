@@ -74,10 +74,7 @@ static uip_ip6addr_t addr;
 
       if (ev == PROCESS_EVENT_POLL)
 	{
-
-
-	  leds_off (LEDS_CONF_RED);
-	  leds_off (LEDS_CONF_GREEN);
+	  leds_on (LEDS_CONF_GREEN);
 
 	  if (first_callback == 0) {
 	      LOG_INFO("Sending calibration data to server\n");
@@ -118,7 +115,7 @@ static uip_ip6addr_t addr;
 	  else
 	    {
 
-	      leds_on (LEDS_CONF_GREEN);
+	      leds_off(LEDS_CONF_GREEN);
 	      leds_off (LEDS_CONF_RED);
 	    }
 	}
@@ -237,6 +234,8 @@ aux_ctrl_register_consumer (&aux_consumer);
 void
 sensor_init ()
 {
+
+
 sensor_data.sequence = 0;
 
 sensor_aux_init ();
