@@ -6,7 +6,7 @@ MODULES += os/services/shell os/sys/energest
 
 MAKE_MAC=MAKE_MAC_NULLMAC
 
-CFLAGS += -ggdb
+#CFLAGS += -ggdb
 
 UNIFLASH=/home/contiki/prog
 

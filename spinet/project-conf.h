@@ -38,6 +38,8 @@
 #define ENERGEST_CONF_ON 1
 #define UIP_CONF_TCP 1
 #define NETSTACK_CONF_WITH_IPV6 1
+
+
 /*---------------------------------------------------------------------------*/
 
 #endif /* PROJECT_CONF_H_ */
