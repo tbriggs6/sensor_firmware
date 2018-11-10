@@ -3,7 +3,7 @@ all: $(CONTIKI_PROJECT)
 CONTIKI = /home/contiki/contiki-ng
 
 
-MAKE_MAC=MAKE_MAC_NULLMAC
+#MAKE_MAC=MAKE_MAC_NULLMAC
 
 # The BR is either native or embedded, and in the latter case must support SLIP
 PLATFORMS_EXCLUDE = nrf52dk

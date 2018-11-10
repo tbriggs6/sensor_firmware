@@ -8,8 +8,6 @@ PROJECT_SOURCEFILES += circularbuff.c
 
 CFLAGS+=-DUIP_FALLBACK_INTERFACE=spi_rpl_interface
 
-MAKE_MAC=MAKE_MAC_NULLMAC
-
 # Include RPL BR module
 #MODULES += os/services/rpl-border-router
 # Include webserver module
