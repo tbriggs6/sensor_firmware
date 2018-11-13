@@ -112,11 +112,11 @@ static void dma_xfer(void *slv_out, void *slv_in, int len)
       return;
   }
 
-  char *cptr1 = slv_out;
-  char *cptr2 = slv_in;
-  printf("Starting DMA XFER %-2.2x%-2.2x%-2.2x%-2.2x  %-2.2x%-2.2x%-2.2x%-2.2x\n",
-	 cptr1[0],cptr1[1],cptr1[2],cptr1[3],
-	 cptr2[0],cptr2[1],cptr2[2],cptr2[3]);
+//  char *cptr1 = slv_out;
+//  char *cptr2 = slv_in;
+//  printf("Starting DMA XFER %-2.2x%-2.2x%-2.2x%-2.2x  %-2.2x%-2.2x%-2.2x%-2.2x\n",
+//	 cptr1[0],cptr1[1],cptr1[2],cptr1[3],
+//	 cptr2[0],cptr2[1],cptr2[2],cptr2[3]);
   dma_xfer_inprogress = 1;
 
   uDMAChannelTransferSet(UDMA0_BASE,
@@ -233,8 +233,9 @@ static volatile uint8_t slv_in[4];
 static volatile uint8_t slv_out[4];
 static int slv_state = 0;
 
-static char uip_buffer[UIP_BUFSIZE];
-static uint32_t uip_buff_len = 0;
+#define ETHER2_HEADER_SIZE (14)
+static char frame_buffer[UIP_BUFSIZE+ETHER2_HEADER_SIZE];
+static uint32_t frame_len = 0;
 
 static char packet_in[UIP_BUFSIZE];
 static char packet_out[UIP_BUFSIZE];
@@ -340,14 +341,18 @@ PROCESS_THREAD(spislv_ctrl, ev, data)
 	      printf("%-2.2x %-2.2x %-2.2x %-2.2x",
 		     slv_in[0], slv_in[1], slv_in[2], slv_in[3]);
 
-	      uint32_t len = slv_in[1] << 8 | slv_in[2];
+	      uint16_t len = slv_in[1] << 8 | slv_in[2];
 	      if (len > UIP_BUFSIZE) {
-		  printf("Error - packet length exceeded\n");
+		  printf("Error - packet length exceeded %-4.4x / %d > %d\n", len, len, UIP_BUFSIZE);
 		  slv_state = 0;
 	      }
 	      else {
 		  printf("Recv packet from master %d bytes\n", (int) len);
 		  rcvd_len = len;
+
+		  memset(&packet_in, 0, sizeof(packet_in));
+		  memset(&packet_out, 0xff, sizeof(packet_out));
+
 		  dma_xfer(&packet_out, &packet_in, len);
 		  slv_state = 3;
 	      }
@@ -357,19 +362,24 @@ PROCESS_THREAD(spislv_ctrl, ev, data)
 	      printf("%-2.2x %-2.2x %-2.2x %-2.2x",
 	      		 slv_in[0], slv_in[1], slv_in[2], slv_in[3]);
 
-	      uint32_t len = slv_in[1] << 8 | slv_in[2];
+	      uint16_t len = slv_in[1] << 8 | slv_in[2];
 
 	      if (len > UIP_BUFSIZE) {
-		  printf("Error - packet length exceeded %d\n", (int) len);
+		  printf("Error - packet length exceeded %-4.4x / %d > %d\n", len, len, UIP_BUFSIZE);
 		  slv_state = 0;
 	      }
 	      else {
 		  printf("Sending packet to master %d bytes", (int) len);
-		  memcpy(&packet_out, uip_buffer, len);
+		  memcpy(&packet_out, frame_buffer, frame_len);
 		  rcvd_len = len;
 		  dma_xfer(&packet_out, &packet_in, len);
 		  slv_state = 4;
 	      }
+	  }
+
+	  else {
+	      printf("Unknown command prefix: %x\n", slv_in[0]);
+	      dma_xfer(&slv_out, &slv_in, sizeof(slv_in));
 	  }
 
       }
@@ -398,13 +408,37 @@ PROCESS_THREAD(spislv_ctrl, ev, data)
 
       // complete a packet transfer
       else if (slv_state == 3) {
-	  memcpy(&uip_buf, (void *) &slv_in, rcvd_len);
+
+
+	  printf("loading tcp frame\n");
+	  for (int i = 0; i < rcvd_len; i++) {
+	      if ((i > 0) && ((i % 8) == 0)) {
+		  printf("\n");
+	      }
+	      printf(" %-2.2x", packet_in[i]);
+	  }
+	  printf("\n");
+
+	  memset(&uip_buf, 0, sizeof(uip_buf));
+	  memcpy(&uip_buf, (void *) &packet_in, rcvd_len);
+	  uip_len = rcvd_len;
 
 	  memset((void *) slv_out, 0xff, 4);
 
 	  // start next command
 	  dma_xfer(&slv_out, &slv_in, sizeof(slv_in));
 	  slv_state = 0;
+
+	  printf("loading tcp frame\n");
+	  for (int i = 0; i < rcvd_len; i++) {
+	      if ((i > 0) && ((i % 8) == 0)) {
+		  printf("\n");
+	      }
+	      printf(" %-2.2x", uip_buf[i]);
+	  }
+	  printf("\n");
+
+
 	  tcpip_input( );
       }
 
@@ -468,21 +502,25 @@ void rpl_init(void)
 
 }
 
+
+
 int rpl_output(void)
 {
-  printf("Received packet from RF %d : \n", uip_len);
-  for (int i = 0; i < uip_len; i++) {
-      if ((i > 0) && ((i % 16) == 0)) printf("\n");
-      printf(" %-2.2x ", uip_buf[i]);
 
+  const char dest_mac[] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 };
+  for (int i = 0; i < 6; i++) {
+      frame_buffer[i] = dest_mac[i];
   }
-  printf("\n");
+  for (int i = 0; i < 6; i++) {
+      frame_buffer[i+6] = uip_lladdr.addr[i];
+  }
+  frame_buffer[12] = 0x08;
+  frame_buffer[13] = 0x00;
 
+  frame_len = uip_len+ETHER2_HEADER_SIZE;
+  regs[1] = frame_len;
 
-  regs[1] = uip_len;
-
-  uip_buff_len = uip_len;
-  memcpy(uip_buffer, &uip_buf, uip_len);
+  memcpy(frame_buffer+ETHER2_HEADER_SIZE, &uip_buf, uip_len);
 
   toggle_interrupt();
 
