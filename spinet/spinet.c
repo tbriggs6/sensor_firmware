@@ -1,45 +1,10 @@
-/*
- * Copyright (c) 201, RISE SICS
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. Neither the name of the Institute nor the names of its contributors
- *    may be used to endorse or promote products derived from this software
- *    without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE INSTITUTE AND CONTRIBUTORS ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE INSTITUTE OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- *
- * This file is part of the Contiki operating system.
- *
- */
-
 #include "contiki.h"
 
-/* Log configuration */
 #include "sys/log.h"
 #include "dev/leds.h"
 #include "dev/spi.h"
 
 #include "ti-lib.h"
-#include "driverlib/prcm.h"
-#include "driverlib/udma.h"
 
 #include <stdint.h>
 #include "circularbuff.h"
@@ -48,10 +13,20 @@
 #include "net/ipv6/uip.h"
 #include "net/ipv6/uiplib.h"
 #include <sys/etimer.h>
+#include <sys/critical.h>
+#include "rpl-if.h"
+#include "spi-dma.h"
+
+/* For RPL-specific commands */
+#if ROUTING_CONF_RPL_LITE
+#include "net/routing/rpl-lite/rpl.h"
+#elif ROUTING_CONF_RPL_CLASSIC
+#include "net/routing/rpl-classic/rpl.h"
+#endif
 
 
 #define LOG_MODULE "SPINet"
-#define LOG_LEVEL LOG_LEVEL_INFO
+#define LOG_LEVEL LOG_LEVEL_DBG
 
 #define SPI_CONTROLLER    SPI_CONTROLLER_SPI0
 
@@ -66,136 +41,41 @@ static spi_device_t spidev =
 	  SPI_PIN_CS, .spi_bit_rate = 1000000, .spi_pha = 1, .spi_pol = 0,
       .spi_slave = 1 };
 
-void
-spi_init ()
+void spi_init ()
 {
   if (spi_acquire (&spidev) != SPI_DEV_STATUS_OK)
     {
       LOG_ERR("Could not aquire SPI device.");
     }
-
 }
 
-
-
-void toggle_interrupt( )
+void spi_drain_rx( )
 {
-  // raise interrupt
-    ti_lib_gpio_set_dio(27);
-    clock_delay_usec(10);
-    ti_lib_gpio_clear_dio(27);
-}
-
-//*****************************************************************************
-//
-// The control table used by the uDMA controller.  This table must be aligned
-// to a 1024 byte boundary.
-//
-//*****************************************************************************
-#if defined(ewarm)
-#pragma data_alignment=1024
-uint8_t pui8ControlTable[1024];
-#elif defined(ccs)
-#pragma DATA_ALIGN(pui8ControlTable, 1024)
-uint8_t pui8ControlTable[1024];
-#else
-uint8_t pui8ControlTable[1024] __attribute__ ((aligned(1024)));
-#endif
-
-
-volatile int dma_xfer_inprogress = 0;
-
-static void dma_xfer(void *slv_out, void *slv_in, int len)
-{
-  if (dma_xfer_inprogress == 1) {
-      LOG_ERR("Error - DMA xfer already in progress, aborting.\n");
-      return;
-  }
-
-//  char *cptr1 = slv_out;
-//  char *cptr2 = slv_in;
-//  printf("Starting DMA XFER %-2.2x%-2.2x%-2.2x%-2.2x  %-2.2x%-2.2x%-2.2x%-2.2x\n",
-//	 cptr1[0],cptr1[1],cptr1[2],cptr1[3],
-//	 cptr2[0],cptr2[1],cptr2[2],cptr2[3]);
-  dma_xfer_inprogress = 1;
-
-  uDMAChannelTransferSet(UDMA0_BASE,
-			 UDMA_CHAN_SSI0_RX | UDMA_PRI_SELECT,
-        		 UDMA_MODE_BASIC,
-			 (void *) (SSI0_BASE | SSI_O_DR),
-        		 slv_in, len);
-  uDMAChannelTransferSet (UDMA0_BASE,
-			  UDMA_CHAN_SSI0_TX | UDMA_PRI_SELECT,
-			  UDMA_MODE_BASIC,
-			  slv_out,
-			  (void *) (SSI0_BASE | SSI_O_DR),
-			  len);
-
-  SSIDMAEnable(SSI0_BASE,SSI_DMA_TX | SSI_DMA_RX);
-  uDMAChannelEnable(UDMA0_BASE, UDMA_CHAN_SSI0_TX);
-  uDMAChannelEnable(UDMA0_BASE, UDMA_CHAN_SSI0_RX);
-  SSIIntEnable(SSI0_BASE, SSI_RXTO | SSI_RXOR);
-  ti_lib_int_enable(INT_SSI0_COMB);
-
-}
-
-#define DRIVERLIB_NOROM 1
-void dma_init( )
-{
-
   uint32_t bob;
   while (ti_lib_rom_ssi_data_get_non_blocking(SSI0_BASE, &bob));
 
-  PRCMPowerDomainOn(PRCM_DOMAIN_PERIPH);
-  PRCMPeripheralRunEnable(PRCM_PERIPH_UDMA);
-  PRCMPeripheralSleepEnable(PRCM_PERIPH_UDMA);
-  PRCMLoadSet( );
-  uDMAControlBaseSet(UDMA0_BASE, &pui8ControlTable);
-
-  uDMAEnable(UDMA0_BASE);
-
-  //ti_lib_ssi_dma_enable(SSI0_BASE, SSI_DMA_RX | SSI_DMA_TX);
-
-  uDMAChannelAttributeDisable(
-      UDMA0_BASE,
-      UDMA_CHAN_SSI0_RX,
-      UDMA_ATTR_USEBURST | UDMA_ATTR_ALTSELECT | UDMA_ATTR_HIGH_PRIORITY
-	  | UDMA_ATTR_REQMASK);
-
-  NOROM_uDMAChannelControlSet(
-      UDMA0_BASE, UDMA_CHAN_SSI0_RX | UDMA_PRI_SELECT,
-      UDMA_SIZE_8 | UDMA_SRC_INC_NONE | UDMA_DST_INC_8 | UDMA_ARB_1);
-
-//  uDMAChannelTransferSet(
-//      UDMA0_BASE, UDMA_CHAN_SSI0_RX | UDMA_PRI_SELECT,
-//			  UDMA_MODE_BASIC, (void *) (SSI0_BASE | SSI_O_DR),
-//			  rxcmd, 8);
-
-  uDMAChannelAttributeDisable(
-      UDMA0_BASE, UDMA_CHAN_SSI0_TX,
-      UDMA_ATTR_USEBURST | UDMA_ATTR_ALTSELECT | UDMA_ATTR_HIGH_PRIORITY | UDMA_ATTR_REQMASK);
-
-//  uDMAChannelAttributeEnable(
-//      UDMA0_BASE, UDMA_CHAN_SSI0_TX,
-//       UDMA_ATTR_USEBURST);
-
-  NOROM_uDMAChannelControlSet (
-      UDMA0_BASE, UDMA_CHAN_SSI0_TX | UDMA_PRI_SELECT,
-      UDMA_SIZE_8 | UDMA_SRC_INC_8 | UDMA_DST_INC_NONE | UDMA_ARB_1);
-
-//  uDMAChannelTransferSet (UDMA0_BASE, UDMA_CHAN_SSI0_TX | UDMA_PRI_SELECT,
-//			  UDMA_MODE_BASIC, txres, (void *) (SSI0_BASE | SSI_O_DR),
-//			  8);
-
-//  uDMAChannelEnable (UDMA0_BASE, UDMA_CHAN_SSI0_RX);
-//  uDMAChannelEnable (UDMA0_BASE, UDMA_CHAN_SSI0_TX);
-//  SSIIntEnable(SSI0_BASE, SSI_RXTO | SSI_RXOR );
-
-//  ti_lib_int_enable(INT_SSI0_COMB );
-//  ti_lib_int_master_enable( );
-
-
 }
+
+void toggle_rx_interrupt( )
+{
+    // raise interrupt
+    ti_lib_gpio_set_dio(27);
+    clock_delay_usec(5);
+    ti_lib_gpio_clear_dio(27);
+}
+
+
+void raise_spi_intr( )
+{
+  ti_lib_gpio_set_dio(26);
+}
+
+void clear_spi_intr( )
+{
+  ti_lib_gpio_clear_dio(26);
+}
+
+
 
 
 uint32_t regs[32];
@@ -218,48 +98,195 @@ void write_register(uint32_t reg, uint32_t val)
 {
   if ((reg >= 0) && (reg < 32))
     regs[reg] = val;
+  else if (reg == 40) {
+      NETSTACK_ROUTING.global_repair("Req");
+  }
+  else if (reg == 41) {
+      NETSTACK_ROUTING.local_repair("Req");
+  }
+  else if (reg == 42) {
+      rpl_refresh_routes("Shell");
+  }
+
 }
 
-void set_prefix( )
+
+typedef enum {
+  STATE_IDLE,
+  STATE_FIN_RDREG,
+  STATE_FIN_WRREG,
+  STATE_FIN_RCV,
+  STATE_FIN_XMT
+} slv_state_t;
+
+
+void show_buffer(const char *buff, int len)
 {
-  uip_ip6addr_t addr;
-  uiplib_ip6addrconv("fd00::1", &addr);
+  int i,k;
 
-  NETSTACK_ROUTING.root_set_prefix (&addr, NULL);
-  NETSTACK_ROUTING.root_start ();
+  char obuff[200];
+
+  LOG_DBG("----------------------\n");
+  obuff[0] = 0;
+  k = 0;
+  for(i = 0; i < len; i++) {
+      if ((i > 0) && ((i % 8 == 0))) {
+	  sprintf(obuff+k, "\n");
+	  LOG_DBG(obuff);
+
+	  k = 0;
+	  obuff[0] = 0;
+      }
+      k += sprintf(obuff+k, " %-2.2x", buff[i]);
+  }
+  if (strlen(buff) > 0) {
+      LOG_DBG(obuff);
+  }
 }
 
-static volatile uint8_t slv_in[4];
-static volatile uint8_t slv_out[4];
-static int slv_state = 0;
+/**
+ * Process a request from the SPI master
+ * @return the next state that the slave state machine should enter
+ */
+slv_state_t process_command(const char *spi_in, char *spi_out, int max_len,
+			    int *xfer_len, int *curr_reg)
+{
+  int spi_len = 0;
+  slv_state_t next_state = STATE_IDLE;
+  if (spi_in[3] != 0xff) {
+      LOG_ERR("Not a valid command terminator, skipping\n");
+      show_buffer(spi_in, 4);
+  }
+   if (spi_in[0] == 0x10) {
+       *curr_reg = (spi_in[1] << 8) | spi_in[2];		// extract the reg number
 
-#define ETHER2_HEADER_SIZE (14)
-static char frame_buffer[UIP_BUFSIZE+ETHER2_HEADER_SIZE];
-static uint32_t frame_len = 0;
+       uint32_t val = read_register(*curr_reg);		// look up the reg value
 
-static char packet_in[UIP_BUFSIZE];
-static char packet_out[UIP_BUFSIZE];
-static uint32_t rcvd_len = 0;
+       memcpy((void *) spi_out, (void *) &val, 4);	// store the value
+       *xfer_len = 4;
+
+       LOG_DBG("Rdreg, reg %d = %x\n", (int) *curr_reg, (int) val);
+       LOG_DBG("    spi_out: %x %x %x %x\n", spi_out[0], spi_out[1], spi_out[2], spi_out[3]);
 
 
-///* Declare and auto-start this file's process */
-//PROCESS(intject, "INtJECT");
-//
-//PROCESS_THREAD(intject, ev, data)
-//{
-//  static struct etimer timer;
-//
-//
-//  PROCESS_BEGIN();
-//  etimer_set(&timer, 10 * CLOCK_SECOND);
-//  while(1) {
-//      PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer));
-//      printf("Toggling interrupt\n");
-//      toggle_interrupt();
-//      etimer_reset(&timer);
-//  }
-//  PROCESS_END();
-//}
+       next_state = STATE_FIN_RDREG;			// set the next state
+   }
+
+    else if (spi_in[0] == 0x11) {
+	*curr_reg = (spi_in[1] << 8) | spi_in[2];
+
+	memset((void *) spi_out, 0x10, 4);
+	*xfer_len = 4;
+	LOG_DBG("Writing register %x, starting dma xfer for state 1\n", (int) *curr_reg);
+
+	// start next command
+	next_state = STATE_FIN_WRREG;
+    }
+
+   // start receiving a packet from the raspberry pi
+   else if (spi_in[0] == 0x20) {
+
+	spi_len = spi_in[1] << 8 | spi_in[2];
+
+	if (spi_len > max_len) {
+	    LOG_ERR("Error - packet length exceeded %-4.4x / %d > %d\n", spi_len, max_len, UIP_BUFSIZE);
+	    next_state = STATE_IDLE;
+	}
+	else if (xfer_len == NULL) {
+	    LOG_ERR("ERROR - xfer_len isn't valid??: %p\n", xfer_len);
+	    next_state = STATE_IDLE;
+	}
+	else {
+	    *xfer_len = spi_len;
+	    next_state = STATE_FIN_RCV;
+	}
+    }
+
+   // write a packet to the pi
+   else if (spi_in[0] == 0x21) {
+        spi_len = spi_in[1] << 8 | spi_in[2];
+
+//        LOG_DBG("Sending rcvd buffer to Pi %d bytes, start dma\n", (int) spi_len);
+        if (regs[1] == 0) {
+            LOG_ERR("Frame buffer is empty but master requests a frame...\n");
+            next_state = STATE_IDLE;
+        }
+        else {
+            int rcvd_len = rplif_copy_buffer(spi_out, max_len);
+
+
+	  if (rcvd_len > spi_len) {
+	      LOG_ERR("Error - rcvd packet length exceeds remote buffer %d > %d\n", (int) rcvd_len, (int) spi_len);
+	      rcvd_len = spi_len;
+	      next_state = STATE_IDLE;
+	  }
+
+	  else if (rcvd_len == 0) {
+	      LOG_ERR("Error - rcvd_len is 0, returning to idle\n");
+	      next_state = STATE_IDLE;
+	  }
+
+	  else {
+  //	    LOG_DBG("Transmitting packet to Pi %d\n", spi_len);
+	      *xfer_len = rcvd_len;
+	      next_state = STATE_FIN_XMT;
+	  }
+        }
+    }
+
+    else {
+	//LOG_ERR("Unknown command prefix: %x, returning to idle\n", spi_in[0]);
+	next_state = STATE_IDLE;
+    }
+
+
+   return next_state;
+}
+
+
+slv_state_t process_writereg(const char *spi_in, int curr_reg)
+{
+  uint32_t value = (spi_in[0] << 24) | (spi_in[1] << 16) |
+      (spi_in[2] << 8) | spi_in[3];
+
+//  LOG_DBG("Writing register %X = %X\n", curr_reg, (unsigned int) value);
+  write_register(curr_reg, value);
+  return STATE_IDLE;
+}
+
+
+slv_state_t process_readreg( void )
+{
+
+  return STATE_IDLE;
+}
+
+
+slv_state_t process_finrcv(const char *spi_in, int xfer_len)
+{
+  if (!((xfer_len > 0) && (xfer_len < UIP_BUFSIZE))) {
+      LOG_ERR("Error - transfer size out of bounds 0 > %d > %d\n", (int) xfer_len, (int) UIP_BUFSIZE);
+  }
+  else {
+
+
+      memcpy(uip_buf, spi_in, xfer_len);
+      uip_len = xfer_len;
+
+      printf("tcpip input %d : %x %x %x %x\n", xfer_len, uip_buf[0],uip_buf[1],uip_buf[2],uip_buf[3]);
+      tcpip_input();
+  }
+  return STATE_IDLE;
+}
+
+
+slv_state_t process_finxmt( )
+{
+  rplstat_reset_timer();
+
+  return STATE_IDLE;
+}
+
 
 /*---------------------------------------------------------------------------*/
 /* Declare and auto-start this file's process */
@@ -267,267 +294,187 @@ PROCESS(spislv_ctrl, "SPI Net");
 AUTOSTART_PROCESSES(&spislv_ctrl);
 PROCESS_THREAD(spislv_ctrl, ev, data)
 {
-
-  static uint32_t curr_reg = 0;
-
   PROCESS_BEGIN();
 
-//  process_start(&intject, NULL);
+  static uint32_t curr_reg = 0;
+  static volatile slv_state_t slv_state = STATE_IDLE;
+  static slv_state_t next_state = STATE_IDLE;
+
+  static char spi_in[UIP_BUFSIZE];
+  static char spi_out[UIP_BUFSIZE];
+  static uint32_t xfer_len = 0;
+
 
   NETSTACK_MAC.off();
 
-  LOG_INFO("\r\n\r\n\r\nContiki-NG SPI NET Starting\n");
-  LOG_INFO("Compile date %s %s", __DATE__, __TIME__);
+  LOG_INFO("Contiki-NG SPI NET Starting\n");
+  LOG_INFO("Compile date %s %s\n", __DATE__, __TIME__);
+
   spi_init ();
+
+  spi_drain_rx();
   dma_init( );
+  rplstat_init();
 
   /*/\/\/\/ network routing /\/\/\/ */
-  set_prefix( );
 
-  NETSTACK_MAC.on();
 
 
   /*/\/\/\/ interrupt pin management /\/\/\ */
   ti_lib_gpio_clear_dio(27);
   GPIO_setOutputEnableDio(27, GPIO_OUTPUT_ENABLE);
 
-  //
-  memset((void *)slv_out, 0xff, 4);
-  memset((void *)slv_in, 0x00, 4);
-  slv_state = 0;
+  ti_lib_gpio_clear_dio(26);
+  GPIO_setOutputEnableDio(26, GPIO_OUTPUT_ENABLE);
 
-  dma_xfer(&slv_out, &slv_in, sizeof(slv_in));
+  dma_xfer_rxonly(&spi_in, 4);
+
+  raise_spi_intr();
 
   // enter main loop
   while (1)
     {
 
-      PROCESS_WAIT_EVENT();
+      PROCESS_WAIT_EVENT_UNTIL(ev == dma_event );
 
-//      if (etimer_expired(&int_timer)) {
-//	  printf("Toggling interrupt\n");
-//	  toggle_interrupt();
-//	  etimer_reset(&int_timer);
-//	  continue;
+      unsigned int intr_status = get_event_flags();
+
+      if (intr_status & (INTR_OVFLOW_RXFIN | INTR_OVFLOW_TXFIN | INTR_OVFLOW_RXERR))
+      {
+	  clear_event_flag((INTR_OVFLOW_RXFIN | INTR_OVFLOW_TXFIN | INTR_OVFLOW_RXERR));
+      }
+
+      if (intr_status & INTR_RXERR)
+      {
+	  clear_event_flag(INTR_RXERR);
+      }
+
+      if (intr_status & INTR_TXFIN) {
+	  clear_event_flag(INTR_TXFIN);
+      }
+
+      // every path through here *MUST* start a new DMA transfer
+      if (intr_status & INTR_RXFIN) {
+//	  LOG_DBG("Processing INTR_RXFIN\n");
+	  clear_event_flag(INTR_RXFIN);
+
+
+	  switch(slv_state) {
+	    case STATE_IDLE:
+	      next_state = process_command(spi_in, spi_out, sizeof(spi_out),
+					   (int *) &xfer_len, (int *) &curr_reg);
+	      break;
+
+	    case STATE_FIN_WRREG:
+	      next_state = process_writereg(spi_in, curr_reg);
+	      break;
+	    case STATE_FIN_RDREG:
+	      next_state = process_readreg( );
+	      break;
+
+	    case STATE_FIN_RCV:
+	      next_state = process_finrcv(spi_in, xfer_len);
+	      break;
+
+	    case STATE_FIN_XMT:
+	      next_state = process_finxmt( );
+	      break;
+	  }
+
+//	  LOG_DBG("State: %d Next state: %d xfer len: %d\n", (int) slv_state, (int) next_state, (int) xfer_len);
+	  switch(next_state) {
+	    case STATE_IDLE:
+	      dma_xfer_rxonly(spi_in,  4);
+	      break;
+
+	    case STATE_FIN_WRREG:
+	      dma_xfer_rxonly(spi_in, 4);
+	      break;
+
+	    case STATE_FIN_RDREG:
+	      dma_xfer(&spi_out, spi_in, 4);
+	      break;
+
+	    case STATE_FIN_RCV:
+	      dma_xfer_rxonly(spi_in, xfer_len);
+	      break;
+
+	    case STATE_FIN_XMT:
+	      dma_xfer(spi_out, spi_in, xfer_len);
+	      break;
+
+	    default:
+	      LOG_ERR("Reached the default case!\n");
+	      break;
+	  }
+
+	  slv_state = next_state;
+      }
+//		// complete a packet transfer
+//	else if (slv_state == 3) {
+//
+//	    memset(&uip_buf, 0, sizeof(uip_buf));
+//	    memcpy(&uip_buf, (void *) &packet_in, rcvd_len);
+//	    uip_len = rcvd_len;
+//
+//	    memset((void *) slv_out, 0xff, 4);
+//
+//	    // start next command
+//	    dma_xfer(&slv_out, &slv_in, sizeof(slv_in));
+//	    slv_state = 0;
+//
+//	    tcpip_input( );
+//	}
+//
+//	// complete a packet transfer to master
+//	else if (slv_state == 4) {
+//	    memset((void *) slv_out, 0xff, 4);
+//
+//	    // start next command
+//	    dma_xfer(&slv_out, &slv_in, sizeof(slv_in));
+//	    slv_state = 0;
+//	    rplstat_reset_timer();
+//	}
 //      }
 
-      printf("Rcvd Event - slave state %d\n",slv_state);
-
-      // begin a command
-      if (slv_state == 0) {
-
-	  if (slv_in[0] == 0x10) {
-	      curr_reg = (slv_in[1] << 8) | slv_in[2];
-	      uint32_t val = read_register(curr_reg);
-
-	      printf("Reading register %x = %x\n", (unsigned int)curr_reg, (unsigned int) val);
-	      memcpy((void *) &slv_out, (void *) &val, 4);
-
-	      // start next command
-	      dma_xfer(&slv_out, &slv_in, sizeof(slv_in));
-	      slv_state = 2;
-	  }
-	  else if (slv_in[0] == 0x11) {
-	      curr_reg = (slv_in[1] << 8) | slv_in[2];
-	      printf("Writing register %x\n", (unsigned int) curr_reg);
-	      memset((void *) slv_out, 0xff, 4);
-
-	      // start next command
-	      dma_xfer(&slv_out, &slv_in, sizeof(slv_in));
-	      slv_state = 1;
-	  }
-
-	  else if (slv_in[0] == 0x20) {
-	      printf("%-2.2x %-2.2x %-2.2x %-2.2x",
-		     slv_in[0], slv_in[1], slv_in[2], slv_in[3]);
-
-	      uint16_t len = slv_in[1] << 8 | slv_in[2];
-	      if (len > UIP_BUFSIZE) {
-		  printf("Error - packet length exceeded %-4.4x / %d > %d\n", len, len, UIP_BUFSIZE);
-		  slv_state = 0;
-	      }
-	      else {
-		  printf("Recv packet from master %d bytes\n", (int) len);
-		  rcvd_len = len;
-
-		  memset(&packet_in, 0, sizeof(packet_in));
-		  memset(&packet_out, 0xff, sizeof(packet_out));
-
-		  dma_xfer(&packet_out, &packet_in, len);
-		  slv_state = 3;
-	      }
-	  }
-
-	  else if (slv_in[0] == 0x21) {
-	      printf("%-2.2x %-2.2x %-2.2x %-2.2x",
-	      		 slv_in[0], slv_in[1], slv_in[2], slv_in[3]);
-
-	      uint16_t len = slv_in[1] << 8 | slv_in[2];
-
-	      if (len > UIP_BUFSIZE) {
-		  printf("Error - packet length exceeded %-4.4x / %d > %d\n", len, len, UIP_BUFSIZE);
-		  slv_state = 0;
-	      }
-	      else {
-		  printf("Sending packet to master %d bytes", (int) len);
-		  memcpy(&packet_out, frame_buffer, frame_len);
-		  rcvd_len = len;
-		  dma_xfer(&packet_out, &packet_in, len);
-		  slv_state = 4;
-	      }
-	  }
-
-	  else {
-	      printf("Unknown command prefix: %x\n", slv_in[0]);
-	      dma_xfer(&slv_out, &slv_in, sizeof(slv_in));
-	  }
-
-      }
-
-      // complete a write command
-      else if (slv_state == 1) {
-	  uint32_t val = (slv_in[0] << 24) |
-	      (slv_in[1] << 16) | (slv_in[2] << 8) | (slv_in[3]);
-	  printf("Updating register %x = %x\n", (unsigned int) curr_reg, (unsigned int) val);
-	  write_register(curr_reg, val);
-
-	  // start next command
-	  memset((void *) slv_out, 0xff, 4);
-	  dma_xfer(&slv_out, &slv_in, sizeof(slv_in));
-	  slv_state = 0;
-      }
-
-      // complete a reg-read
-      else if (slv_state == 2) {
-	  memset((void *) slv_out, 0xff, 4);
-
-	  // start next command
-	  dma_xfer(&slv_out, &slv_in, sizeof(slv_in));
-	  slv_state = 0;
-      }
-
-      // complete a packet transfer
-      else if (slv_state == 3) {
+//
+//	   switch(next_state) {
+//	     // send nothing, just read next command
+//	     case STATE_IDLE:
+//	       dma_xfer_rxonly(&slv_out, 4);
+//	       break;
+//
+//	       // send the contents of the register
+//	       case STATE_FIN_RDREG:
+//		 dma_xfer(&slv_out, &slv_in, 4);
+//		 break;
+//
+//		 // read the next 4 bytes into the registr
+//	       case STATE_FIN_WRREG:
+//		 dma_xfer_rxonly(&slv_out, 4);
+//		 break;
+//
+//		 // receive the pkt from the pi
+//	       case STATE_FIN_RCV:
+//		 dma_xfer_rxonly(&pkt_in, 4);
+//		 break;
+//
+//		 // send the radio packet to the pi
+//	       case STATE_FIN_XMT:
+//		 dma_xfer(&pkt_out, &pkt_in, spi_len);
+//		 break;
+//
+//
+//	       default:
+//		 dma_xfer_rxonly(&slv_out, 4);
+//		 break;
+//	   }
 
 
-	  printf("loading tcp frame\n");
-	  for (int i = 0; i < rcvd_len; i++) {
-	      if ((i > 0) && ((i % 8) == 0)) {
-		  printf("\n");
-	      }
-	      printf(" %-2.2x", packet_in[i]);
-	  }
-	  printf("\n");
 
-	  memset(&uip_buf, 0, sizeof(uip_buf));
-	  memcpy(&uip_buf, (void *) &packet_in, rcvd_len);
-	  uip_len = rcvd_len;
-
-	  memset((void *) slv_out, 0xff, 4);
-
-	  // start next command
-	  dma_xfer(&slv_out, &slv_in, sizeof(slv_in));
-	  slv_state = 0;
-
-	  printf("loading tcp frame\n");
-	  for (int i = 0; i < rcvd_len; i++) {
-	      if ((i > 0) && ((i % 8) == 0)) {
-		  printf("\n");
-	      }
-	      printf(" %-2.2x", uip_buf[i]);
-	  }
-	  printf("\n");
-
-
-	  tcpip_input( );
-      }
-
-      // complete a packet transfer to master
-      else if (slv_state == 4) {
-      	  memset((void *) slv_out, 0xff, 4);
-
-      	  // start next command
-      	  dma_xfer(&slv_out, &slv_in, sizeof(slv_in));
-      	  slv_state = 0;
-      }
-
+//      critical_exit(status);
 
     }
 PROCESS_END();
 }
 
-//void uDMAIntHandler(void)
-void SSI0IntHandler(void)
-{
-  // clear the SSI interrupts (should already be cleared?)
-  uint32_t flags = SSIIntStatus(SSI0_BASE, 1);
-  uint32_t mode = 0;
-
-  SSIIntClear(SSI0_BASE, flags);
-
-  // there was a timeout - the last command aborted....
-  if (flags == SSI_RXTO) {
-      slv_state = 0;
-      process_poll (&spislv_ctrl);
-  }
-  else {
-      // get the current DMA for the RX channel
-      mode = uDMAChannelModeGet(UDMA0_BASE, UDMA_CHAN_SSI0_RX | UDMA_PRI_SELECT);
-
-      // we've received what we expected, notify parent process
-      if(mode == UDMA_MODE_STOP)
-      {
-	  SSIDMADisable(SSI0_BASE,SSI_DMA_RX);
-	  uDMAChannelDisable(UDMA0_BASE, UDMA_CHAN_SSI0_RX);
-
-	  dma_xfer_inprogress = 0;
-	  ti_lib_int_disable(INT_SSI0_COMB );
-
-	  // notify slave controller process
-	  process_poll (&spislv_ctrl);
-      }
-      else {
-	  SSIDMADisable(SSI0_BASE,SSI_DMA_TX);
-	  uDMAChannelDisable(UDMA0_BASE, UDMA_CHAN_SSI0_TX);
-      }
-
-      uDMAIntClear(UDMA0_BASE, 0xffffffff);
-  }
-
-}
-
-
-void rpl_init(void)
-{
-
-}
-
-
-
-int rpl_output(void)
-{
-
-  const char dest_mac[] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 };
-  for (int i = 0; i < 6; i++) {
-      frame_buffer[i] = dest_mac[i];
-  }
-  for (int i = 0; i < 6; i++) {
-      frame_buffer[i+6] = uip_lladdr.addr[i];
-  }
-  frame_buffer[12] = 0x08;
-  frame_buffer[13] = 0x00;
-
-  frame_len = uip_len+ETHER2_HEADER_SIZE;
-  regs[1] = frame_len;
-
-  memcpy(frame_buffer+ETHER2_HEADER_SIZE, &uip_buf, uip_len);
-
-  toggle_interrupt();
-
-  return 0;
-}
-
-/*---------------------------------------------------------------------------*/
-const struct uip_fallback_interface spi_rpl_interface = {
-  rpl_init, rpl_output
-};

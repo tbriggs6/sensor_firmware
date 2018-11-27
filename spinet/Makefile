@@ -3,10 +3,9 @@ all: $(CONTIKI_PROJECT)
 
 CONTIKI = /home/contiki/contiki-ng
 
+PROJECT_SOURCEFILES += circularbuff.c spi-dma.c rpl-if.c
 
-PROJECT_SOURCEFILES += circularbuff.c
-
-CFLAGS+=-DUIP_FALLBACK_INTERFACE=spi_rpl_interface
+CFLAGS+=-DUIP_FALLBACK_INTERFACE=spi_rpl_interface -g
 
 # Include RPL BR module
 #MODULES += os/services/rpl-border-router
