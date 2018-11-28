@@ -14,7 +14,7 @@
 #include "spinet.h"
 
 #define LOG_MODULE "RPLSTAT"
-#define LOG_LEVEL LOG_LEVEL_DBG
+#define LOG_LEVEL LOG_LEVEL_INFO
 
 void rplstat_set_prefix( )
 {
@@ -143,6 +143,7 @@ int rpl_output(void)
   write_register(1,frame_len);
 
   memcpy(frame_buffer+ETHER2_HEADER_SIZE, &uip_buf, uip_len);
+  LOG_DBG("Toggling RX intr\n");
   toggle_rx_interrupt();
   //process_poll (&rpl_postr);
   return 0;

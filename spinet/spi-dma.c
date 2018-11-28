@@ -15,7 +15,7 @@
 #include "sys/log.h"
 
 #define LOG_MODULE "DMA"
-#define LOG_LEVEL LOG_LEVEL_DBG
+#define LOG_LEVEL LOG_LEVEL_INFO
 
 
 #define INTR_RXFIN (0x001)
@@ -130,7 +130,7 @@ void SSI0IntHandler(void)
       else {
 	  SSIDMADisable(SSI0_BASE,SSI_DMA_TX);
 	  uDMAChannelDisable(UDMA0_BASE, UDMA_CHAN_SSI0_TX);
-	  raise_spi_intr();
+
 	  if (intr_reason & INTR_TXFIN)
 	    intr_reason |= INTR_OVFLOW_TXFIN;
 	  intr_reason |= INTR_TXFIN;
@@ -201,6 +201,8 @@ void dma_xfer(void *slv_out, void *slv_in, int len)
   ti_lib_int_enable(INT_SSI0_COMB);
 
   LOG_DBG("Raising SPI intr on dma_xfer\n");
+  clear_spi_intr();
+  clock_delay_usec(5);
   raise_spi_intr();
 }
 
@@ -269,6 +271,8 @@ void dma_xfer_rxonly(void *slv_in, int len)
   ti_lib_int_enable(INT_SSI0_COMB);
 
   LOG_DBG("Raising SPI intr on dma_xfer_rxonly\n");
+  clear_spi_intr();
+  clock_delay_usec(5);
   raise_spi_intr();
 }
 

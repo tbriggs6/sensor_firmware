@@ -26,7 +26,7 @@
 
 
 #define LOG_MODULE "SPINet"
-#define LOG_LEVEL LOG_LEVEL_DBG
+#define LOG_LEVEL LOG_LEVEL_INFO
 
 #define SPI_CONTROLLER    SPI_CONTROLLER_SPI0
 
@@ -35,11 +35,17 @@
 #define SPI_PIN_MISO      28
 #define SPI_PIN_CS        1
 
-static spi_device_t spidev =
-  { .spi_controller = SPI_CONTROLLER, .pin_spi_sck = SPI_PIN_SCK,
-      .pin_spi_miso = SPI_PIN_MISO, .pin_spi_mosi = SPI_PIN_MOSI, .pin_spi_cs =
-	  SPI_PIN_CS, .spi_bit_rate = 1000000, .spi_pha = 1, .spi_pol = 0,
-      .spi_slave = 1 };
+static spi_device_t spidev = {
+    .spi_controller = SPI_CONTROLLER,
+    .pin_spi_sck = SPI_PIN_SCK,
+    .pin_spi_miso = SPI_PIN_MISO,
+    .pin_spi_mosi = SPI_PIN_MOSI,
+    .pin_spi_cs = SPI_PIN_CS,
+    .spi_bit_rate = 1000000,
+    .spi_pha = 1,
+    .spi_pol = 0,
+    .spi_slave = 1
+};
 
 void spi_init ()
 {
@@ -47,13 +53,17 @@ void spi_init ()
     {
       LOG_ERR("Could not aquire SPI device.");
     }
+  else {
+      LOG_DBG("spi init OK");
+  }
 }
 
 void spi_drain_rx( )
 {
   uint32_t bob;
-  while (ti_lib_rom_ssi_data_get_non_blocking(SSI0_BASE, &bob));
-
+  uint32_t count = 0;
+  while (ti_lib_rom_ssi_data_get_non_blocking(SSI0_BASE, &bob)) count++;
+  LOG_DBG("SPI drained %d bytes", (int) count);
 }
 
 void toggle_rx_interrupt( )
@@ -336,8 +346,8 @@ PROCESS_THREAD(spislv_ctrl, ev, data)
     {
 
       PROCESS_WAIT_EVENT_UNTIL(ev == dma_event );
-
       unsigned int intr_status = get_event_flags();
+      LOG_DBG("Received dma_event %d", intr_status);
 
       if (intr_status & (INTR_OVFLOW_RXFIN | INTR_OVFLOW_TXFIN | INTR_OVFLOW_RXERR))
       {
@@ -355,7 +365,7 @@ PROCESS_THREAD(spislv_ctrl, ev, data)
 
       // every path through here *MUST* start a new DMA transfer
       if (intr_status & INTR_RXFIN) {
-//	  LOG_DBG("Processing INTR_RXFIN\n");
+	  LOG_DBG("Processing INTR_RXFIN\n");
 	  clear_event_flag(INTR_RXFIN);
 
 
@@ -381,7 +391,7 @@ PROCESS_THREAD(spislv_ctrl, ev, data)
 	      break;
 	  }
 
-//	  LOG_DBG("State: %d Next state: %d xfer len: %d\n", (int) slv_state, (int) next_state, (int) xfer_len);
+	  LOG_DBG("State: %d Next state: %d xfer len: %d\n", (int) slv_state, (int) next_state, (int) xfer_len);
 	  switch(next_state) {
 	    case STATE_IDLE:
 	      dma_xfer_rxonly(spi_in,  4);
