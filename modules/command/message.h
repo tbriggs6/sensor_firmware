@@ -47,6 +47,13 @@ typedef struct __attribute__((__packed__)) {
 } command_ret_t;
 
 
+#define DATA_CAL_HEADER (0x3536370U)
+typedef struct {
+    uint32_t header;
+    uint32_t sequence;
+    uint16_t caldata[7];
+} data_cal_t;
+
 #define DATA_NUM_ADC (4)
 #define DATA_HEADER (0x34323233U)
 

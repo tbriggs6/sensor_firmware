@@ -23,7 +23,10 @@
 #define LOG_MODULE "SENSOR"
 #define LOG_LEVEL LOG_LEVEL_INFO
 
+
 volatile static data_t sensor_data;
+volatile static data_cal_t sensor_cal_data;
+volatile static int first_callback = 0;
 
 PROCESS(sensor_timer, "Sensor Timer");
 PROCESS_THREAD(sensor_timer, ev, data)
@@ -67,37 +70,45 @@ static uip_ip6addr_t addr;
 
   while (1)
     {
-      PROCESS_WAIT_EVENT()
-      ;
+      PROCESS_WAIT_EVENT();
 
       if (ev == PROCESS_EVENT_POLL)
 	{
+	  leds_on (LEDS_CONF_GREEN);
 	  leds_off (LEDS_CONF_RED);
-	  leds_off (LEDS_CONF_GREEN);
-	  LOG_INFO(
-	      "Sending data: seq=%d, temp=%d, cond=%d, amb=%d, hall=%d, rgb(%d,%d,%d,%d), pressure=%u temp=%u\n",
-	      (int ) sensor_data.sequence, sensor_data.temperature,
-	      sensor_data.conductivity, sensor_data.ambient, sensor_data.hall,
-	      sensor_data.color_red, sensor_data.color_green,
-	      sensor_data.color_blue, sensor_data.color_clear,
-	      (unsigned int) sensor_data.pressure, (unsigned int) sensor_data.temppressure);
 
-	  LOG_INFO("to: ");
-	  LOG_6ADDR(LOG_LEVEL_INFO, &addr);
-	  LOG_INFO_("\n");
+	  if (first_callback == 0) {
+	      LOG_INFO("Sending calibration data to server\n");
+	      messenger_send (&addr, (void *) &sensor_cal_data, sizeof(sensor_cal_data));
+	  }
+	  else {
+	    LOG_INFO(
+		"Sending data: seq=%d, temp=%d, cond=%d, amb=%d, hall=%d, rgb(%d,%d,%d,%d), pressure=%u temp=%u\n",
+		(int ) sensor_data.sequence, sensor_data.temperature,
+		sensor_data.conductivity, sensor_data.ambient, sensor_data.hall,
+		sensor_data.color_red, sensor_data.color_green,
+		sensor_data.color_blue, sensor_data.color_clear,
+		(unsigned int) sensor_data.pressure, (unsigned int) sensor_data.temppressure);
 
-	  // send the data
-	  messenger_send (&addr, (void *) &sensor_data, sizeof(sensor_data));
+	    LOG_INFO("to: ");
+	    LOG_6ADDR(LOG_LEVEL_INFO, &addr);
+	    LOG_INFO_("\n");
 
+	    // send the data
+	    messenger_send (&addr, (void *) &sensor_data, sizeof(sensor_data));
+	  }
 	}
 
       else if (sender_fin_event)
 	{
+
 	  int sent_len, recv_len;
 	  uint8_t result[8];
 
 	  messenger_get_last_result (&sent_len, &recv_len, sizeof(result),
 				     &result);
+
+
 	  if (sent_len < 0)
 	    {
 	      // there was an error sending data
@@ -105,7 +116,18 @@ static uip_ip6addr_t addr;
 	    }
 	  else
 	    {
-	      leds_on (LEDS_CONF_GREEN);
+	      if (first_callback == 0) {
+		  if (sent_len == sizeof(sensor_cal_data)) {
+		      printf("got a valid calibration response: %x %x %x %x\n", result[0], result[1], result[2], result[3]);
+		      first_callback = 1;
+		  }
+		  else {
+		      printf("Did not get a calibration response.\n");
+		      leds_on (LEDS_CONF_RED);
+		  }
+	      }
+
+	      leds_off(LEDS_CONF_GREEN);
 	      leds_off (LEDS_CONF_RED);
 	    }
 	}
@@ -140,6 +162,22 @@ while (1)
 PROCESS_END( );
 }
 
+static int smooth(uint16_t *data, int n)
+{
+  double sum = 0;
+  double avg = 0;
+
+
+  for (int i = 0; i < n; i++) {
+      sum = sum + (double) data[i];
+  }
+
+  avg = sum / (double) n;
+
+    return (int)(avg + 0.5);
+}
+
+
 PROCESS(sensor_alert, "Sensor Alert");
 PROCESS_THREAD(sensor_alert, ev, data)
 {
@@ -154,27 +192,46 @@ while (1)
     {
       LOG_DBG("Received alert callback\n");
 
+      sensor_cal_data.header = DATA_CAL_HEADER;
+      sensor_cal_data.sequence++;
+      for (int i = 0; i < 7; i++) {
+	  sensor_cal_data.caldata[i] = scifScsTaskData.readData.output.ms5637cal[i];
+      }
+
       sensor_data.header = DATA_HEADER;
       sensor_data.sequence++;
-// copy the data from the sensor space
 
-      sensor_data.ambient = scifScsTaskData.readData.output.AmbLight;
+
+      sensor_data.ambient = 0;
+
       sensor_data.battery = scifScsTaskData.readData.output.BatterySensor;
+
+      sensor_data.conductivity = smooth(
+	  (uint16_t *)scifScsTaskData.readData.output.Conductivity,
+	  SCIF_SCS_READ_DATA_CONDUCT_SAMPS);
+
+      sensor_data.hall = smooth(
+	  (uint16_t *)scifScsTaskData.readData.output.HallSensor,
+	  SCIF_SCS_READ_DATA_HALL_SAMPS);
+
+      sensor_data.temperature = smooth(
+	  (uint16_t *) scifScsTaskData.readData.output.TemperatureSensor,
+	  SCIF_SCS_READ_DATA_TEMP_SAMPS);
+
       sensor_data.color_blue = scifScsTaskData.readData.output.colorBlue;
       sensor_data.color_clear = scifScsTaskData.readData.output.colorClear;
       sensor_data.color_green = scifScsTaskData.readData.output.colorGreen;
       sensor_data.color_red = scifScsTaskData.readData.output.colorRed;
-      sensor_data.conductivity = scifScsTaskData.readData.output.Conductivity;
-      sensor_data.hall = scifScsTaskData.readData.output.HallSensor;
-      sensor_data.i2cerror = scifScsTaskData.readData.output.I2CError;
-      sensor_data.temperature =
-	  scifScsTaskData.readData.output.TemperatureSensor;
-      sensor_data.pressure = scifScsTaskData.readData.output.pressure[2] << 16 |
-	  scifScsTaskData.readData.output.pressure[1] << 8 |
-	  scifScsTaskData.readData.output.pressure[0];
-      sensor_data.temppressure = scifScsTaskData.readData.output.temp[2] << 16 |
-      	  scifScsTaskData.readData.output.temp[1] << 8 |
-      	  scifScsTaskData.readData.output.temp[0];
+
+      sensor_data.i2cerror = scifScsTaskData.readData.state.i2cStatus;
+
+      sensor_data.pressure = scifScsTaskData.readData.output.ms5637press[2] << 16 |
+	  scifScsTaskData.readData.output.ms5637press[1] << 8 |
+	  scifScsTaskData.readData.output.ms5637press[0];
+
+      sensor_data.temppressure = scifScsTaskData.readData.output.ms5637temp[2] << 16 |
+      	  scifScsTaskData.readData.output.ms5637temp[1] << 8 |
+      	  scifScsTaskData.readData.output.ms5637temp[0];
 
 
       scifClearAlertIntSource ();
