@@ -191,7 +191,7 @@ PROCESS_THREAD(messenger_sender, ev, data)
         LOG_DBG_(" sending %d bytes\n", send_length);
 
         etimer_reset(&timer);
-        etimer_set(&timer, CLOCK_SECOND * 30);
+        etimer_set(&timer, CLOCK_SECOND * 15);
 
         rc = tcp_socket_connect(&snd_socket, &message_addr, MESSAGE_SERVER_PORT);
         if (rc < 0) {

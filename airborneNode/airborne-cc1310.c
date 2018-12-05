@@ -74,10 +74,7 @@ static uip_ip6addr_t addr;
 
       if (ev == PROCESS_EVENT_POLL)
 	{
-
-
-	  leds_off (LEDS_CONF_RED);
-	  leds_off (LEDS_CONF_GREEN);
+	  leds_on (LEDS_CONF_GREEN);
 
 	  if (first_callback == 0) {
 	      LOG_INFO("Sending calibration data to server\n");
@@ -107,8 +104,7 @@ static uip_ip6addr_t addr;
 	  messenger_get_last_result (&sent_len, &recv_len, sizeof(result),
 				     &result);
 
-	  if (first_callback == 0)
-	 	first_callback = 1;
+
 
 	  if (sent_len < 0)
 	    {
@@ -117,8 +113,18 @@ static uip_ip6addr_t addr;
 	    }
 	  else
 	    {
+	      if (first_callback == 0) {
+		  if (sent_len == sizeof(cal_data)) {
+		      printf("got a valid calibration response: %x %x %x %x\n", result[0], result[1], result[2], result[3]);
+		      first_callback = 1;
+		  }
+		  else {
+		      printf("Did not get a calibration response.\n");
+		      leds_on (LEDS_CONF_RED);
+		  }
+	      }
 
-	      leds_on (LEDS_CONF_GREEN);
+	      leds_off(LEDS_CONF_GREEN);
 	      leds_off (LEDS_CONF_RED);
 	    }
 	}
@@ -237,6 +243,8 @@ aux_ctrl_register_consumer (&aux_consumer);
 void
 sensor_init ()
 {
+
+
 sensor_data.sequence = 0;
 
 sensor_aux_init ();
