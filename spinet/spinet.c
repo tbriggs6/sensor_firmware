@@ -34,20 +34,22 @@
 #define SPI_PIN_MISO      28
 #define SPI_PIN_CS        1
 
-static spi_device_t spidev = {
-    .spi_controller = SPI_CONTROLLER,
-    .pin_spi_sck = SPI_PIN_SCK,
-    .pin_spi_miso = SPI_PIN_MISO,
-    .pin_spi_mosi = SPI_PIN_MOSI,
-    .pin_spi_cs = SPI_PIN_CS,
-    .spi_bit_rate = 1000000,
-    .spi_pha = 1,
-    .spi_pol = 0,
-    .spi_slave = 1
-};
 
 void spi_init ()
 {
+  spi_device_t spidev = {
+      .spi_controller = SPI_CONTROLLER,
+      .pin_spi_sck = SPI_PIN_SCK,
+      .pin_spi_miso = SPI_PIN_MISO,
+      .pin_spi_mosi = SPI_PIN_MOSI,
+      .pin_spi_cs = SPI_PIN_CS,
+      .spi_bit_rate = 1000000,
+      .spi_pha = 1,
+      .spi_pol = 0,
+      .spi_slave = 1
+  };
+
+
   if (spi_acquire (&spidev) != SPI_DEV_STATUS_OK)
     {
       LOG_ERR("Could not aquire SPI device.");
