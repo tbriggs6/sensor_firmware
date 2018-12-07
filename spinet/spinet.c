@@ -88,11 +88,12 @@ void clear_spi_intr( )
 
 
 
+#define NUM_REGS 2
+uint32_t regs[NUM_REGS];
 
-uint32_t regs[32];
 uint32_t read_register(uint32_t reg)
 {
-  if ((reg >= 0) && (reg < 32))
+  if ((reg >= 0) && (reg < NUM_REGS))
     return regs[reg];
 
   else if (reg == 33)
@@ -107,7 +108,7 @@ uint32_t read_register(uint32_t reg)
 
 void write_register(uint32_t reg, uint32_t val)
 {
-  if ((reg >= 0) && (reg < 32))
+  if ((reg >= 0) && (reg < NUM_REGS))
     regs[reg] = val;
   else if (reg == 40) {
       NETSTACK_ROUTING.global_repair("Req");
