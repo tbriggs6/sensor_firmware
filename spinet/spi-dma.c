@@ -28,7 +28,6 @@
 
 static unsigned int intr_reason = 0;
 process_event_t dma_event;
-//static volatile int event_flags = 0;
 
 #define event_flags intr_reason
 
@@ -163,6 +162,8 @@ uint8_t pui8ControlTable[1024] __attribute__ ((aligned(1024)));
 
 void dma_xfer(void *slv_out, void *slv_in, int len)
 {
+  static int trash_in, trash_out;
+
   if (len == 0) {
       LOG_ERR("Error - dma transfers must be > 0\n");
       return;
@@ -180,19 +181,61 @@ void dma_xfer(void *slv_out, void *slv_in, int len)
   if (len >= 16)  LOG_DBG("   %x %x %x %x\n", ptr[12], ptr[13], ptr[14], ptr[15]);
 
 
-  uDMAChannelTransferSet(UDMA0_BASE,
-			 UDMA_CHAN_SSI0_RX | UDMA_PRI_SELECT,
-        		 UDMA_MODE_BASIC,
-			 (void *) (SSI0_BASE | SSI_O_DR),
-        		 slv_in, len);
+  if (slv_in == NULL) {
+      // we don't care at all about the data coming in... but we need to clear the FIFO
+      uDMAChannelControlSet(
+          UDMA0_BASE, UDMA_CHAN_SSI0_RX | UDMA_PRI_SELECT,
+          UDMA_SIZE_8 | UDMA_SRC_INC_NONE | UDMA_DST_INC_NONE | UDMA_ARB_1);
 
-  uDMAChannelTransferSet (UDMA0_BASE,
+      uDMAChannelTransferSet(UDMA0_BASE,
+    			 UDMA_CHAN_SSI0_RX | UDMA_PRI_SELECT,
+            		 UDMA_MODE_BASIC,
+    			 (void *) (SSI0_BASE | SSI_O_DR),
+            		 &trash_in, len);
+
+  }
+  else {
+      uDMAChannelControlSet(
+          UDMA0_BASE, UDMA_CHAN_SSI0_RX | UDMA_PRI_SELECT,
+          UDMA_SIZE_8 | UDMA_SRC_INC_NONE | UDMA_DST_INC_8 | UDMA_ARB_1);
+
+      uDMAChannelTransferSet(UDMA0_BASE,
+    			 UDMA_CHAN_SSI0_RX | UDMA_PRI_SELECT,
+            		 UDMA_MODE_BASIC,
+    			 (void *) (SSI0_BASE | SSI_O_DR),
+            		 slv_in, len);
+
+  }
+
+
+  if (slv_out == NULL) {
+      trash_out = 0xffff;
+
+      uDMAChannelControlSet (
+               UDMA0_BASE, UDMA_CHAN_SSI0_TX | UDMA_PRI_SELECT,
+               UDMA_SIZE_8 | UDMA_SRC_INC_NONE | UDMA_DST_INC_NONE | UDMA_ARB_1);
+
+      uDMAChannelTransferSet (UDMA0_BASE,
+   			  UDMA_CHAN_SSI0_TX | UDMA_PRI_SELECT,
+   			  UDMA_MODE_BASIC,
+   			  &trash_out,
+   			  (void *) (SSI0_BASE | SSI_O_DR),
+   			  len);
+
+
+  }
+  else {
+      uDMAChannelControlSet (
+            UDMA0_BASE, UDMA_CHAN_SSI0_TX | UDMA_PRI_SELECT,
+            UDMA_SIZE_8 | UDMA_SRC_INC_8 | UDMA_DST_INC_NONE | UDMA_ARB_1);
+
+      uDMAChannelTransferSet (UDMA0_BASE,
 			  UDMA_CHAN_SSI0_TX | UDMA_PRI_SELECT,
 			  UDMA_MODE_BASIC,
 			  slv_out,
 			  (void *) (SSI0_BASE | SSI_O_DR),
 			  len);
-
+  }
   SSIDMAEnable(SSI0_BASE,SSI_DMA_RX);
   SSIDMAEnable(SSI0_BASE,SSI_DMA_TX | SSI_DMA_RX);
   uDMAChannelEnable(UDMA0_BASE, UDMA_CHAN_SSI0_TX);
