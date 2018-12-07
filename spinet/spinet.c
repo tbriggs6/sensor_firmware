@@ -7,7 +7,6 @@
 #include "ti-lib.h"
 
 #include <stdint.h>
-#include "circularbuff.h"
 #include "netstack.h"
 #include "net/routing/routing.h"
 #include "net/ipv6/uip.h"
