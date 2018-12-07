@@ -3,15 +3,10 @@ all: $(CONTIKI_PROJECT)
 
 CONTIKI = /home/contiki/contiki-ng
 
-PROJECT_SOURCEFILES += circularbuff.c spi-dma.c rpl-if.c
+PROJECT_SOURCEFILES += spi-dma.c rpl-if.c
 
-CFLAGS+=-DUIP_FALLBACK_INTERFACE=spi_rpl_interface -g
+CFLAGS+=-DUIP_FALLBACK_INTERFACE=spi_rpl_interface
 
-# Include RPL BR module
-#MODULES += os/services/rpl-border-router
-# Include webserver module
-#MODULES_REL += webserver
-# Include optional target-specific module
 include $(CONTIKI)/Makefile.identify-target
 #MODULES_REL += $(TARGET)
 

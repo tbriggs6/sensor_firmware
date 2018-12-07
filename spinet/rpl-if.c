@@ -78,7 +78,7 @@ void rplstat_reset_timer( void )
 /* handle the RPL callbacks */
 /* -------------------------- */
 #define ETHER2_HEADER_SIZE (14)
-static char frame_buffer[UIP_BUFSIZE+ETHER2_HEADER_SIZE];
+
 static uint32_t frame_len = 0;
 process_event_t rpl_event;
 
@@ -129,21 +129,10 @@ int rpl_output(void)
       LOG_ERR("Err - there is already a frame in the buffer, clobbering\n");
   }
 
-  const char dest_mac[] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 };
-  for (int i = 0; i < 6; i++) {
-      frame_buffer[i] = dest_mac[i];
-  }
-  for (int i = 0; i < 6; i++) {
-      frame_buffer[i+6] = uip_lladdr.addr[i];
-  }
-  frame_buffer[12] = 0x08;
-  frame_buffer[13] = 0x00;
-
+  LOG_DBG("Toggling RX intr\n");
   frame_len = uip_len+ETHER2_HEADER_SIZE;
   write_register(1,frame_len);
 
-  memcpy(frame_buffer+ETHER2_HEADER_SIZE, &uip_buf, uip_len);
-  LOG_DBG("Toggling RX intr\n");
   toggle_rx_interrupt();
   //process_poll (&rpl_postr);
   return 0;
@@ -156,22 +145,27 @@ const struct uip_fallback_interface spi_rpl_interface = {
 
 unsigned int rplif_copy_buffer(void *dest, int max_len)
 {
-  int to_copy = frame_len;
+  int total_bytes = uip_len + ETHER2_HEADER_SIZE;
 
-  if (frame_len == 0) {
-      LOG_ERR("Error frame buffer is 0 bytes - thats an error folks\n");
+  if (total_bytes > max_len) {
+      LOG_WARN("frame buffer (%d) is larger than maximum length (%d), discarding\n",
+	       (int) frame_len, (int) max_len);
+      frame_len = 0;
       return 0;
   }
 
-  if (frame_len > max_len) {
-      LOG_WARN("frame buffer (%d) is larger than maximum length (%d), truncating\n",
-	       (int) frame_len, (int) max_len);
-
-      to_copy = max_len;
+  uint8_t *buff = (uint8_t *) dest;
+  const char dest_mac[] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 };
+  for (int i = 0; i < 6; i++) {
+      buff[i] = dest_mac[i];
   }
+  for (int i = 0; i < 6; i++) {
+      buff[i+6] = uip_lladdr.addr[i];
+  }
+  buff[12] = 0x08;
+  buff[13] = 0x00;
 
-  memcpy(dest, frame_buffer, to_copy);
-  frame_len = 0;
+  memcpy(buff+ETHER2_HEADER_SIZE, &uip_buf, uip_len);
 
-  return to_copy;
+  return total_bytes;
 }
