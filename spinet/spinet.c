@@ -63,7 +63,7 @@ void spi_drain_rx( )
 {
   uint32_t bob;
   uint32_t count = 0;
-  while (ti_lib_rom_ssi_data_get_non_blocking(SSI0_BASE, &bob)) count++;
+  while (ti_lib_ssi_data_get_non_blocking(SSI0_BASE, &bob)) count++;
   LOG_DBG("SPI drained %d bytes", (int) count);
 }
 

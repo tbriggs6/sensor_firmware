@@ -14,8 +14,8 @@
 #include "../modules/messenger/message-service.h"
 #include "../modules/command/message.h"
 
-#include "arch/cpu/cc26xx-cc13xx/lpm.h"
-#include "arch/cpu/cc26xx-cc13xx/dev/aux-ctrl.h"
+#include "arch/cpu/cc26x0-cc13x0/lpm.h"
+#include "arch/cpu/cc26x0-cc13x0/dev/aux-ctrl.h"
 #include <dev/leds.h>
 
 // contiki-ism for logging the data -
@@ -32,8 +32,7 @@ PROCESS(sensor_timer, "Sensor Timer");
 PROCESS_THREAD(sensor_timer, ev, data)
 {
   static struct etimer et;
-  PROCESS_BEGIN( )
-  ;
+  PROCESS_BEGIN( );
 
   while (1)
     {

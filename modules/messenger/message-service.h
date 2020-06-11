@@ -37,7 +37,7 @@ typedef int (*handler_t)(const uint8_t *inputdata, int inputlength, uint8_t *out
 void messenger_init( void );
 
 // send a message to the given address
-void messenger_send(const uip_ipaddr_t const *remote_addr, const void const *data, int length);
+void messenger_send(const uip_ipaddr_t *remote_addr, const  void *data, int length);
 
 // get result of the last send (including any data received from the remote
 void messenger_get_last_result(int *sendlen, int *recvlen, int maxlen, void *dest);

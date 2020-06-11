@@ -68,7 +68,7 @@ int messenger_send_result(void * data, int *max_length)
     return 1;
 }
 
-void messenger_send(const uip_ipaddr_t const *remote_addr, const void * const data, int length)
+void messenger_send(const uip_ipaddr_t *remote_addr, const void * data, int length)
 {
 	LOG_DBG("message_send ");
 	LOG_6ADDR(LOG_LEVEL_DBG,remote_addr);

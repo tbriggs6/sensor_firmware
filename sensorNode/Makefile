@@ -1,4 +1,15 @@
 
+
+ifndef TARGET
+$(error TARGET is not set)
+endif
+
+ifndef BOARD
+$(error BOARD is not set)
+endif
+
+
+
 CONTIKI_PROJECT = sensorNode
 all: scsdir $(CONTIKI_PROJECT)
 
@@ -16,7 +27,7 @@ include ../modules/messenger/Makefile.messenger
 include ../modules/command/Makefile.command
 
 
-ifeq ($(TARGET),srf06-cc26xx)
+ifeq ($(TARGET),cc26x0-cc13x0)
 CFLAGS += -I$(CURDIR)/scs
 PROJECT_SOURCEFILES += scs/scif_framework.c scs/scif_scs.c scs/scif_osal_none.c sensor-cc1310.c
 endif
@@ -28,16 +39,9 @@ CONTIKI = /home/contiki/contiki-ng
 
 include $(CONTIKI)/Makefile.include
 
-patch:
-	P=`pwd`
-	@echo Applying patches to $(CONTIKI)
-	cd $(CONTIKI)/arch/cpu/cc26xx-cc13xx
-	patch < $P/cc1310-config.patch 
-	
 scsdir:
 	@echo "Ensure scs dir"
-	mkdir -p obj_srf06-cc26xx/scs
-
+	mkdir -p build/cc26x0-cc13x0/launchpad/cc1310/obj/scs
 
 setcap:
 	@echo "Make sure to add"
@@ -46,8 +50,6 @@ setcap:
 	@echo
 	@echo "to /etc/sudoers"
 	sudo setcap all=epi sensorNode.native
-
-
 
 prog: all
 	@echo Programming 2000063 in $(UNIFLASH)
