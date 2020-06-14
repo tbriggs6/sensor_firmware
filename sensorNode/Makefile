@@ -1,3 +1,6 @@
+########################
+###  sensorNode Makefile
+########################
 
 
 ifndef TARGET

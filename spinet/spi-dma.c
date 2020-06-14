@@ -2,9 +2,10 @@
  * dma.c
  *
  *  Created on: Nov 15, 2018
- *      Author: contiki
+ *      Author: Tom Briggs
  */
 
+#include "project-conf.h"
 
 #include "spi-dma.h"
 #include "ti-lib.h"
@@ -61,9 +62,6 @@ PROCESS_THREAD(dma_ctrl, ev, data)
   while (1)
   {
       PROCESS_WAIT_EVENT();
-      LOG_DBG("Received event: %x, overflow: %d rxerr: %x rxfin: %x txfin: %x\n",
-	      intr_reason, intr_reason & (INTR_OVFLOW_RXFIN | INTR_OVFLOW_TXFIN | INTR_OVFLOW_RXERR),
-	      intr_reason & INTR_RXERR, intr_reason & INTR_RXFIN, intr_reason & INTR_TXFIN);
 
       if (intr_reason & (INTR_OVFLOW_RXFIN | INTR_OVFLOW_TXFIN | INTR_OVFLOW_RXERR)) {
 	  LOG_ERR("Error - interrupt overflow detected: %x\n", (unsigned int) intr_reason);
@@ -76,7 +74,7 @@ PROCESS_THREAD(dma_ctrl, ev, data)
 
       if (intr_reason & INTR_RXFIN) {
 	  event_flags |= INTR_RXFIN;
-	  LOG_DBG("Clearing SPI intr on rx fin\n");
+
 	  clear_spi_intr();
       }
 
@@ -102,7 +100,6 @@ void SSI0IntHandler(void)
   uint32_t mode = 0;
 
   SSIIntClear(SSI0_BASE, flags);
-
 
   // there was a timeout - the last command aborted....
   if ((flags & SSI_RXTO) || (flags & SSI_RXOR)) {
@@ -243,10 +240,10 @@ void dma_xfer(void *slv_out, void *slv_in, int len)
   SSIIntEnable(SSI0_BASE, SSI_RXTO | SSI_RXOR);
   ti_lib_int_enable(INT_SSI0_COMB);
 
-  LOG_DBG("Raising SPI intr on dma_xfer\n");
-  clear_spi_intr();
-  clock_delay_usec(5);
-  raise_spi_intr();
+  //TODO raising interrupt here says "were done" not "were ready"
+  //clear_spi_intr();
+  //clock_delay_usec(5);
+  //raise_spi_intr();
 }
 
 void dma_xfer_rxonly(void *slv_in, int len)
@@ -260,9 +257,6 @@ void dma_xfer_rxonly(void *slv_in, int len)
       LOG_ERR("Error - DMA xfer already in progress, aborting.\n");
       return;
   }
-
-  LOG_DBG("Initiating xfer rxonly: %d\n", len);
-
 
   uDMAChannelTransferSet(UDMA0_BASE,
 			 UDMA_CHAN_SSI0_RX | UDMA_PRI_SELECT,
@@ -313,10 +307,10 @@ void dma_xfer_rxonly(void *slv_in, int len)
   SSIIntEnable(SSI0_BASE, SSI_RXTO | SSI_RXOR);
   ti_lib_int_enable(INT_SSI0_COMB);
 
-  LOG_DBG("Raising SPI intr on dma_xfer_rxonly\n");
-  clear_spi_intr();
-  clock_delay_usec(5);
-  raise_spi_intr();
+  //TODO raising interrupt here says "were done" not "were ready"
+  //clear_spi_intr();
+  //clock_delay_usec(5);
+  //raise_spi_intr();
 }
 
 void dma_init( )
@@ -324,8 +318,13 @@ void dma_init( )
   LOG_DBG("Initializing uDMA controller\n");
   // configure the PRCM power domains
   PRCMPowerDomainOn(PRCM_DOMAIN_PERIPH);
+  PRCMPeripheralRunEnable(PRCM_PERIPH_SSI0);
+  PRCMPeripheralSleepEnable(PRCM_PERIPH_SSI0);
+  PRCMPeripheralDeepSleepEnable(PRCM_PERIPH_SSI0);
+
   PRCMPeripheralRunEnable(PRCM_PERIPH_UDMA);
   PRCMPeripheralSleepEnable(PRCM_PERIPH_UDMA);
+  PRCMPeripheralDeepSleepEnable(PRCM_PERIPH_UDMA);
   PRCMLoadSet( );
 
   // configure dma base registers
@@ -356,6 +355,10 @@ void dma_init( )
   dma_event = process_alloc_event();
   process_start(&dma_ctrl, NULL);
 
+  //TODO raising interrupt here says "were done" not "were ready"
+  //clear_spi_intr();
+  //clock_delay_usec(5);
+  //raise_spi_intr();
 }
 
 

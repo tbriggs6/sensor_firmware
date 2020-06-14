@@ -46,9 +46,8 @@
  */
 
 /*---------------------------------------------------------------------------*/
-#ifndef RF_CONF_H_
-#define RF_CONF_H_
-
+#ifndef PROJECT_CONF_H_
+#define PROJECT_CONF_H_
 
 #define DOT_15_4G_CONF_FREQUENCY_BAND_ID DOT_15_4G_FREQUENCY_BAND_915
 // 902MHz + (channel * 200)
@@ -64,6 +63,11 @@
 
 /*---------------------------------------------------------------------------*/
 
+#define LOG_CONF_LEVEL_IPV6                        LOG_LEVEL_DBG
+#define LOG_CONF_LEVEL_RPL                         LOG_LEVEL_DBG
+#define LOG_CONF_LEVEL_6LOWPAN                     LOG_LEVEL_DBG
+#define LOG_CONF_LEVEL_TCPIP                       LOG_LEVEL_DBG
+#define LOG_CONF_LEVEL_MAC                         LOG_LEVEL_DBG
+#define LOG_CONF_LEVEL_FRAMER                      LOG_LEVEL_DBG
 
-
-#endif /* RF_CONF_H_ */
+#endif /* PROJECT_CONF_H_ */

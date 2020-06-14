@@ -32,12 +32,27 @@
 #ifndef PROJECT_CONF_H_
 #define PROJECT_CONF_H_
 
-#include "../rf-conf.h"
+#include "../project-conf.h"
 
 /*---------------------------------------------------------------------------*/
-#define ENERGEST_CONF_ON 1
-#define UIP_CONF_TCP 1
-#define NETSTACK_CONF_WITH_IPV6 1
+//#define ENERGEST_CONF_ON 1
+//#define UIP_CONF_TCP 1
+//#define NETSTACK_CONF_WITH_IPV6 1
+#define QUEUEBUF_CONF_NUM 4
+
+#define LPM_MODE_MAX_SUPPORTED_CONF                LPM_MODE_AWAKE
+
+#define LOG_CONF_LEVEL_IPV6                        LOG_LEVEL_WARN
+#define LOG_CONF_LEVEL_6LOWPAN                     LOG_LEVEL_WARN
+#define LOG_CONF_LEVEL_NULLNET                     LOG_LEVEL_WARN
+#define LOG_CONF_LEVEL_MAC                         LOG_LEVEL_WARN
+#define LOG_CONF_LEVEL_FRAMER                      LOG_LEVEL_WARN
+#define LOG_CONF_LEVEL_6TOP                        LOG_LEVEL_WARN
+#define LOG_CONF_LEVEL_COAP                        LOG_LEVEL_WARN
+#define LOG_CONF_LEVEL_SNMP                        LOG_LEVEL_WARN
+#define LOG_CONF_LEVEL_LWM2M                       LOG_LEVEL_WARN
+#define LOG_CONF_LEVEL_MAIN                        LOG_LEVEL_WARN
+
 
 
 /*---------------------------------------------------------------------------*/

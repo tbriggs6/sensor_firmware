@@ -4,6 +4,7 @@
  *  Created on: Nov 15, 2018
  *      Author: contiki
  */
+#include "project-conf.h"
 
 #include "sys/log.h"
 #include "net/routing/routing.h"
@@ -14,7 +15,7 @@
 #include "spinet.h"
 
 #define LOG_MODULE "RPLSTAT"
-#define LOG_LEVEL LOG_LEVEL_INFO
+#define LOG_LEVEL LOG_LEVEL_DBG
 
 void rplstat_set_prefix( )
 {
@@ -109,7 +110,7 @@ process_event_t rpl_event;
 
 void rpl_init(void)
 {
-  LOG_DBG("RPL Call back poster started\n");
+  LOG_INFO("RPL_INIT is called\n");
 //  rpl_event = process_alloc_event();
 //  process_start(&rpl_postr, NULL);
 
@@ -119,7 +120,7 @@ void rpl_init(void)
 
 int rpl_output(void)
 {
-
+    LOG_INFO("RPL_OUTPUT is called\n");
   if (uip_len == 0) {
       LOG_ERR("Err - uip_len = 0, no frame!\n");
       return 0;

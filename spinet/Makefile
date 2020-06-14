@@ -1,3 +1,8 @@
+##############################
+# testNode 
+##############################
+
+include ../Makefile.config
 
 ifndef TARGET
 $(error TARGET is not set)
@@ -7,6 +12,7 @@ ifndef BOARD
 $(error BOARD is not set)
 endif
 
+#CLFLAGS+=-Os
 
 CONTIKI_PROJECT = spinet
 all: $(CONTIKI_PROJECT)
