@@ -32,7 +32,7 @@
 #ifndef PROJECT_CONF_H_
 #define PROJECT_CONF_H_
 
-#include "../project-conf.h"
+#include "../shared/project-conf.h"
 
 /*---------------------------------------------------------------------------*/
 #define ENERGEST_CONF_ON 1

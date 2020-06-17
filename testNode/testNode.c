@@ -4,7 +4,6 @@
  *  Created on: May 18, 2018
  *      Author: contiki
  */
-#include "../project-conf.h"
 #include <contiki.h>
 #include <sys/clock.h>
 #include "net/ipv6/uip-ds6-route.h"
@@ -15,6 +14,7 @@
 #include <stdio.h> /* For printf() */
 #include <sys/energest.h>
 #include "sys/log.h"
+
 
 #define LOG_MODULE "MESSAGE"
 #define LOG_LEVEL LOG_LEVEL_DBG

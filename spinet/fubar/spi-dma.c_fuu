@@ -5,14 +5,13 @@
  *      Author: Tom Briggs
  */
 
-#include "project-conf.h"
-
 #include "spi-dma.h"
 #include "ti-lib.h"
 #include "spinet.h"
 
 #include "driverlib/prcm.h"
 #include "driverlib/udma.h"
+#include "project-conf.h_fuu"
 #include "sys/log.h"
 
 #define LOG_MODULE "DMA"

@@ -4,14 +4,13 @@
  *  Created on: Nov 15, 2018
  *      Author: contiki
  */
-#include "project-conf.h"
-
 #include "sys/log.h"
 #include "net/routing/routing.h"
 #include "net/ipv6/uip.h"
 #include "net/ipv6/uiplib.h"
 #include "rpl-if.h"
 
+#include "project-conf.h_fuu"
 #include "spinet.h"
 
 #define LOG_MODULE "RPLSTAT"

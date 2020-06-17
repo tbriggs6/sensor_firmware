@@ -31,7 +31,7 @@
 #ifndef PROJECT_CONF_H_
 #define PROJECT_CONF_H_
 
-#include "../project-conf.h"
+#include "../shared/project-conf.h"
 
 #ifndef WEBSERVER_CONF_CFS_CONNS
 #define WEBSERVER_CONF_CFS_CONNS 2

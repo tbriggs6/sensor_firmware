@@ -1,5 +1,3 @@
-#include "project-conf.h"
-
 #include "contiki.h"
 
 #include "sys/log.h"
@@ -15,20 +13,15 @@
 #include "net/ipv6/uiplib.h"
 #include <sys/etimer.h>
 #include <sys/critical.h>
-#include "rpl-if.h"
-#include "spi-dma.h"
 #include "net/routing/rpl-lite/rpl.h"
+#include "project-conf.h_fuu"
+#include "rpl-if.h_fuu"
+#include "spi-dma.h_fuu"
 
 
 #define LOG_MODULE "SPINet"
 #define LOG_LEVEL LOG_LEVEL_DBG
 
-#define SPI_CONTROLLER    SPI_CONTROLLER_SPI0
-
-#define SPI_PIN_SCK       30
-#define SPI_PIN_MOSI      29
-#define SPI_PIN_MISO      28
-#define SPI_PIN_CS        1
 
 
 
@@ -40,7 +33,7 @@ void spi_drain_rx( )
   LOG_DBG("SPI drained %d bytes\n", (int) count);
 }
 
-void toggle_rx_interrupt( )
+void toggle_rx_interrupt( ) 
 {
     LOG_DBG("Toggle RX interrupt\n");
 
@@ -282,35 +275,6 @@ slv_state_t process_finxmt( )
   return STATE_IDLE;
 }
 
-void spi_init ()
-{
-
-    //TODO this should have been set in the platform?
-  IOCPinTypeGpioInput(1);
-
-  spi_device_t spidev = {
-      .spi_controller = SPI_CONTROLLER,
-      .pin_spi_sck = SPI_PIN_SCK,
-      .pin_spi_miso = SPI_PIN_MISO,
-      .pin_spi_mosi = SPI_PIN_MOSI,
-      .pin_spi_cs = SPI_PIN_CS,
-      .spi_bit_rate = 1000000,
-      .spi_pha = 1,
-      .spi_pol = 0,
-      .spi_slave = 1
-  };
-
-
-  if (spi_acquire (&spidev) != SPI_DEV_STATUS_OK)
-    {
-      LOG_ERR("Could not aquire SPI device.\n");
-    }
-  else {
-      LOG_DBG("spi init OK\n");
-  }
-
-  toggle_spi_intr();
-}
 
 
 

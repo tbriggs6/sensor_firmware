@@ -1,9 +1,6 @@
-##############################
+######################################
 # testNode 
-##############################
-include ../Makefile.config
-
-
+######################################
 ######################################
 ifndef TARGET
 $(error TARGET is not set)
@@ -17,8 +14,6 @@ CONTIKI_PROJECT = testNode
 all: $(CONTIKI_PROJECT)
 
 MODULES += os/services/shell os/sys/energest 
-
-#MAKE_MAC=MAKE_MAC_NULLMAC
 
 CFLAGS += -ggdb
 
