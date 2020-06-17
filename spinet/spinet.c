@@ -66,8 +66,14 @@ PROCESS_THREAD(spinet, ev, data)
 
   PROCESS_BEGIN();
 
+  NETSTACK_MAC.off( );
+
   spi_init();
-  rpl_init( );
+
+
+  NETSTACK_ROUTING.root_start();
+  NETSTACK_MAC.on();
+
 
   etimer_set(&timer, CLOCK_SECOND * 30);
   while(1) {

@@ -1,6 +1,9 @@
 #include "contiki.h"
 #include "dev/spi.h"
 #include "sys/log.h"
+#include "net/ipv6/uip.h"
+#include "net/ipv6/uiplib.h"
+
 
 #include <ti/devices/DeviceFamily.h>
 #include DeviceFamily_constructPath(driverlib/driverlib_release.h)
@@ -37,7 +40,9 @@ static SPI_Handle spiHandle;
 static SPI_Params spiParams;
 static SPI_Transaction spiTrans;
 
-static char spi_data[256] =	{ 0 };
+static char spi_data[4] =	{ 0 };
+static char spi_pkt_data[512];
+static int spi_pkt_data_len = 0;
 
 static volatile uint16_t regnum = 0;
 static volatile uint16_t req_pkt_len = 0;
@@ -50,8 +55,8 @@ static volatile uint16_t req_pkt_len = 0;
 PROCESS(spi_rdcmd, "SPI read command");
 PROCESS(spi_rdreg, "SPI read reg");
 PROCESS(spi_wrreg, "SPI write reg");
-//PROCESS(spi_rcvpkt, "SPI rcv packet");
-//PROCESS(spi_xmtpkt, "SPI xmit packet");
+PROCESS(spi_rcvpkt, "SPI rcv packet");
+PROCESS(spi_xmtpkt, "SPI xmit packet");
 
 
 process_event_t spi_event;
@@ -404,7 +409,7 @@ static void spi_start_xfer(void *mosi, void *miso, int len)
 		return;
 	}
 
-	spiTrans.count = 4;
+	spiTrans.count = len;
 	spiTrans.txBuf = miso;
 	spiTrans.rxBuf = mosi;
 	spiTrans.arg = NULL;
@@ -424,6 +429,7 @@ PROCESS_THREAD(spi_rdcmd, ev, data)
 		static int seq = 0;
 
 		while (1) {
+			LOG_DBG("Back in rdcmd\n");
 			spi_process_callback = &spi_rdcmd;
 			memset((void *)&spi_data, 0xff, 4);
 			spi_start_xfer(&spi_data, &spi_data, 4);
@@ -450,23 +456,23 @@ PROCESS_THREAD(spi_rdcmd, ev, data)
 
 				PROCESS_WAIT_EVENT_UNTIL(ev == spi_event);
 			}
-//			else if ((spi_data[0] == 0x20) && (spi_data[3] == 0xff)) {
-//				req_pkt_len = ((uint16_t) spi_data[1] << 8) | spi_data[2];
-//				LOG_DBG("Start proc pkt recieve from pi");
-//				dma_set_callback(&spi_rcvpkt);
-//				process_start(&spi_rcvpkt, NULL);
-//			}
-//			else if ((spi_data[0] == 0x21) && (spi_data[3] == 0xff)) {
-//				req_pkt_len = ((uint16_t) spi_data[1] << 8) | spi_data[2];
-//				if (req_pkt_len != uip_len) {
-//					LOG_ERR("Error - packet lengths dont match.");
-//					continue;
-//				}
-//
-//					LOG_DBG("Start proc pkt xmit from pi");
-//					dma_set_callback(&spi_xmtpkt);
-//					process_start(&spi_xmtpkt, NULL);
-//				}
+			else if ((spi_data[0] == 0x20) && (spi_data[3] == 0xff)) {
+				req_pkt_len = ((uint16_t) spi_data[1] << 8) | spi_data[2];
+				LOG_DBG("Start proc pkt recieve from pi");
+				if (req_pkt_len != spi_pkt_data_len) {
+					LOG_ERR("spi_pkt_data_len %d != req len %d\n", spi_pkt_data_len, req_pkt_len);
+				}
+
+				spi_process_callback = &spi_rcvpkt;
+				process_start(&spi_rcvpkt, NULL);
+			}
+			else if ((spi_data[0] == 0x21) && (spi_data[3] == 0xff)) {
+				req_pkt_len = ((uint16_t) spi_data[1] << 8) | spi_data[2];
+
+				LOG_DBG("Start proc pkt xmit from pi");
+					spi_process_callback = &spi_xmtpkt;
+					process_start(&spi_xmtpkt, NULL);
+				}
 			else {
 				LOG_ERR("Err - unknown command: %x %x %x %x\n", spi_data[0], spi_data[1], spi_data[2], spi_data[3]);
 				continue;
@@ -517,6 +523,94 @@ PROCESS_THREAD(spi_wrreg, ev, data)
 
 	LOG_DBG("Writing register %d = %x\n", regnum, (unsigned int) val);
 	register_write (regnum, val);
+
+	process_post (&spi_rdcmd, spi_event, data);
+
+PROCESS_END();
+}
+
+
+int spi_get_pktlen( )
+{
+	return spi_pkt_data_len;
+}
+
+#define ETHER2_HEADER_SIZE (14)
+static void copy_eth_header( )
+{
+	const char dest_mac[] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 };
+	for (int i = 0; i < 6; i++) {
+			spi_pkt_data[i] = dest_mac[i];
+	}
+	for (int i = 0; i < 6; i++) {
+		  spi_pkt_data[i+6] = uip_lladdr.addr[i];
+	}
+	spi_pkt_data[12] = 0x08;
+	spi_pkt_data[13] = 0x00;
+}
+void copy_uip_to_spi( )
+{
+	int len = uip_len + ETHER2_HEADER_SIZE;
+	spi_pkt_data_len = len;
+
+	if (len == 0) {
+		LOG_ERR("zero length, discarding.\n");
+		return;
+	}
+
+	if (len > sizeof(spi_pkt_data))
+	{
+		LOG_ERR("spi pkt data cannot handle %d bytes\n", len);
+		len = sizeof(spi_pkt_data);
+	}
+
+	copy_eth_header( );
+  memcpy(spi_pkt_data+ETHER2_HEADER_SIZE, &uip_buf, uip_len);
+
+  for (int i = 0; i < spi_pkt_data_len; i+=16) {
+  	for (int j = 0; j < 16; j++) {
+  		printf("%-2.2x ", spi_pkt_data[i*16 + j]);
+  	}
+  	printf("\n");
+  }
+  printf("\n");
+}
+
+
+PROCESS_THREAD(spi_rcvpkt, ev, data)
+{
+	PROCESS_BEGIN( );
+
+	LOG_DBG("spi_rcvpkt %d - %x %x %x %x starting\n", req_pkt_len, spi_pkt_data[0], spi_pkt_data[1], spi_pkt_data[2], spi_pkt_data[3] );
+
+	spi_start_xfer(&spi_pkt_data, &spi_pkt_data, req_pkt_len);
+	toggle_spi_intr ();
+
+	PROCESS_WAIT_EVENT_UNTIL(ev == PROCESS_EVENT_POLL);
+
+	process_post (&spi_rdcmd, spi_event, data);
+
+PROCESS_END();
+}
+
+
+PROCESS_THREAD(spi_xmtpkt, ev, data)
+{
+	PROCESS_BEGIN( );
+
+	LOG_DBG("spi_xmtpkt %d\n", req_pkt_len);
+
+	spi_start_xfer(&spi_pkt_data, &spi_pkt_data, req_pkt_len);
+	toggle_spi_intr ();
+
+	PROCESS_WAIT_EVENT_UNTIL(ev == PROCESS_EVENT_POLL);
+
+	LOG_DBG("done reading pi data, need to queue %d bytes into hardware tx\n", req_pkt_len);
+	memcpy(uip_buf, spi_pkt_data, spi_pkt_data_len);
+  uip_len = spi_pkt_data_len;
+
+	printf("tcpip input %d : %x %x %x %x\n", spi_pkt_data_len, uip_buf[0],uip_buf[1],uip_buf[2],uip_buf[3]);
+	tcpip_input();
 
 	process_post (&spi_rdcmd, spi_event, data);
 

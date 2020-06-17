@@ -15,6 +15,8 @@ all: $(CONTIKI_PROJECT)
 
 PROJECT_SOURCEFILES += rpl-iface.c spi-iface.c spi-regs.c
 
+CFLAGS+=-DUIP_FALLBACK_INTERFACE=spi_rpl_interface
+
 MODULES += os/services/shell os/sys/energest 
 
 CFLAGS += -ggdb
