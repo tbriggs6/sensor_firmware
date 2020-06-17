@@ -4,7 +4,7 @@ SHELL := /bin/bash
 
 
 patches+=cc1310-config.patch
-patches+=cc1310-spi-slave.patch
+patches+=cc1310-custom.patch
 
 dir=$(shell pwd)
 
