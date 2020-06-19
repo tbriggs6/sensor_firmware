@@ -13,13 +13,19 @@ endif
 CONTIKI_PROJECT = testNode
 all: $(CONTIKI_PROJECT)
 
+ifdef CC1310_LRM
+CFLAGS += -DCC1310_LRM=1
+endif
+
 MODULES += os/services/shell os/sys/energest 
 
 CFLAGS += -ggdb
 
 UNIFLASH=/home/contiki/prog
 
-CONTIKI = /home/contiki/contiki-ng
+#CONTIKI = /home/contiki/contiki-ng
+CONTIKI = /home/contiki/lrm-contiki/contiki-ng
+
 -include $(CONTIKI)/Makefile.identify-target
 
 include $(CONTIKI)/Makefile.include
