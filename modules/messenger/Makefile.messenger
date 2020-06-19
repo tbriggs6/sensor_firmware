@@ -1,0 +1,3 @@
+
+PROJECTDIRS += ../modules/messenger
+PROJECT_SOURCEFILES += message-service.c message-sender.c
