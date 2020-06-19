@@ -5,10 +5,11 @@
 #define DOT_15_4G_CONF_FREQUENCY_BAND_ID DOT_15_4G_FREQUENCY_BAND_915
 // 902MHz + (channel * 200)
 // channel = (915000 - 902200) / 200
-#define IEEE802154_CONF_DEFAULT_CHANNEL      64
+#define IEEE802154_CONF_DEFAULT_CHANNEL      20
 #define IEEE802154_CONF_PANID            0xDEED
 #define RPL_CONF_MODE					RF_MODE_SUB_1_GHZ
 #define RPL_CONF_WITH_PROBING                 1
+
 
 /* ----------------------------------------------- */
 // disable watchdog for debugging
