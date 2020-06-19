@@ -26,7 +26,7 @@
 #include "Board.h"
 
 #define LOG_MODULE "SPINet"
-#define LOG_LEVEL LOG_LEVEL_DBG
+#define LOG_LEVEL LOG_LEVEL_ERR
 
 
 static void raise_rx_intr ()
@@ -43,10 +43,10 @@ static void clear_rx_intr ()
 
 static void toggle_rx_intr ()
 {
-	LOG_DBG("Toggle RX intr\n");
-	clear_rx_intr ();
-	clock_delay_usec (5);
+	clock_delay_usec (150);
 	raise_rx_intr ();
+	clock_delay_usec (150);
+	clear_rx_intr ();
 }
 
 
@@ -62,9 +62,10 @@ void rplstat_set_prefix ()
 void rpl_init (void)
 {
 
+	clear_rx_intr( );
+
 	LOG_DBG("RPL_INIT is called\n");
 	rplstat_set_prefix ();
-
 
   NETSTACK_ROUTING.root_start();
   NETSTACK_MAC.on();

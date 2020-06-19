@@ -17,7 +17,7 @@ int register_read(int regnum)
 
 	else if (regnum < 16) return regs[regnum];
 	else if (regnum == 16) return 0x12345789;
-	else if (regnum == 17) return spi_get_pktlen();
+	else if (regnum == 17) return to_pi_pktlen();
 	else return -1;
 }
 

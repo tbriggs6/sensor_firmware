@@ -13,7 +13,7 @@
 extern struct process spi_rdcmd;
 
 void spi_init( );
-int spi_get_pktlen( );
+int to_pi_pktlen( );
 void copy_uip_to_spi( );
 
 #endif /* SPINET_SPI_IFACE_H_ */

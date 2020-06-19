@@ -13,7 +13,7 @@ endif
 CONTIKI_PROJECT = spinet
 all: $(CONTIKI_PROJECT)
 
-PROJECT_SOURCEFILES += rpl-iface.c spi-iface.c spi-regs.c
+PROJECT_SOURCEFILES += rpl-iface.c spi-iface.c spi-regs.c print_buff.c
 
 CFLAGS+=-DUIP_FALLBACK_INTERFACE=spi_rpl_interface
 
