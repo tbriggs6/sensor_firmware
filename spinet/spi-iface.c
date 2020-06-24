@@ -1,6 +1,7 @@
 #include "contiki.h"
 #include "dev/spi.h"
 #include "sys/log.h"
+#include "sys/mutex.h"
 #include "dev/leds.h"
 
 #include "net/ipv6/uip.h"
@@ -37,6 +38,7 @@
 #define SPI_PIN_MISO      28
 #define SPI_PIN_CS        1
 
+#define SPI_TIMEOUT (CLOCK_SECOND*2)
 
 static SPI_Handle spiHandle;
 static SPI_Params spiParams;
@@ -53,6 +55,8 @@ static int spi_frompi_len = 0;
 
 static volatile uint16_t regnum = 0;
 
+
+
 /**
  * Start a transfer on the SPI bus for 4 bytes, and wait
  * for it to signal completion.
@@ -62,46 +66,67 @@ PROCESS(spi_rdreg, "SPI read reg");
 PROCESS(spi_wrreg, "SPI write reg");
 PROCESS(spi_proc_frompi, "SPI from PI");
 PROCESS(spi_proc_topi, "SPI to PI");
+PROCESS(spi_proc_tcpsender, "send to UIP");
+PROCESS(spi_proc_dmafin, "dma fin");
+PROCESS(spi_cancel_process, "spi timeout");
 
 process_event_t spi_event;
+process_event_t spi_send_event;
+process_event_t spi_dma_done_event;
+process_event_t spi_dma_cancel_event;
+process_event_t spi_dma_start_event;
+mutex_t mutex;
 
+
+clock_time_t last_clock_time = 0;
+
+static int last_spi_intr = 0;
 
 static void raise_spi_intr ()
 {
+	last_spi_intr = 1;
 	GPIO_setDio(CC1310_LAUNCHXL_PIN_SPIRDY);
-
-
+	GPIO_setDio(CC1310_LAUNCHXL_PIN_RLED);
 }
 
 static void clear_spi_intr ()
 {
+	last_spi_intr = 0;
 	GPIO_clearDio(CC1310_LAUNCHXL_PIN_SPIRDY);
+	GPIO_clearDio(CC1310_LAUNCHXL_PIN_RLED);
 }
 
 static void toggle_spi_intr ()
 {
-	clock_delay_usec (100);
-	raise_spi_intr ();
-	clock_delay_usec (100);
-	clear_spi_intr ();
+
+	raise_spi_intr();
+	clock_delay_usec (1000);
+	clear_spi_intr();
+
+	//DORK LOG_DBG("toggle SPI intr\n");
+
 }
 
 
+// spi-dma is finished.
 struct process *spi_process_callback = NULL;
 
 void UserCallbackFxn (SPI_Handle handle, SPI_Transaction *transaction)
 {
-	if (spi_process_callback != NULL)
-		process_poll(spi_process_callback);
+	process_poll(&spi_proc_dmafin);
 }
 
 
 void spi_init( )
 {
+
 	 SPI_init( );
 
 	 clear_spi_intr( );
 
+	 last_clock_time = clock_time();
+
+	 LOG_DBG("Spi init, setting DMA / Callback\n");
 	SPI_Params_init(&spiParams);
 	spiParams.bitRate = 1000000;
 	spiParams.dataSize = 8;
@@ -116,6 +141,17 @@ void spi_init( )
 			while(1);
 	}
 
+	spi_event = process_alloc_event();
+	spi_send_event = process_alloc_event();
+	spi_dma_done_event = process_alloc_event();
+	spi_dma_cancel_event = process_alloc_event();
+	spi_dma_start_event = process_alloc_event();
+
+	mutex = MUTEX_STATUS_UNLOCKED;
+
+	process_start(&spi_cancel_process, NULL);
+	process_start(&spi_proc_dmafin, NULL);
+	process_start(&spi_proc_tcpsender, NULL);
 	process_start(&spi_rdcmd, NULL);
 
 }
@@ -143,16 +179,19 @@ int wait_for_dma_start( )
 	return 0;
 }
 
+
 /**
  * \brief start a SPI transaction, sending MISO, receiving MOSI, for len bytes
  * poll the spi_callback function when finished
  */
 static void spi_start_xfer(void *mosi, void *miso, int len)
 {
+	int rc;
+
 	if ((miso == NULL) || (mosi == NULL) || (len == 0)) {
 		LOG_ERR("null buffers, zero-len xfer, transfer aborted.");
 		if (spi_process_callback != NULL) {
-			process_poll(spi_process_callback);
+			process_post(spi_process_callback, spi_dma_cancel_event, NULL);
 		}
 		return;
 	}
@@ -161,16 +200,24 @@ static void spi_start_xfer(void *mosi, void *miso, int len)
 	spiTrans.txBuf = miso;
 	spiTrans.rxBuf = mosi;
 	spiTrans.arg = NULL;
+	//DORK LOG_DBG("+ %u spi_start_xfer %d\n", (unsigned) (clock_time( ) - last_clock_time), len);
 
-	if (!SPI_transfer(spiHandle, &spiTrans)) {
-		wait_for_dma_start( );
 
-		if (spi_process_callback != NULL) {
-					process_poll(spi_process_callback);
-					leds_on(LEDS_GREEN);
-		}
+	rc = SPI_transfer(spiHandle, &spiTrans);
+
+	if (rc == 0) {	// failed
+		LOG_ERR("SPI transfer err\n");
+		return;
 	}
 
+	clock_delay_usec(1000);
+
+	process_post(&spi_cancel_process, spi_dma_start_event, NULL);
+
+	// alert PI that we're ready to exchange data
+	toggle_spi_intr();
+
+//		wait_for_dma_start( );
 	return;
 }
 
@@ -180,7 +227,7 @@ void spi_drain_rx( )
   uint32_t count = 0;
 
   while (SSIDataGetNonBlocking(SSI0_BASE, &bob)) count++;
-  LOG_DBG("SPI drained %d bytes\n", (int) count);
+
 }
 
 /**
@@ -198,19 +245,20 @@ PROCESS_THREAD(spi_rdcmd, ev, data)
 			memset((void *)&spi_cmd, 0xff, 4);
 
 			// flush the rx path
-			spi_drain_rx( );
+			//spi_drain_rx( );
 
 			// start DMA transfer
 			spi_start_xfer(&spi_cmd, &spi_cmd, 4);
 
-			// alert PI that we're ready to exchange data
-			toggle_spi_intr();
 
 			// wait for the SPI/DMA transfer to signal us
-			PROCESS_WAIT_EVENT_UNTIL(ev == PROCESS_EVENT_POLL);
+			PROCESS_WAIT_EVENT_UNTIL((ev == spi_dma_done_event) || (ev == spi_dma_cancel_event));
+			if (ev == spi_dma_cancel_event) continue;
+
+//DORK			LOG_DBG("+ %u dma_done\n", (unsigned) (clock_time( ) - last_clock_time));
 
 			// the four byte command is ready...
-			LOG_DBG("rdcmd payload: %x %x %x %x\n", spi_cmd[0],spi_cmd[1],spi_cmd[2],spi_cmd[3]);
+//DORK			LOG_DBG("+ %u rdcmd payload: %x %x %x %x\n", (unsigned) (clock_time( ) - last_clock_time), spi_cmd[0],spi_cmd[1],spi_cmd[2],spi_cmd[3]);
 
 			// Command 0x10 is the "read a register" command
 			// Payload is:  0x10 REG_HI  REG_LO 0xff
@@ -292,11 +340,8 @@ PROCESS_THREAD(spi_rdreg, ev, data)
 	// start the SPI transfer (idle until master starts its side)
 	spi_start_xfer(&spi_cmd, &spi_cmd, 4);
 
-	// raise the SPI interrupt to tell master we're ready
-	toggle_spi_intr ();
-
 	// wait for the signal that the transfer is complete
-	PROCESS_WAIT_EVENT_UNTIL(ev == PROCESS_EVENT_POLL);
+	PROCESS_WAIT_EVENT_UNTIL((ev == spi_dma_done_event) || (ev == spi_dma_cancel_event));
 
 	// notify the read command process
 	process_post (&spi_rdcmd, spi_event, data);
@@ -317,11 +362,9 @@ PROCESS_THREAD(spi_wrreg, ev, data)
 	// start the transfer
 	spi_start_xfer(&spi_cmd, &spi_cmd, 4);
 
-	// inform master we're ready
-	toggle_spi_intr ();
-
 	// wait for the signal that the transfer is complete
-	PROCESS_WAIT_EVENT_UNTIL(ev == PROCESS_EVENT_POLL);
+	PROCESS_WAIT_EVENT_UNTIL((ev == spi_dma_done_event) || (ev == spi_dma_cancel_event));
+
 
 	// the new reg value is in the SPI data
 	uint32_t val = ((uint32_t) spi_cmd[3]) << 24 |
@@ -405,11 +448,9 @@ PROCESS_THREAD(spi_proc_topi, ev, data)
 	// start the transfer
 	spi_start_xfer(&spi_topi, &spi_topi, spi_topi_len);
 
-	// tell PI we're ready
-	toggle_spi_intr ();
-
 	// wait for the transfer to finish
-	PROCESS_WAIT_EVENT_UNTIL(ev == PROCESS_EVENT_POLL);
+	PROCESS_WAIT_EVENT_UNTIL((ev == spi_dma_done_event) || (ev == spi_dma_cancel_event));
+
 
 	// received data has been sent to the PI for processing
 
@@ -431,29 +472,113 @@ PROCESS_THREAD(spi_proc_frompi, ev, data)
 {
 	PROCESS_BEGIN( );
 
+	LOG_DBG("+ %u spi_proc_frompi\n", (unsigned) (clock_time( ) - last_clock_time));
+
+
 	// start the DMA
 	spi_start_xfer(&spi_frompi, &spi_frompi, spi_frompi_len);
 
-	// alert master that we're ready
-	toggle_spi_intr ();
-
 	// wait until signalled
-	PROCESS_WAIT_EVENT_UNTIL(ev == PROCESS_EVENT_POLL);
+	PROCESS_WAIT_EVENT_UNTIL((ev == spi_dma_done_event) || (ev == spi_dma_cancel_event));
+	if (ev == spi_dma_cancel_event) {
+		LOG_ERR("canceled.");
+	}
+	else {
+		LOG_DBG("+ %u spi_proc_frompi polled \n", (unsigned) (clock_time( ) - last_clock_time));
 
-	// copy that into UIP buf
-	memcpy(uip_buf, spi_frompi, spi_frompi_len);
-	uip_len = spi_frompi_len;
 
-#ifdef DEBUG
-	LOG_DBG("spi from pi %d\n", spi_frompi_len);
-	print_hex_dump(LOG_LEVEL_DBG, "spi from pi", 16, spi_frompi, spi_frompi_len);
-#endif
+		// inject packet into tcp stack
+		process_post(&spi_proc_tcpsender, spi_send_event, spi_frompi);
 
-	// inject packet into tcp stack
-	tcpip_input();
-
+	}
 	// return to reading commands
 	process_post (&spi_rdcmd, spi_event, data);
 
 PROCESS_END();
+}
+
+PROCESS_THREAD(spi_proc_tcpsender, ev, data)
+{
+	PROCESS_BEGIN( );
+
+	while (1) {
+		PROCESS_WAIT_EVENT_UNTIL(ev == spi_send_event);
+
+		if (!mutex_try_lock(&mutex)) {
+			LOG_ERR("mutex is still busy\n");
+			register_increment(REG_TXCOLL);
+
+		}
+		register_write(REG_TXBUSY, 1);
+//		LOG_DBG("spi from pi %d\n", spi_frompi_len);
+//		print_hex_dump(LOG_LEVEL_DBG, "spi from pi", 16, spi_frompi, spi_frompi_len);
+
+		memcpy(uip_buf, spi_frompi, spi_frompi_len);
+		uip_len = spi_frompi_len;
+
+		tcpip_input();
+
+		LOG_DBG("+ %u tcpip_input complete\n", (unsigned) (clock_time( ) - last_clock_time));
+		register_write(REG_TXBUSY, 0);
+		register_increment(REG_TXOK);
+		mutex_unlock(&mutex);
+	}
+
+	PROCESS_END();
+}
+
+static int spi_cancelled = 0;
+
+PROCESS_THREAD(spi_proc_dmafin, ev, data)
+{
+	PROCESS_BEGIN();
+	while(1) {
+		PROCESS_WAIT_EVENT();
+		if (ev == PROCESS_EVENT_POLL) {
+			// disable cancelation timer
+			process_post(&spi_cancel_process, spi_dma_done_event, NULL);
+
+			GPIO_toggleDio(11);
+
+				if (spi_process_callback != NULL) {
+//DORK					LOG_DBG("posting to %p\n", spi_process_callback);
+					if (spi_cancelled)
+						process_post(spi_process_callback, spi_dma_cancel_event, NULL);
+					else
+						process_post(spi_process_callback, spi_dma_done_event, NULL);
+				}
+				else {
+					LOG_DBG("no process to post\n");
+				}
+		}
+	}
+	PROCESS_END();
+}
+
+/**
+ * \brief when the timer expires, cancel the stuck transaction
+ */
+PROCESS_THREAD(spi_cancel_process, ev, data)
+{
+	static struct etimer spi_timer;
+
+	PROCESS_BEGIN();
+	while(1) {
+		PROCESS_WAIT_EVENT();
+		if (ev == spi_dma_start_event) {
+			etimer_set(&spi_timer, SPI_TIMEOUT);
+			spi_cancelled = 0;
+		}
+		else if (ev == spi_dma_done_event) {
+			etimer_stop(&spi_timer);
+			spi_cancelled = 0;
+		}
+		else if (ev == PROCESS_EVENT_TIMER) {
+			spi_cancelled = 1;
+  		SPI_transferCancel(spiHandle);
+  		spi_drain_rx();
+		}
+
+	}
+	PROCESS_END();
 }

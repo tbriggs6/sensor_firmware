@@ -26,7 +26,7 @@
 #include "Board.h"
 
 #define LOG_MODULE "SPINet"
-#define LOG_LEVEL LOG_LEVEL_ERR
+#define LOG_LEVEL LOG_LEVEL_NONE
 
 
 static void raise_rx_intr ()
@@ -41,11 +41,14 @@ static void clear_rx_intr ()
 	GPIO_clearDio(CC1310_LAUNCHXL_PIN_RXRDY);
 }
 
+extern clock_time_t last_clock_time;
+
 static void toggle_rx_intr ()
 {
-	clock_delay_usec (150);
+  LOG_DBG("+ %u toggle_rx_intr\n", (unsigned) (clock_time( ) - last_clock_time));
+
 	raise_rx_intr ();
-	clock_delay_usec (150);
+	clock_delay_usec (500);
 	clear_rx_intr ();
 }
 
