@@ -17,7 +17,7 @@ ifdef CC1310_LRM
 CFLAGS += -DCC1310_LRM=1
 endif
 
-MODULES += os/services/shell os/sys/energest 
+MODULES += os/services/shell os/sys/energest  os/services/simple-energest
 
 CFLAGS += -ggdb
 

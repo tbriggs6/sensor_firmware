@@ -10,6 +10,10 @@
 #define RPL_CONF_MODE					RF_MODE_SUB_1_GHZ
 #define RPL_CONF_WITH_PROBING                 1
 
+#define ENERGEST_CONF_ON 1
+#define UIP_CONF_TCP 1
+#define NETSTACK_CONF_WITH_IPV6 1
+
 
 /* ----------------------------------------------- */
 // disable watchdog for debugging

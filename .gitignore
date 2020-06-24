@@ -46,6 +46,9 @@
 *.idb
 *.pdb
 
+# editor cruft
+*.swp
+
 # Kernel Module Compile Results
 *.mod*
 *.cmd
@@ -57,4 +60,5 @@ dkms.conf
 
 # build directories
 */build/*
+*.simplelink
 

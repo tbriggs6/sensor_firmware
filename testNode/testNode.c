@@ -15,6 +15,7 @@
 #include <sys/energest.h>
 #include "sys/log.h"
 
+#include <os/services/simple-energest/simple-energest.h>
 
 #define LOG_MODULE "MESSAGE"
 #define LOG_LEVEL LOG_LEVEL_DBG
@@ -30,7 +31,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
   PROCESS_BEGIN();
 
   energest_init( );
-
+  simple_energest_init();
   etimer_set(&timer, CLOCK_SECOND * 60);
 
   while(1) {
