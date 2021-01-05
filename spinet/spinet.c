@@ -55,7 +55,40 @@
 
 #define LOG_MODULE "spinet"
 #define LOG_LEVEL LOG_LEVEL_INFO
-
+//
+///*---------------------------------------------------------------------------*/
+//PROCESS(spinet, "spinet");
+//AUTOSTART_PROCESSES(&spinet);
+///*---------------------------------------------------------------------------*/
+//PROCESS_THREAD(spinet, ev, data)
+//{
+//  static struct etimer timer;
+//
+//  PROCESS_BEGIN();
+//
+//  NETSTACK_MAC.off( );
+//
+//  spi_init();
+//  tsch_set_coordinator(1);
+//
+//  NETSTACK_ROUTING.root_start();
+//  NETSTACK_MAC.on();
+//
+//
+//  etimer_set(&timer, CLOCK_SECOND * 30);
+//  while(1) {
+//
+//    /* Wait for the periodic timer to expire and then restart the timer. */
+//    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer));
+//    printf("6TSCH Stats: \n");
+//    printf("Routing entries: %u\n", uip_ds6_route_num_routes());
+//    printf("Routing links: %u\n", uip_sr_num_nodes());
+//
+//    etimer_reset(&timer);
+//  }
+//
+//  PROCESS_END();
+//}
 /*---------------------------------------------------------------------------*/
 PROCESS(spinet, "spinet");
 AUTOSTART_PROCESSES(&spinet);
@@ -63,26 +96,37 @@ AUTOSTART_PROCESSES(&spinet);
 PROCESS_THREAD(spinet, ev, data)
 {
   static struct etimer timer;
-
+  static uip_ipaddr_t prefix;
   PROCESS_BEGIN();
+  tsch_set_coordinator(0);
 
-  NETSTACK_MAC.off( );
 
+  energest_init( );
+  NETSTACK_MAC.on();
   spi_init();
 
+  etimer_set(&timer, 5 * CLOCK_SECOND);
 
+  // wait a few seconds
+  PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer));
+  tsch_set_pan_secured(0);
+  tsch_set_coordinator(1);
+
+  etimer_set(&timer, 1 * CLOCK_SECOND);
+
+	// wait a few seconds
+	PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer));
+  const uip_ipaddr_t *default_prefix = uip_ds6_default_prefix();
+  uip_ip6addr_copy(&prefix, default_prefix);
+  printf("Setting as DAG root\n");
+  NETSTACK_ROUTING.root_set_prefix(&prefix, NULL);
   NETSTACK_ROUTING.root_start();
-  NETSTACK_MAC.on();
 
-
-  etimer_set(&timer, CLOCK_SECOND * 30);
+  etimer_set(&timer, 60 * CLOCK_SECOND);
   while(1) {
 
     /* Wait for the periodic timer to expire and then restart the timer. */
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer));
-    printf("6TSCH Stats: \n");
-    printf("Routing entries: %u\n", uip_ds6_route_num_routes());
-    printf("Routing links: %u\n", uip_sr_num_nodes());
 
     etimer_reset(&timer);
   }

@@ -12,8 +12,10 @@
 #include <contiki-net.h>
 #include <sys/compower.h>
 
-#include <driverlib/flash.h>
-#include <driverlib/vims.h>
+#include <ti/devices/DeviceFamily.h>
+#include DeviceFamily_constructPath(driverlib/flash.h)
+#include DeviceFamily_constructPath(driverlib/vims.h)
+
 #include "../modules/config/config.h"
 
 // contiki-ism for logging the data -

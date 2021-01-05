@@ -20,6 +20,11 @@
 #include DeviceFamily_constructPath(driverlib/gpio.h)
 #include DeviceFamily_constructPath(driverlib/ssi.h)
 #include DeviceFamily_constructPath(driverlib/sys_ctrl.h)
+/* Includes */
+#include <ti/drivers/PIN.h>
+#include <ti/devices/DeviceFamily.h>
+#include DeviceFamily_constructPath(driverlib/ioc.h)
+
 #include <ti/drivers/Board.h>
 #include <ti/drivers/SPI.h>
 #include <ti/drivers/GPIO.h>
@@ -31,14 +36,15 @@
 
 static void raise_rx_intr ()
 {
-	GPIO_setDio(CC1310_LAUNCHXL_PIN_RXRDY);
+	GPIO_setDio(Board_GPIO_RXIRQ);
+
 
 
 }
 
 static void clear_rx_intr ()
 {
-	GPIO_clearDio(CC1310_LAUNCHXL_PIN_RXRDY);
+	GPIO_clearDio(Board_GPIO_RXIRQ);
 }
 
 static void toggle_rx_intr ()
@@ -63,15 +69,6 @@ void rpl_init (void)
 {
 
 	clear_rx_intr( );
-
-	LOG_DBG("RPL_INIT is called\n");
-	rplstat_set_prefix ();
-
-  NETSTACK_ROUTING.root_start();
-  NETSTACK_MAC.on();
-
-  NETSTACK_ROUTING.global_repair("Req");
-
 
 }
 

@@ -1,6 +1,10 @@
 ######################################
 # testNode 
 ######################################
+MAKE_MAC = MAKE_MAC_TSCH
+#MAKE_ROUTING = MAKE_ROUTING_RPL_LITE
+#MAKE_NET = MAKE_NET_IPV6
+
 ######################################
 ifndef TARGET
 $(error TARGET is not set)
@@ -13,18 +17,23 @@ endif
 CONTIKI_PROJECT = testNode
 all: $(CONTIKI_PROJECT)
 
-ifdef CC1310_LRM
-CFLAGS += -DCC1310_LRM=1
-endif
+#ifdef CC1310_LRM
+#CFLAGS += -DCC1310_LRM=1
+#endif
 
 MODULES += os/services/shell os/sys/energest 
+
+include ../modules/config/Makefile.config
+include ../modules/echo/Makefile.echo
+include ../modules/messenger/Makefile.messenger
+include ../modules/command/Makefile.command
 
 CFLAGS += -ggdb
 
 UNIFLASH=/home/contiki/prog
 
-#CONTIKI = /home/contiki/contiki-ng
-CONTIKI = /home/contiki/lrm-contiki/contiki-ng
+CONTIKI = /home/contiki/contiki-ng
+#CONTIKI = /home/contiki/lrm-contiki/contiki-ng
 
 -include $(CONTIKI)/Makefile.identify-target
 
