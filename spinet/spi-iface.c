@@ -16,6 +16,12 @@
 #include DeviceFamily_constructPath(driverlib/ssi.h)
 #include DeviceFamily_constructPath(driverlib/sys_ctrl.h)
 #include DeviceFamily_constructPath(driverlib/udma.h)
+
+/* Includes */
+#include <ti/drivers/PIN.h>
+#include <ti/devices/DeviceFamily.h>
+#include DeviceFamily_constructPath(driverlib/ioc.h)
+
 #include <ti/drivers/Board.h>
 #include <ti/drivers/SPI.h>
 #include <ti/drivers/GPIO.h>
@@ -32,10 +38,18 @@
 
 #define SPI_CONTROLLER    SPI_CONTROLLER_SPI0
 
-#define SPI_PIN_SCK       30
-#define SPI_PIN_MOSI      29
-#define SPI_PIN_MISO      28
-#define SPI_PIN_CS        1
+// CC1310
+//#define SPI_PIN_SCK       30
+//#define SPI_PIN_MOSI      29
+//#define SPI_PIN_MISO      28
+//#define SPI_PIN_CS        1
+
+
+// CC1352p1
+//#define SPI_PIN_SCK       10
+//#define SPI_PIN_MOSI      9
+//#define SPI_PIN_MISO      8
+//#define SPI_PIN_CS        11
 
 
 static SPI_Handle spiHandle;
@@ -68,18 +82,19 @@ process_event_t spi_event;
 
 static void raise_spi_intr ()
 {
-	GPIO_setDio(CC1310_LAUNCHXL_PIN_SPIRDY);
+	GPIO_setDio(Board_GPIO_SPIRQ);
 
 
 }
 
 static void clear_spi_intr ()
 {
-	GPIO_clearDio(CC1310_LAUNCHXL_PIN_SPIRDY);
+	GPIO_clearDio(Board_GPIO_SPIRQ);
 }
 
 static void toggle_spi_intr ()
 {
+	LOG_DBG("toggle spi intr\n");
 	clock_delay_usec (100);
 	raise_spi_intr ();
 	clock_delay_usec (100);
@@ -101,6 +116,8 @@ void spi_init( )
 	 SPI_init( );
 
 	 clear_spi_intr( );
+
+	 LOG_DBG("SPI module initialize started\n");
 
 	SPI_Params_init(&spiParams);
 	spiParams.bitRate = 1000000;
@@ -189,6 +206,9 @@ void spi_drain_rx( )
 PROCESS_THREAD(spi_rdcmd, ev, data)
 {
 	PROCESS_BEGIN( );
+
+
+	LOG_DBG("SPI rdcmd loop beginning\n");
 
 	while (1) {
 
@@ -289,6 +309,7 @@ PROCESS_THREAD(spi_rdreg, ev, data)
 	uint32_t val = register_read (regnum);
 	memcpy(spi_cmd,  &val,  sizeof(val));
 
+	LOG_DBG("spi_rdreg started\n");
 	// start the SPI transfer (idle until master starts its side)
 	spi_start_xfer(&spi_cmd, &spi_cmd, 4);
 
@@ -297,6 +318,7 @@ PROCESS_THREAD(spi_rdreg, ev, data)
 
 	// wait for the signal that the transfer is complete
 	PROCESS_WAIT_EVENT_UNTIL(ev == PROCESS_EVENT_POLL);
+
 
 	// notify the read command process
 	process_post (&spi_rdcmd, spi_event, data);

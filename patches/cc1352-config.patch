@@ -1,0 +1,31 @@
+diff --git a/arch/cpu/simplelink-cc13xx-cc26xx/cc13x2-cc26x2/cc13x2-cc26x2.lds b/arch/cpu/simplelink-cc13xx-cc26xx/cc13x2-cc26x2/cc13x2-cc26x2.lds
+index 11a490edc..c395d9ff0 100644
+--- a/arch/cpu/simplelink-cc13xx-cc26xx/cc13x2-cc26x2/cc13x2-cc26x2.lds
++++ b/arch/cpu/simplelink-cc13xx-cc26xx/cc13x2-cc26x2/cc13x2-cc26x2.lds
+@@ -35,7 +35,9 @@ HEAPSIZE      = 0x100;  /* 256 bytes */
+ 
+ MEMORY
+ {
+-    FLASH (RX)      : ORIGIN = 0x00000000, LENGTH = 0x00057fa8
++    FLASH (RX)      : ORIGIN = 0x00000000, LENGTH = 0x00056000
++    UFLASH (RX)      : ORIGIN = 0x00056000, LENGTH = 0x0001000
++
+     /*
+      * Customer Configuration Area and Bootloader Backdoor configuration in
+      * flash, 40 bytes
+@@ -211,6 +213,15 @@ SECTIONS {
+         KEEP(*(.ccfg))
+     } > FLASH_CCFG AT> FLASH_CCFG
+ 
++    .uflash :
++    {
++	_uflash_base = .;
++	. = . + 0x1000;
++	_uflash_end = .;
++        _uflash_size = 0x1000;
++        KEEP(*(.uflash))
++    } > UFLASH
++
+     .bss : {
+         __bss_start__ = .;
+         *(.shbss)
