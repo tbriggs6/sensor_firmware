@@ -29,6 +29,9 @@
 #define LOG_LEVEL LOG_LEVEL_DBG
 
 static int sequence = 0;
+
+#define TRY_I2C
+#ifndef TRY_I2C
 void send_fake_cal( )
 {
 	static uip_ip6addr_t addr;
@@ -59,6 +62,122 @@ void send_fake_data( )
 	messenger_send (&addr, (void *) &data, sizeof(data));
 
 }
+
+#else
+
+#include <Board.h>
+#include <dev/i2c-arch.h>
+
+#include "../modules/sensors/ms5637.h"
+#include <string.h>
+#include "../modules/sensors/vaux.h"
+#include "../modules/sensors/si7020.h"
+#include "../modules/sensors/vbat.h"
+void send_fake_cal( )
+{
+	//static uip_ip6addr_t addr;
+	airborne_cal_t message;
+	ms5637_caldata_t data;
+
+	vaux_enable();
+
+	if (ms5637_readcalibration_data(&data) == 0) {
+		printf("Error - could not read cal data, aborting.\n");
+		return;
+	}
+
+	if (sizeof(message.caldata)!=sizeof(data)) {
+		printf("Warning - datatype mismatch between message and sensor cal data.\n");
+	}
+
+	memset(&message, 0, sizeof(message));
+	message.header = AIRBORNE_CAL_HEADER;
+	message.sequence = sequence++;
+
+	message.caldata[0] = data.sens;
+	message.caldata[1] = data.off;
+	message.caldata[2] = data.tcs;
+	message.caldata[3] = data.tco;
+	message.caldata[4] = data.tref;
+	message.caldata[5] = data.temp;
+
+
+	if (LOG_LEVEL >= LOG_LEVEL_DBG) {
+		printf("**************************\n");
+		printf("* Cal Data - %6.4u      *\n", (unsigned int) message.sequence);
+		printf("* TCO: %-6.4u           *\n", (unsigned int) data.tco);
+		printf("* TCS: %-6.4u           *\n", (unsigned int) data.tcs);
+		printf("* Off: %-6.4u           *\n", (unsigned int) data.off);
+		printf("* Sens: %-6.4u          *\n", (unsigned int) data.sens);
+		printf("* Temp: %-6.4u          *\n", (unsigned int) data.temp);
+		printf("**************************\n");
+	}
+
+
+	static uip_ip6addr_t addr;
+	config_get_receiver (&addr);
+
+	messenger_send (&addr, (void *) &message, sizeof(message));
+
+	vaux_disable();
+}
+
+void send_fake_data( )
+{
+	//static uip_ip6addr_t addr;
+		airborne_t message;
+		uint32_t pressure =  0, temperature = 0;
+		uint32_t si7020_humid = 0, si7020_temp = 0;
+
+		vaux_enable();
+		if (ms5637_read_pressure(&pressure) == 0) {
+			printf("Error - could not read pressure data, aborting.\n");
+			return;
+		}
+
+		if (ms5637_read_temperature(&temperature) == 0) {
+					printf("Error - could not read temperature data, aborting.\n");
+					return;
+				}
+
+		si7020_read_humidity(&si7020_humid);
+		si7020_read_temperature(&si7020_temp);
+
+		memset(&message, 0, sizeof(message));
+		message.header = AIRBORNE_HEADER;
+		message.sequence = sequence++;
+		message.ms5637_temp = temperature;
+		message.ms5637_pressure = pressure;
+		message.si7020_humid = si7020_humid;
+		message.si7020_temp = si7020_temp;
+		message.battery = vbat_millivolts( vbat_read() );
+//		message.battery = vbat_read( );
+
+		if (LOG_LEVEL >= LOG_LEVEL_DBG) {
+				printf("************************************\n");
+				printf("* Data -    seq: %10u    *\n", (unsigned int) message.sequence);
+				printf("* Pressure   : %10u      *\n", (unsigned int) message.ms5637_pressure);
+				printf("* Temperature: %10u      *\n", (unsigned int) message.ms5637_temp);
+				printf("* Humidity   : %10u      *\n", (unsigned int) message.si7020_humid);
+				printf("* Temperature: %10u      *\n", (unsigned int) message.si7020_temp);
+				printf("* Battery    : %10u      *\n", (unsigned int) message.battery);
+				printf("***********************************\n");
+			}
+
+		static uip_ip6addr_t addr;
+		config_get_receiver (&addr);
+
+		messenger_send (&addr, (void *) &message, sizeof(message));
+
+		vaux_disable();
+}
+
+
+
+#endif
+
+
+
 
 
 /*---------------------------------------------------------------------------*/
@@ -97,16 +216,23 @@ PROCESS_THREAD(hello_world_process, ev, data)
   LOG_6ADDR(LOG_LEVEL_INFO, &addr);
   LOG_INFO_("\n");
 
+
   etimer_set(&timer, 60 * CLOCK_SECOND );
   while(1) {
 
     /* Wait for the periodic timer to expire and then restart the timer. */
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer));
 
-    if (send_cal_data == 1)
+
+
+    if (send_cal_data == 1) {
+      printf("Sending calibration data\n");
     	send_fake_cal( );
-    else
+    }
+    else {
+    	printf("Sending calibration data\n");
     	send_fake_data( );
+    }
 
     // start the wait loop
     etimer_set(&timer, 30*CLOCK_SECOND);
@@ -125,7 +251,12 @@ PROCESS_THREAD(hello_world_process, ev, data)
 
     		messenger_get_last_result(&send_len, &recv_len, sizeof(status), &status);
     		printf("Result: send: %d, recv: %d, status: %d\n", send_len, recv_len, status);
-    		if (status >= 0) send_cal_data = 0;
+    		if (status >= 0) {
+    			if (send_cal_data == 1) {
+    				printf("Calibration data was received, starting to send actual data\n");
+    				send_cal_data = 0;
+    			}
+    		}
     		break;
     	}
     }
