@@ -20,8 +20,8 @@
 
 // contiki-ism for logging the data -
 #include "sys/log.h"
-#define LOG_MODULE "CONFIG-CC26xx"
-#define LOG_LEVEL LOG_LEVEL_INFO
+#define LOG_MODULE "CONFIG"
+#define LOG_LEVEL LOG_LEVEL_DBG
 
 #ifdef DEBUG
 #undef LOG_LEVEL
@@ -38,6 +38,19 @@ void config_read()
 {
 	// Copy the ram stored configs into the config struct
 	memcpy(&config, (config_t *) &_uflash_base, sizeof(config));
+
+	// show config bytes
+	uint8_t *val = (uint8_t *) &_uflash_base;
+	int i;
+	for (i = 0; i < sizeof(config); i++) {
+		printf("%-2.2x ", val[i]);
+	}
+	printf("\n");
+
+	for (i = 0; i < 8; i++) {
+		printf("%d : %-4.4x\n", i, config.server[i]);
+	}
+
 }
 
 void config_write()

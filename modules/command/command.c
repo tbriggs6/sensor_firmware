@@ -32,6 +32,7 @@ static void command_handle_set(const command_set_t *const req, command_ret_t *re
 		ret->value.uivalue = config_get_ctime_offset( );
 		ret->valid = (ret->value.uivalue == req->value.intval) ? 1 : 0;
 		ret->length = 4;
+		config_write( );
 		break;
 
 	case CONFIG_ROUTER:
@@ -43,15 +44,7 @@ static void command_handle_set(const command_set_t *const req, command_ret_t *re
 		config_get_receiver(&ret->value.ipaddr);
 		ret->valid = uip_ipaddr_cmp(&ret->value.ipaddr, &req->value.address);
 		ret->length = sizeof(uip_ipaddr_t);
-		break;
-
-	case CONFIG_BROADCAST_INTERVAL:
-		LOG_INFO("Set CONFIG_BROADCAST_INTERVAL...%d\n", (int) req->value.intval);
-
-		config_set_bcast_interval(req->value.intval);
-		ret->value.uivalue = config_get_bcast_interval();
-		ret->valid = (ret->value.uivalue == req->value.intval) ? 1 : 0;
-		ret->length = 4;
+		config_write( );
 		break;
 
 	case CONFIG_SENSOR_INTERVAL:
@@ -60,15 +53,26 @@ static void command_handle_set(const command_set_t *const req, command_ret_t *re
 		ret->value.uivalue = config_get_sensor_interval( );
 		ret->valid = (ret->value.uivalue == req->value.intval) ? 1 : 0;
 		ret->length = 4;
+		config_write( );
 		break;
 
-	case CONFIG_NEIGHBOR_INTERVAL:
-		LOG_INFO("Set CONFIG_NEIGHBOR_INTERVAL...%d\n", (int) req->value.intval);
-		config_set_neighbor_interval(req->value.intval);
-		ret->value.uivalue = config_get_neighbor_interval( );
+	case CONFIG_MAX_FAILURES:
+		LOG_INFO("Set CONFIG_MAX_FAILURES...%d\n", (int) req->value.intval);
+		config_set_maxfailures(req->value.intval);
+		ret->value.uivalue = config_get_maxfailures();
 		ret->valid = (ret->value.uivalue == req->value.intval) ? 1 : 0;
 		ret->length = 4;
+		config_write( );
 		break;
+
+	case CONFIG_RETRY_INTERVAL:
+			LOG_INFO("Set CONFIG_RETRY_INTERVAL...%d\n", (int) req->value.intval);
+			config_set_retry_interval(req->value.intval);
+			ret->value.uivalue = config_get_retry_interval();
+			ret->valid = (ret->value.uivalue == req->value.intval) ? 1 : 0;
+			ret->length = 4;
+			config_write( );
+			break;
 
 	default:
 		LOG_ERR("Command %X does not match any known commands.\n", req->token);
@@ -77,6 +81,7 @@ static void command_handle_set(const command_set_t *const req, command_ret_t *re
 	}
 
 	*num_bytes = ret->length;
+
 }
 
 
@@ -115,57 +120,24 @@ static void command_handle_get(const command_set_t *const req, command_ret_t *re
 		ret->length += sizeof(ret->value.ulong);
 		break;
 
-	case CONFIG_BROADCAST_INTERVAL:
-		LOG_INFO("Get CONFIG_BROADCAST_INTERVAL...\n");
-		ret->value.uivalue = config_get_bcast_interval();
-		ret->length += sizeof(ret->value.uivalue);
-		break;
-
 	case CONFIG_SENSOR_INTERVAL:
 		LOG_INFO("Get CONFIG_SENSOR_INTERVAL...\n");
 		ret->value.uivalue = config_get_sensor_interval( );
 		ret->length += sizeof(ret->value.uivalue);
 		break;
 
-	case CONFIG_NEIGHBOR_INTERVAL:
-		LOG_INFO("Get CONFIG_NEIGHBOR_INTERVAL...\n");
-		ret->value.uivalue = config_get_neighbor_interval( );
-		ret->length += sizeof(ret->value.uivalue);
-		break;
+	case CONFIG_MAX_FAILURES:
+			LOG_INFO("Get CONFIG_MAX_FAILURES...\n");
+			ret->value.uivalue = config_get_maxfailures();
+			ret->length += sizeof(ret->value.uivalue);
+			break;
 
-	case CONFIG_NEIGHBOR_NUM:
-		LOG_INFO("Get CONFIG_NEIGHBOR_NUM...\n");
-		//ret->value.uivalue = neighbors_getnum( );
-		ret->value.uivalue = 0;
-		ret->length += sizeof(ret->value.uivalue);
-		break;
+	case CONFIG_RETRY_INTERVAL:
+				LOG_INFO("Get CONFIG_RETRY_INTERVAL...\n");
+				ret->value.uivalue = config_get_retry_interval();
+				ret->length += sizeof(ret->value.uivalue);
+				break;
 
-	case CONFIG_NEIGHBOR_POS:
-		LOG_INFO("Get CONFIG_NEIGHBOR_POS...\n");
-		//neighbors_get(req->value.intval, &ret->value.ipaddr);
-		ret->value.uivalue = 0;
-		ret->length += sizeof(ret->value.ipaddr);
-		break;
-
-	case CONFIG_NEIGHBOR_RSSI:
-		LOG_INFO("Get CONFIG_NEIGHBOR_RSSI...\n");
-		//ret->value.uivalue = neighbors_get_rssi(req->value.intval);
-		ret->value.uivalue = 0;
-		ret->length += sizeof(ret->value.uivalue);
-		break;
-
-	case CONFIG_NEIGHBOR_ROUTER:
-		LOG_INFO("Get CONFIG_NEIGHBOR_ROUTER...\n");
-		//ret->value.uivalue = neighbors_get_router(req->value.intval);
-		ret->value.uivalue = 0;
-		ret->length += sizeof(ret->value.uivalue);
-		break;
-
-	case CONFIG_RTIMER_SECOND: // I don't know what this is supposed to do. -- Mic
-		LOG_INFO("Get CONFIG_RTIMER_SECOND...\n");
-		ret->value.uivalue = 0xFF;
-		ret->length += sizeof(ret->value.uivalue);
-		break;
 
 	case CONFIG_ENERGEST_CPU:
 		LOG_INFO("Get CONFIG_ENERGEST_CPU...\n");
