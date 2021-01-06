@@ -22,7 +22,7 @@
 /* ----------------------------------------------- */
 // disable watchdog for debugging
 #define WATCHDOG_CONF_DISABLE									1
-#define TI_I2C_CONF_ENABLE									  0
+#define TI_I2C_CONF_ENABLE									  1
 #define TI_UART_CONF_UART1_ENABLE						  0
 #define TI_SPI_CONF_SPI0_ENABLE							  1
 #define TI_SPI_CONF_SPI1_ENABLE								0
@@ -47,7 +47,13 @@
 #define LOG_CONF_LEVEL_IPV6                        LOG_LEVEL_WARN
 #define LOG_CONF_LEVEL_6LOWPAN                     LOG_LEVEL_WARN
 #define LOG_CONF_LEVEL_MAC                         LOG_LEVEL_WARN
-#define LOG_CONF_LEVEL_FRAMER                      LOG_LEVEL_WARN
+//#define LOG_CONF_LEVEL_FRAMER                      LOG_LEVEL_WARN
 //#define TSCH_LOG_CONF_PER_SLOT                     1
 
+
+/*******************************************************/
+/************* WHICH SENSORS ? **************/
+/*******************************************************/
+
+#define SENSOR_MS5637													1
 #endif /* SHARED_PROJECT_CONF_H_ */

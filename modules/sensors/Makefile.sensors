@@ -1,0 +1,18 @@
+
+PROJECTDIRS += ../modules/sensors
+
+PROJECT_SOURCEFILES += vaux.c vbat.c
+
+#ifdef SENSOR_MS5637
+PROJECT_SOURCEFILES += ms5637.c
+#endif
+
+
+#ifdef SENSOR_SI7010
+PROJECT_SOURCEFILES += si7010.c
+#endif
+
+
+#ifdef SENSOR_SI7020
+PROJECT_SOURCEFILES += si7020.c
+#endif

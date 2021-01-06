@@ -27,6 +27,7 @@ include ../modules/config/Makefile.config
 include ../modules/echo/Makefile.echo
 include ../modules/messenger/Makefile.messenger
 include ../modules/command/Makefile.command
+include ../modules/sensors/Makefile.sensors
 
 CFLAGS += -ggdb
 
