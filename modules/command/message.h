@@ -98,7 +98,7 @@ typedef struct __attribute__((packed)) {
 typedef struct {
     uint32_t header;
     uint32_t sequence;
-    uint16_t caldata[7];
+    uint16_t caldata[6];
 } airborne_cal_t;
 
 #define AIRBORNE_HEADER (0x54ab23efU)
