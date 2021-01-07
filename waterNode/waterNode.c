@@ -235,8 +235,11 @@ void send_sensor_data( )
 		// read thermistor
 		message.temperature = thermistor_read();
 
-		// this is the end, display stuff
 
+		daylight_disable();
+		vaux_disable();
+
+		// this is the end, display stuff
 		if (LOG_LEVEL >= LOG_LEVEL_DBG) {
 				printf("***********  WATER SENSOR *********\n");
 				printf("* Data Pkt   seq: %10u      *\n", (unsigned int) message.sequence);
@@ -262,12 +265,11 @@ void send_sensor_data( )
 				printf("***********************************\n");
 			}
 
-//		static uip_ip6addr_t addr;
-//		config_get_receiver (&addr);
-//
-//		messenger_send (&addr, (void *) &message, sizeof(message));
-		daylight_disable();
-		vaux_disable();
+
+		static uip_ip6addr_t addr;
+		config_get_receiver (&addr);
+
+		messenger_send (&addr, (void *) &message, sizeof(message));
 }
 
 

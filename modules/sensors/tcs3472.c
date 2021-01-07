@@ -47,7 +47,9 @@ int tcs3472_read (color_t *color)
 
 	// set gain
 	bytes_out[0] = 0xa0 | 0x0f;
-	bytes_out[1] = 0x00;
+
+	// gain values are:  0 = 1x, 1= 4x, 2=16x, 3 = 60x
+	bytes_out[1] = 0x01;
 	rc = i2c_arch_write(handle, ADDR, &bytes_out, 2);
 	if (rc == false) {
 		LOG_ERR("could not set tcs3472 register\n");
@@ -56,7 +58,11 @@ int tcs3472_read (color_t *color)
 
 	// set accumumation time
 	bytes_out[0] = 0xa0 | 0x01;
-	bytes_out[1] = 0xf0;
+	// time C0 = max 65535, but takes 154ms
+	//bytes_out[1] = 0xf0;
+	unsigned int cycles = 64;
+	bytes_out[1] = cycles;
+
 	rc = i2c_arch_write(handle, ADDR, &bytes_out, 2);
 	if (rc == false) {
 		LOG_ERR("could not set tcs3472 register\n");
@@ -78,7 +84,7 @@ int tcs3472_read (color_t *color)
 
 	while (done == 0) {
 
-		clock_delay_usec(2400);
+		clock_delay_usec(2400 * cycles);
 
 		count = count - 1;
 
@@ -109,10 +115,10 @@ int tcs3472_read (color_t *color)
 		goto error;
 	}
 
-	color->clear = bytes_in[0] << 8 | bytes_in[1];
-	color->red = bytes_in[2] << 8 | bytes_in[3];
-	color->green = bytes_in[4] << 8 | bytes_in[5];
-	color->blue = bytes_in[6] << 8 | bytes_in[7];
+	color->clear = bytes_in[1] << 8 | bytes_in[0];
+	color->red = bytes_in[3] << 8 | bytes_in[2];
+	color->green = bytes_in[5] << 8 | bytes_in[4];
+	color->blue = bytes_in[7] << 8 | bytes_in[6];
 
 
 error:

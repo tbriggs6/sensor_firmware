@@ -57,9 +57,14 @@ typedef struct {
 
 #define WATER_DATA_HEADER (0x34323233U)
 
-typedef struct {
+typedef struct __attribute__((packed)) {
         uint32_t header;
         uint32_t sequence;
+
+        // put 32-bits first, then 16... then 8...
+        // temperature and pressure
+        uint32_t pressure;
+        uint32_t temppressure;
 
         // battery level
         uint16_t battery;
@@ -85,10 +90,6 @@ typedef struct {
 
         // depth / hall sensor
         int16_t hall;
-
-        // temperature and pressure
-        uint32_t pressure;
-        uint32_t temppressure;
 } water_data_t;
 
 
@@ -101,7 +102,7 @@ typedef struct {
 } airborne_cal_t;
 
 #define AIRBORNE_HEADER (0x54ab23efU)
-typedef struct {
+typedef struct __attribute__((packed)) {
     uint32_t header;
     uint32_t sequence;
     uint32_t ms5637_pressure;
@@ -113,7 +114,7 @@ typedef struct {
 } airborne_t;
 
 #define DATA_ACK_HEADER (0x45ba32feU)
-typedef struct {
+typedef struct __attribute__((packed)) {
         uint32_t header;
         uint32_t sequence;
         uint32_t ack_seq;
