@@ -47,32 +47,49 @@ typedef struct __attribute__((__packed__)) {
 } command_ret_t;
 
 
-#define DATA_CAL_HEADER (0x3536370U)
+#define WATER_CAL_HEADER (0x3536370U)
 typedef struct {
     uint32_t header;
     uint32_t sequence;
     uint16_t caldata[7];
-} data_cal_t;
+    uint16_t resistorVals[8];
+} water_cal_t;
 
-#define DATA_NUM_ADC (4)
-#define DATA_HEADER (0x34323233U)
+#define WATER_DATA_HEADER (0x34323233U)
 
 typedef struct {
         uint32_t header;
         uint32_t sequence;
-        uint16_t ambient;
+
+        // battery level
         uint16_t battery;
+
+        // light on
         uint16_t color_blue;
         uint16_t color_clear;
         uint16_t color_green;
         uint16_t color_red;
-        uint16_t conductivity;
-        uint16_t hall;
-        uint16_t i2cerror;
+
+        // light off
+        uint16_t ambient;
+
+        // conductivity
+        uint16_t range1;
+        uint16_t range2;
+        uint16_t range3;
+        uint16_t range4;
+        uint16_t range5;
+
+        // temperature
         uint16_t temperature;
+
+        // depth / hall sensor
+        int16_t hall;
+
+        // temperature and pressure
         uint32_t pressure;
         uint32_t temppressure;
-} data_t;
+} water_data_t;
 
 
 
@@ -102,9 +119,6 @@ typedef struct {
         uint32_t ack_seq;
         uint32_t ack_value;
 } airborne_ack_t;
-
-void message_print_data(const data_t *data);
-
 
 
 

@@ -34,7 +34,7 @@
 * @{
 *
 * \file
-* Implement main logic loop for the airborne sensors for the
+* Implement main logic loop for the water sensors for the
 * water quality sensor project (variously known as ICON, ANCHOR, ...).
 *
 * This is the version implemented around the new CC1352-based modules / carrier
@@ -44,6 +44,7 @@
 */
 
 #include <contiki.h>
+#include "devtype.h"
 #include <sys/clock.h>
 #include "net/ipv6/uip-ds6-route.h"
 #include "net/ipv6/uip-sr.h"
@@ -79,15 +80,23 @@ static int sequence = 0;
 #include "../modules/sensors/ms5637.h"
 #include <string.h>
 #include "../modules/sensors/vaux.h"
+#include "../modules/sensors/si7210.h"
 #include "../modules/sensors/si7020.h"
 #include "../modules/sensors/analog.h"
-
+#include "../modules/sensors/pic32drvr.h"
+#include "../modules/sensors/daylight.h"
+#include "../modules/sensors/tcs3472.h"
 
 void send_calibration_data( )
 {
 	//static uip_ip6addr_t addr;
-	airborne_cal_t message;
-	ms5637_caldata_t data;
+
+	ms5637_caldata_t data = { 0 };
+	water_cal_t message = { 0 };
+
+	memset(&message, 0, sizeof(message));
+	message.header = WATER_CAL_HEADER;
+	message.sequence = sequence++;
 
 	vaux_enable();
 
@@ -100,9 +109,6 @@ void send_calibration_data( )
 		printf("Warning - datatype mismatch between message and sensor cal data.\n");
 	}
 
-	memset(&message, 0, sizeof(message));
-	message.header = AIRBORNE_CAL_HEADER;
-	message.sequence = sequence++;
 
 	message.caldata[0] = data.sens;
 	message.caldata[1] = data.off;
@@ -124,6 +130,16 @@ void send_calibration_data( )
 	}
 
 
+	message.resistorVals[0] = config_get_calibration(0);
+	message.resistorVals[1] = config_get_calibration(1);
+	message.resistorVals[2] = config_get_calibration(2);
+	message.resistorVals[3] = config_get_calibration(3);
+	message.resistorVals[4] = config_get_calibration(4);
+	message.resistorVals[5] = config_get_calibration(5);
+	message.resistorVals[6] = config_get_calibration(6);
+	message.resistorVals[7] = config_get_calibration(7);
+
+
 	static uip_ip6addr_t addr;
 	config_get_receiver (&addr);
 
@@ -132,53 +148,125 @@ void send_calibration_data( )
 	vaux_disable();
 }
 
+
+
+
 void send_sensor_data( )
 {
 	//static uip_ip6addr_t addr;
-		airborne_t message;
+		water_data_t message;
 		uint32_t pressure =  0, temperature = 0;
-		uint32_t si7020_humid = 0, si7020_temp = 0;
-
-		vaux_enable();
-		if (ms5637_read_pressure(&pressure) == 0) {
-			printf("Error - could not read pressure data, aborting.\n");
-			return;
-		}
-
-		if (ms5637_read_temperature(&temperature) == 0) {
-					printf("Error - could not read temperature data, aborting.\n");
-					return;
-				}
-
-		si7020_read_humidity(&si7020_humid);
-		si7020_read_temperature(&si7020_temp);
+		conductivity_t conduct = { 0 };
+		color_t color = { 0 };
 
 		memset(&message, 0, sizeof(message));
-		message.header = AIRBORNE_HEADER;
+		message.header = WATER_DATA_HEADER;
 		message.sequence = sequence++;
-		message.ms5637_temp = temperature;
-		message.ms5637_pressure = pressure;
-		message.si7020_humid = si7020_humid;
-		message.si7020_temp = si7020_temp;
+
+		vaux_enable();
+		clock_delay_usec(50000);
+
+		// read pressure & pressure from ms5637
+		if (ms5637_read_pressure(&pressure) == 1) {
+			message.pressure = pressure;
+		}
+		else {
+			printf("Error - could not read pressure data\n");
+		}
+
+
+		if (ms5637_read_temperature(&temperature) == 1) {
+			message.temppressure = temperature;
+		}
+		else {
+			printf("Error - could not read temperature data.\n");
+		}
+
+		// read battery level
 		message.battery = vbat_millivolts( vbat_read() );
-//		message.battery = vbat_read( );
+
+		// read hall sensor
+		int16_t magfield;
+		if (si7210_read (&magfield) == 1) {
+			LOG_DBG("magfield = %d\n", magfield);
+			message.hall = (int16_t) magfield;
+		}
+		else {
+			printf("Error - could not read depth / hall sensor\n");
+		}
+
+		// read conductivity
+		if (pic32drvr_read(&conduct) == 1) {
+					message.range1 = conduct.range[0];
+					message.range2 = conduct.range[1];
+					message.range3 = conduct.range[2];
+					message.range4 = conduct.range[3];
+					message.range5 = conduct.range[4];
+		}
+		else {
+			printf("Error - could not read conductivity data\n");
+		}
+
+		// read color sensor
+		daylight_enable();
+
+		if (tcs3472_read(&color) == 1) {
+			message.color_red = color.red;
+			message.color_green = color.green;
+			message.color_blue = color.blue;
+			message.color_clear = color.clear;
+		}
+		else {
+			printf("Error - could not read from color sensor\n");
+		}
+
+		daylight_disable( );
+
+		// read color again
+		if (tcs3472_read(&color) == 1) {
+			message.ambient = color.clear;
+  	}
+	  else {
+				printf("Error - could not read from color sensor (again)\n");
+		}
+
+
+
+		// read thermistor
+		message.temperature = thermistor_read();
+
+		// this is the end, display stuff
 
 		if (LOG_LEVEL >= LOG_LEVEL_DBG) {
-				printf("************************************\n");
-				printf("* Data -    seq: %10u    *\n", (unsigned int) message.sequence);
-				printf("* Pressure   : %10u      *\n", (unsigned int) message.ms5637_pressure);
-				printf("* Temperature: %10u      *\n", (unsigned int) message.ms5637_temp);
-				printf("* Humidity   : %10u      *\n", (unsigned int) message.si7020_humid);
-				printf("* Temperature: %10u      *\n", (unsigned int) message.si7020_temp);
-				printf("* Battery    : %10u      *\n", (unsigned int) message.battery);
+				printf("***********  WATER SENSOR *********\n");
+				printf("* Data Pkt   seq: %10u      *\n", (unsigned int) message.sequence);
+				printf("* Battery       : %10u      *\n", (unsigned int) message.battery);
+
+				printf("* Ranges                          *\n");
+				printf("*            1] : %10u      *\n", (unsigned int) message.range1);
+				printf("*            2] : %10u      *\n", (unsigned int) message.range2);
+				printf("*            3] : %10u      *\n", (unsigned int) message.range3);
+				printf("*            4] : %10u      *\n", (unsigned int) message.range4);
+				printf("*            5] : %10u      *\n", (unsigned int) message.range5);
+
+				printf("* Thermistor    : %10u      *\n", (unsigned int) message.temperature);
+
+				printf("* Color                           *\n");
+				printf("*           Red : %10u      *\n", (unsigned int) message.color_red);
+				printf("*         Green : %10u      *\n", (unsigned int) message.color_green);
+				printf("*          Blue : %10u      *\n", (unsigned int) message.color_blue);
+				printf("*         Clear : %10u      *\n", (unsigned int) message.color_clear);
+				printf("* Ambient       : %10u      *\n", (unsigned int) message.ambient);
+				printf("* Pressure      : %10u      *\n", (unsigned int) message.pressure);
+				printf("* Internal Temp : %10u      *\n", (unsigned int) message.temppressure);
 				printf("***********************************\n");
 			}
 
-		static uip_ip6addr_t addr;
-		config_get_receiver (&addr);
-
-		messenger_send (&addr, (void *) &message, sizeof(message));
-
+//		static uip_ip6addr_t addr;
+//		config_get_receiver (&addr);
+//
+//		messenger_send (&addr, (void *) &message, sizeof(message));
+		daylight_disable();
 		vaux_disable();
 }
 
@@ -186,10 +274,10 @@ void send_sensor_data( )
 
 
 /*---------------------------------------------------------------------------*/
-PROCESS(airborne_process, "Airborne process");
-AUTOSTART_PROCESSES(&airborne_process);
+PROCESS(water_process, "Water process");
+AUTOSTART_PROCESSES(&water_process);
 /*---------------------------------------------------------------------------*/
-PROCESS_THREAD(airborne_process, ev, data)
+PROCESS_THREAD(water_process, ev, data)
 {
 	// event timer - used to configure data intervals and retransmits
   static struct etimer timer = { 0 };
@@ -226,7 +314,7 @@ PROCESS_THREAD(airborne_process, ev, data)
   // radio should have begun initialization in the background
 
   // initialize the configuration module - used for non-volatile config
-  config_init( );
+  config_init( WATER_SENSOR_DEVTYPE );
   config_get_receiver (&serverAddr);
 
   if (LOG_LEVEL >= LOG_LEVEL_DBG) {
@@ -246,6 +334,8 @@ PROCESS_THREAD(airborne_process, ev, data)
   // enable the "command" service - respond to remote requests over messenger connections
   command_init( );
 
+
+  send_sensor_data();
 
   // enter the main state machine loop
 
@@ -297,7 +387,7 @@ PROCESS_THREAD(airborne_process, ev, data)
   				else {
   					// resending ....
   					state = SEND_CAL;
-  					process_poll(&airborne_process);
+  					process_poll(&water_process);
   				}
   			}
   			break;
@@ -349,7 +439,7 @@ PROCESS_THREAD(airborne_process, ev, data)
 					else {
 						// resending ....
 						state = SEND_DATA;
-						process_poll(&airborne_process);
+						process_poll(&water_process);
 					}
 				}
 				break;

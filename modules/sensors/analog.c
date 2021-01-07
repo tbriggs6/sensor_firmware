@@ -38,31 +38,41 @@
 //#include "Board.h""
 
 
+static uint32_t adcread(unsigned int channel)
+{
+		AUXSYSIFOpModeChange(AUX_SYSIF_OPMODE_TARGET_A);
+
+		clock_delay_usec(100);
+
+		AUXADCEnableSync(AUXADC_REF_FIXED, AUXADC_SAMPLE_TIME_170_US, AUXADC_TRIGGER_MANUAL);
+
+		clock_delay_usec(100);
+		AUXADCFlushFifo( );
+
+		AUXADCSelectInput(channel);
+		clock_delay_usec(100);
+
+		AUXADCGenManualTrigger( );
+		while (AUXADCGetFifoStatus() & AUXADC_FIFO_EMPTY_M)
+			clock_delay_usec(100);
+
+		uint32_t sample = AUXADCPopFifo( );
+
+		AUXADCDisable( );
+		AUXSYSIFOpModeChange(AUX_SYSIF_OPMODE_TARGET_PDLP);
+		return sample;
+
+}
+
+uint32_t thermistor_read( )
+{
+	return adcread(ADC_COMPB_IN_AUXIO24);
+}
+
 
 uint32_t vbat_read()
 {
-
-	AUXSYSIFOpModeChange(AUX_SYSIF_OPMODE_TARGET_A);
-
-	clock_delay_usec(100);
-
-	AUXADCEnableSync(AUXADC_REF_FIXED, AUXADC_SAMPLE_TIME_170_US, AUXADC_TRIGGER_MANUAL);
-
-	clock_delay_usec(100);
-	AUXADCFlushFifo( );
-
-	AUXADCSelectInput(ADC_COMPB_IN_AUXIO22);
-	clock_delay_usec(100);
-
-	AUXADCGenManualTrigger( );
-	while (AUXADCGetFifoStatus() & AUXADC_FIFO_EMPTY_M)
-		clock_delay_usec(100);
-
-	uint32_t sample = AUXADCPopFifo( );
-
-	AUXADCDisable( );
-	AUXSYSIFOpModeChange(AUX_SYSIF_OPMODE_TARGET_PDLP);
-	return sample;
+	return adcread(ADC_COMPB_IN_AUXIO22);
 }
 
 uint32_t vbat_millivolts(uint32_t reading)

@@ -72,7 +72,7 @@ void send_fake_data( )
 #include <string.h>
 #include "../modules/sensors/vaux.h"
 #include "../modules/sensors/si7020.h"
-#include "../modules/sensors/vbat.h"
+#include "../modules/sensors/analog.h"
 void send_fake_cal( )
 {
 	//static uip_ip6addr_t addr;

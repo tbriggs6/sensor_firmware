@@ -21,6 +21,8 @@
 
 static void command_handle_set(const command_set_t *const req, command_ret_t *ret, int *num_bytes)
 {
+	int id;
+
 	ret->header = CMD_RET_HEADER;
 	ret->token = req->token;
 	ret->length = 4 * sizeof(uint32_t);
@@ -74,6 +76,25 @@ static void command_handle_set(const command_set_t *const req, command_ret_t *re
 			config_write( );
 			break;
 
+	case CONFIG_CAL1:
+	case CONFIG_CAL2:
+	case CONFIG_CAL3:
+	case CONFIG_CAL4:
+	case CONFIG_CAL5:
+	case CONFIG_CAL6:
+	case CONFIG_CAL7:
+	case CONFIG_CAL8:
+			id = (req->token - CONFIG_CAL1);
+			LOG_INFO("Set CONFIG_CAL%d...%d\n", id + 1, (int) req->value.intval);
+
+			config_set_calibration(id, (uint16_t) req->value.intval);
+			ret->value.uivalue = config_get_retry_interval();
+			ret->valid = (ret->value.uivalue == req->value.intval) ? 1 : 0;
+			ret->length = 4;
+			config_write( );
+			break;
+
+
 	default:
 		LOG_ERR("Command %X does not match any known commands.\n", req->token);
 		ret->valid = 0;
@@ -87,6 +108,7 @@ static void command_handle_set(const command_set_t *const req, command_ret_t *re
 
 static void command_handle_get(const command_set_t *const req, command_ret_t *ret, int *num_bytes)
 {
+	int idx;
 	float value;
 
 	ret->header = CMD_RET_HEADER;
@@ -138,6 +160,19 @@ static void command_handle_get(const command_set_t *const req, command_ret_t *re
 				ret->length += sizeof(ret->value.uivalue);
 				break;
 
+		case CONFIG_CAL1:
+		case CONFIG_CAL2:
+		case CONFIG_CAL3:
+		case CONFIG_CAL4:
+		case CONFIG_CAL5:
+		case CONFIG_CAL6:
+		case CONFIG_CAL7:
+		case CONFIG_CAL8:
+			idx = req->token - CONFIG_CAL1;
+			LOG_INFO("Get CONFIG_CAL%d...\n", idx);
+					ret->value.uivalue = config_get_calibration(idx);
+					ret->length += sizeof(ret->value.uivalue);
+					break;
 
 	case CONFIG_ENERGEST_CPU:
 		LOG_INFO("Get CONFIG_ENERGEST_CPU...\n");

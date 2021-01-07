@@ -14,6 +14,8 @@
 #include <contiki.h>
 #include <contiki-net.h>
 
+
+
 // dynamic integer config values handled in config_get( );
 typedef enum {
 	CONFIG_CTIME = 10,		//0xA
@@ -29,7 +31,17 @@ typedef enum {
 
 	CONFIG_SENSOR_INTERVAL = 32,		//0x20
 	CONFIG_MAX_FAILURES = 33,					// 0x21
-	CONFIG_RETRY_INTERVAL = 34				// 0x22
+	CONFIG_RETRY_INTERVAL = 34,				// 0x22
+
+	// device specific calibration values
+	CONFIG_CAL1 = 64,			// 0x40
+	CONFIG_CAL2 = 65,
+	CONFIG_CAL3 = 66,
+	CONFIG_CAL4 = 67,
+	CONFIG_CAL5 = 68,
+	CONFIG_CAL6 = 69,
+	CONFIG_CAL7 = 70,
+	CONFIG_CAL8 = 71
 } configtype_t;
 
 // see wikipedia - https://en.wikipedia.org/wiki/Hexspeak
@@ -45,11 +57,12 @@ typedef struct {
 	uint32_t max_failures;
 	uint32_t retry_interval;
 
+	uint16_t local_calibration[8];
 } config_t;
 
 
 
-void config_init( );
+void config_init( unsigned int dev_type );
 void config_read( );
 void config_write( );
 
@@ -82,5 +95,8 @@ void config_set_maxfailures(uint32_t max);
 uint32_t config_get_retry_interval();
 void config_set_retry_interval(uint32_t seconds);
 
+
+void config_set_calibration(int cal_num, uint16_t value);
+uint16_t config_get_calibration(int cal_num);
 
 #endif /* CONFIG_H_ */
