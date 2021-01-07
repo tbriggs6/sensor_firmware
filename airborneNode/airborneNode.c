@@ -152,8 +152,9 @@ void send_sensor_data ()
 	uint32_t pressure = 0, temperature = 0;
 	uint32_t si7020_humid = 0, si7020_temp = 0;
 
-	// turn on the vaux bus to enable sensors
+	// turn on the vaux bus to enable sensors & delay 50ms to settle
 	vaux_enable ();
+	clock_delay_usec(50000);
 
 	// read the pressure sensor & temperature
 	if (ms5637_read_pressure (&pressure) == 0) {
