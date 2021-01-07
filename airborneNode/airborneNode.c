@@ -64,6 +64,8 @@
 #include "../modules/command/command.h"
 
 
+#include "devtype.h"
+
 #include "sys/log.h"
 #define LOG_MODULE "SENSOR"
 #define LOG_LEVEL LOG_LEVEL_SENSOR
@@ -226,7 +228,7 @@ PROCESS_THREAD(airborne_process, ev, data)
   // radio should have begun initialization in the background
 
   // initialize the configuration module - used for non-volatile config
-  config_init( );
+  config_init( AIRBORNE_SENSOR_DEVTYPE );
   config_get_receiver (&serverAddr);
 
   if (LOG_LEVEL >= LOG_LEVEL_DBG) {

@@ -202,7 +202,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
   etimer_set(&timer, CLOCK_SECOND );
 
   PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer));
-  config_init( );
+  config_init( 000 );
   messenger_init();
   echo_init();
   command_init( );
