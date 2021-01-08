@@ -12,7 +12,7 @@ ifndef BOARD
 $(error BOARD is not set)
 endif
 ######################################
-CONTIKI_PROJECT = airborneNode
+CONTIKI_PROJECT = waterNode
 all: $(CONTIKI_PROJECT)
 
 MODULES += os/services/shell os/sys/energest 

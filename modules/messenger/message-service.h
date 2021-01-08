@@ -42,6 +42,9 @@ void messenger_send(const uip_ipaddr_t *remote_addr, const  void *data, int leng
 // get result of the last send (including any data received from the remote
 void messenger_get_last_result(int *sendlen, int *recvlen, int maxlen, void *dest);
 
+// was the last result a valid ACK from the remote?
+int messenger_last_result_okack( );
+
 // add a callback handler to the list
 void messenger_add_handler(uint32_t header, uint32_t min_len, uint32_t max_len, handler_t handler);
 

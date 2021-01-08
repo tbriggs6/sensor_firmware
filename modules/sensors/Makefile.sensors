@@ -1,7 +1,7 @@
 
 PROJECTDIRS += ../modules/sensors
 
-PROJECT_SOURCEFILES += vaux.c vbat.c
+PROJECT_SOURCEFILES += vaux.c analog.c daylight.c
 
 #ifdef SENSOR_MS5637
 PROJECT_SOURCEFILES += ms5637.c
@@ -9,10 +9,18 @@ PROJECT_SOURCEFILES += ms5637.c
 
 
 #ifdef SENSOR_SI7010
-PROJECT_SOURCEFILES += si7010.c
+PROJECT_SOURCEFILES += si7210.c
 #endif
 
 
 #ifdef SENSOR_SI7020
 PROJECT_SOURCEFILES += si7020.c
+#endif
+
+#ifdef SENSOR_PIC32DRVR
+PROJECT_SOURCEFILES += pic32drvr.c
+#endif
+
+#ifdef SENSOR_PIC32DRVR
+PROJECT_SOURCEFILES += tcs3472.c
 #endif

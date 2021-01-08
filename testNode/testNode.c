@@ -72,7 +72,7 @@ void send_fake_data( )
 #include <string.h>
 #include "../modules/sensors/vaux.h"
 #include "../modules/sensors/si7020.h"
-#include "../modules/sensors/vbat.h"
+#include "../modules/sensors/analog.h"
 void send_fake_cal( )
 {
 	//static uip_ip6addr_t addr;
@@ -202,7 +202,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
   etimer_set(&timer, CLOCK_SECOND );
 
   PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer));
-  config_init( );
+  config_init( 000 );
   messenger_init();
   echo_init();
   command_init( );

@@ -5,12 +5,10 @@
  *      Author: contiki
  */
 
-#ifndef SENSORNODE_SENSOR_H_
-#define SENSORNODE_SENSOR_H_
+#ifndef DEVTYPE_H_
+#define DEVTYPE_H_
 
-
-void sensor_postdata(void *data);
-void sensor_init( );
+#define AIRBORNE_SENSOR_DEVTYPE 0x333
 
 
 #endif /* SENSORNODE_SENSOR_H_ */

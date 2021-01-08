@@ -15,7 +15,7 @@
 // contiki-ism for logging the data -
 #include "sys/log.h"
 #define LOG_MODULE "CONFIG"
-#define LOG_LEVEL LOG_LEVEL_INFO
+#define LOG_LEVEL LOG_LEVEL_DBG
 
 #ifdef DEBUG
 #undef LOG_LEVEL
@@ -25,76 +25,72 @@
 #include "../../modules/config/config.h"
 
 config_t config;
-dynamic_config_t dynconfig;
 
 #define SECONDS(x) (x * CLOCK_SECOND)
 
+static unsigned int config_dev_type = 0;
 
-
-
-
-
-void config_init()
+void config_init (unsigned int dev_type)
 {
-	// handled by target / platform
-	config_read();
+	// store dev_type
+	config_dev_type = dev_type;
 
-	// print config
-	LOG_DBG("Configuration:\r\n");
-	LOG_DBG("Version number: %u.%u\r\n", (unsigned int) config.major_version, (unsigned int) config.minor_version);
-	LOG_DBG("Magic: %X\r\n", config.magic);
-	LOG_DBG("Broadcast interval: %d\r\n", config.bcast_interval);
-	LOG_DBG("Neighbor interval: %d\r\n", config.neighbor_interval);
-	LOG_DBG("Sensor interval: %d\r\n\n", config.sensor_interval);
+	// handled by target / platform
+	config_read ();
 
 	if (config.magic != CONFIG_MAGIC) {
-		LOG_INFO("Configuration magic (%-8.8X != %-8.8X) not found, using defaults\r\n", config.magic, CONFIG_MAGIC);
+		LOG_INFO("Configuration magic (%-8.8X != %-8.8X) not found, using defaults\r\n", (unsigned int ) config.magic,
+							(unsigned int)CONFIG_MAGIC);
 
 		config.magic = CONFIG_MAGIC;
 
-		config_set_major_version(VERSION_MAJOR);
-		config_set_minor_version(VERSION_MINOR);
-		config_set_bcast_interval(20);
-		config_set_neighbor_interval(20);
-		config_set_sensor_interval(10);
+		config_set_major_version (VERSION_MAJOR);
+		config_set_minor_version (VERSION_MINOR);
+
+		config_set_sensor_interval (10); // seconds to wait to send next sensor reading
+		config_set_maxfailures (100);  // consecutive failures before reboot
+		config_set_retry_interval (15);	// retry sending msgs in seconds
+
 		uip_ip6addr_t server;
-		uiplib_ip6addrconv("fd00::1", &server);
-		config_set_receiver(&server);
+		uiplib_ip6addrconv ("fd00::1", &server);
+		config_set_receiver (&server);
 
-		config_write();
-		config_read();
-
-		// print config
-		LOG_INFO("Configuration:\r\n");
-		LOG_INFO("Version number: %u.%u\r\n", (unsigned int) config.major_version, (unsigned int) config.minor_version);
-		LOG_INFO("Magic: %X\r\n", config.magic);
-		LOG_INFO("Broadcast interval: %d\r\n", config.bcast_interval);
-		LOG_INFO("Neighbor interval: %d\r\n", config.neighbor_interval);
-		LOG_INFO("Sensor interval: %d\r\n\n", config.sensor_interval);
+//		printf("Writing config\n");
+//		config_write();
+//		config_read();
 	}
 
+	// print config
+	LOG_INFO("Configuration:\r\n");
+	LOG_INFO("Version number: %u.%u\r\n", (unsigned int ) config.major_version, (unsigned int ) config.minor_version);
+	LOG_INFO("Magic: %X\r\n", (unsigned int ) config.magic);
+	LOG_INFO("Sensor interval: %d\r\n\n", (unsigned int ) config.sensor_interval);
+	LOG_INFO("Max failures: %d\r\n\n", (unsigned int ) config.max_failures);
+	LOG_INFO("Retry interval: %d\r\n\n", (unsigned int ) config.retry_interval);
 
-	memset(&dynconfig, 0, sizeof(dynconfig));
-
+	LOG_INFO("Stored destination address: ");
+	uip_ip6addr_t addr;
+	config_get_receiver (&addr);
+	LOG_6ADDR(LOG_LEVEL_INFO, &addr);
+	LOG_INFO_("\n");
 }
 
-
-void config_set_magic(uint32_t magic)
+void config_set_magic (uint32_t magic)
 {
 	config.magic = magic;
 }
 
-uint32_t config_get_magic( )
+uint32_t config_get_magic ()
 {
 	return config.magic;
 }
 
-int config_is_magic( )
+int config_is_magic ()
 {
 	return config.magic == CONFIG_MAGIC;
 }
 
-void config_set_sensor_interval(const int seconds)
+void config_set_sensor_interval (const int seconds)
 {
 	int interval = SECONDS(seconds);
 
@@ -107,150 +103,172 @@ void config_set_sensor_interval(const int seconds)
 	}
 
 	config.sensor_interval = interval;
-	config_write();
-
-	//TODO
-//	#if DEPLOYABLE
-//
-//	process_poll(&sensor_timer);
-//
-//	#endif // DEPLOYABLE
 
 	return;
 }
 
-int config_get_sensor_interval()
+int config_get_sensor_interval ()
 {
 	if (config.sensor_interval < (SECONDS(5)))
 		return SECONDS(5);
 
-	return config.sensor_interval  / CLOCK_SECOND;
+	return config.sensor_interval / CLOCK_SECOND;
 }
 
-void config_set_ctime_offset(const int ctime)
+void config_set_ctime_offset (const int ctime)
 {
 	//TODO add RTC
 	//rtc_settime(ctime);
 }
 
-int config_get_ctime_offset()
+int config_get_ctime_offset ()
 {
 	//TODO add RTC
 	//return rtc_getoffset();
 	return 0;
 }
 
-void config_set_bcast_interval(const int  seconds)
-{
-	int interval = SECONDS(seconds);
-
-	if (interval < SECONDS(5)) {
-		LOG_DBG("Error - interval too small (5...3600) seconds\r\n");
-	}
-	else if (interval > SECONDS(3600)) {
-		LOG_DBG("Error - interval too large (5...3600) seconds\r\n");
-		return;
-	}
-
-	config.bcast_interval = interval;
-	config_write();
-}
-
-int config_get_bcast_interval()
-{
-	// convert interval back to seconds
-	return config.bcast_interval / CLOCK_SECOND;
-}
-
-
-void config_set_neighbor_interval(const int seconds)
-{
-	int interval = SECONDS(seconds);
-
-	if (interval < (SECONDS(5))) {
-		LOG_DBG("Error - interval too small (5...3600) seconds\r\n");
-	}
-	else if (interval > SECONDS(3600)) {
-		LOG_DBG("Error - interval too large (5...3600) seconds\r\n");
-		return;
-	}
-
-	config.neighbor_interval = interval;
-	config_write();
-}
-
-int config_get_neighbor_interval()
-{
-	if (config.neighbor_interval < (SECONDS(10)))
-		return (SECONDS(10));
-
-	return config.neighbor_interval  / CLOCK_SECOND;
-}
-
-
-void config_set_major_version(uint32_t major_ver)
+void config_set_major_version (uint32_t major_ver)
 {
 	config.major_version = major_ver;
-	config_write();
 }
 
-uint32_t config_get_major_version( )
+uint32_t config_get_major_version ()
 {
 	return config.major_version;
 }
 
-void config_set_minor_version(uint32_t minor_ver)
+void config_set_minor_version (uint32_t minor_ver)
 {
 	config.minor_version = minor_ver;
-	config_write();
 }
 
-uint32_t config_get_minor_version( )
+uint32_t config_get_minor_version ()
 {
 	return config.minor_version;
 }
 
-int config_get_devtype( )
+int config_get_devtype ()
 {
-	return CONFIG_DEVTYPE;
+	return config_dev_type;
 }
 
-void config_set(const int configID, const int value)
+void config_set (const int configID, const int value)
 {
 
-	switch (configID) {
-	case CONFIG_CTIME:
-		config_set_ctime_offset(value);
-		break;
+	switch (configID)
+		{
+		case CONFIG_CTIME:
+			config_set_ctime_offset (value);
+			break;
 
-	case CONFIG_BROADCAST_INTERVAL:
-		config_set_bcast_interval(value);
-		break;
+		case CONFIG_SENSOR_INTERVAL:
+			config_set_sensor_interval (value);
+			break;
 
-	case CONFIG_SENSOR_INTERVAL:
-		config_set_sensor_interval(value);
-		break;
+		case CONFIG_MAX_FAILURES:
+			config_set_maxfailures (value);
+			break;
 
-	case CONFIG_NEIGHBOR_INTERVAL:
-		config_set_neighbor_interval(value);
-		break;
+		case CONFIG_RETRY_INTERVAL:
+			config_set_retry_interval (value);
+			break;
 
-	default:
-		LOG_DBG("Error - unknown config ID: %d\r\n", configID);
+		case CONFIG_CAL1:
+			config_set_calibration (0, value);
+			break;
+
+		case CONFIG_CAL2:
+			config_set_calibration (1, value);
+			break;
+
+		case CONFIG_CAL3:
+			config_set_calibration (2, value);
+			break;
+
+		case CONFIG_CAL4:
+			config_set_calibration (3, value);
+			break;
+
+		case CONFIG_CAL5:
+			config_set_calibration (4, value);
+			break;
+
+		case CONFIG_CAL6:
+			config_set_calibration (5, value);
+			break;
+
+		case CONFIG_CAL7:
+			config_set_calibration (6, value);
+			break;
+
+		case CONFIG_CAL8:
+			config_set_calibration (7, value);
+			break;
+
+		default:
+			LOG_DBG("Error - unknown config ID: %d\r\n", configID);
+		}
+}
+
+void config_get_receiver (uip_ipaddr_t *receiver)
+{
+	int i;
+
+	for (i = 0; i < 8; i++) {
+		receiver->u16[i] = config.server[i];
+	}
+
+}
+
+void config_set_receiver (const uip_ipaddr_t *receiver)
+{
+	int i;
+
+	for (i = 0; i < 8; i++) {
+		config.server[i] = receiver->u16[i];
 	}
 }
 
-
-void config_get_receiver(uip_ipaddr_t *receiver)
+uint32_t config_get_maxfailures ()
 {
-	memcpy(receiver, &dynconfig.receiver, sizeof(dynconfig.receiver));
+	return config.max_failures;
 }
 
-void config_set_receiver(const uip_ipaddr_t *receiver)
+void config_set_maxfailures (uint32_t max)
 {
-	LOG_DBG("Setting receiver address to ");
-	LOG_6ADDR(LOG_LEVEL_DBG, receiver);
-	LOG_DBG_("\n");
+	if (max < 10)
+		max = 10;
 
-	memcpy(&(dynconfig.receiver), receiver, sizeof(dynconfig.receiver));
+	config.max_failures = max;
 }
+
+uint32_t config_get_retry_interval ()
+{
+	return config.retry_interval;
+}
+
+void config_set_retry_interval (uint32_t seconds)
+{
+	if (seconds < 1)
+		seconds = 1;
+
+	config.retry_interval = seconds;
+}
+
+void config_set_calibration (int cal_num, uint16_t value)
+{
+	if ((cal_num < 0) || (cal_num >= 16))
+		return;
+
+	config.local_calibration[cal_num] = value;
+}
+
+uint16_t config_get_calibration (int cal_num)
+{
+	if ((cal_num < 0) || (cal_num >= 16))
+		return 0xffff;
+
+	return config.local_calibration[cal_num];
+}
+
