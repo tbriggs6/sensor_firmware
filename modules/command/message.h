@@ -48,11 +48,13 @@ typedef struct __attribute__((__packed__)) {
 
 
 #define WATER_CAL_HEADER (0x3536370U)
-typedef struct {
+typedef struct __attribute__((packed)) {
     uint32_t header;
     uint32_t sequence;
-    uint16_t caldata[7];
+    uint16_t caldata[6];
     uint16_t resistorVals[8];
+    uint16_t si7210_offset;
+    uint16_t si7210_gain;
 } water_cal_t;
 
 #define WATER_DATA_HEADER (0x34323233U)

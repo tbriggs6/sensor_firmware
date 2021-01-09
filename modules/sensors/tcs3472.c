@@ -13,6 +13,8 @@
 #include "sys/log.h"
 #include "tcs3472.h"
 
+#include "config.h"
+
 #define LOG_MODULE "TCS3472"
 #define LOG_LEVEL LOG_LEVEL_SENSOR
 
@@ -49,7 +51,7 @@ int tcs3472_read (color_t *color)
 	bytes_out[0] = 0xa0 | 0x0f;
 
 	// gain values are:  0 = 1x, 1= 4x, 2=16x, 3 = 60x
-	bytes_out[1] = 0x01;
+	bytes_out[1] = config_get_calibration(1);
 	rc = i2c_arch_write(handle, ADDR, &bytes_out, 2);
 	if (rc == false) {
 		LOG_ERR("could not set tcs3472 register\n");
@@ -60,7 +62,7 @@ int tcs3472_read (color_t *color)
 	bytes_out[0] = 0xa0 | 0x01;
 	// time C0 = max 65535, but takes 154ms
 	//bytes_out[1] = 0xf0;
-	unsigned int cycles = 64;
+	unsigned int cycles = config_get_calibration(2);
 	bytes_out[1] = cycles;
 
 	rc = i2c_arch_write(handle, ADDR, &bytes_out, 2);

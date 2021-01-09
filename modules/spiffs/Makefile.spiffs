@@ -1,0 +1,5 @@
+PROJECT_SOURCEFILES += spiffs_cache.c spiffs_check.c spiffs_gc.c spiffs_hydrogen.c spiffs_nucleus.c SPIFFSNVS.c
+
+PROJECTDIRS += ../modules/spiffs
+	
+

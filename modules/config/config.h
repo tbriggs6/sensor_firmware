@@ -8,8 +8,8 @@
 #ifndef CONFIG_H_
 #define CONFIG_H_
 
-#define VERSION_MAJOR 3
-#define VERSION_MINOR 4
+#define VERSION_MAJOR 1
+#define VERSION_MINOR 0
 
 #include <contiki.h>
 #include <contiki-net.h>
@@ -34,9 +34,9 @@ typedef enum {
 	CONFIG_RETRY_INTERVAL = 34,				// 0x22
 
 	// device specific calibration values
-	CONFIG_CAL1 = 64,			// 0x40
-	CONFIG_CAL2 = 65,
-	CONFIG_CAL3 = 66,
+	CONFIG_CAL1 = 64,			// 0x40  --- this is used by Si7210 for selecting compensation
+	CONFIG_CAL2 = 65,		  //       --- this is used by TCS3472 for selecting gain (0 = 1x, 1= 4x, 2=16x, 3 = 60x)
+	CONFIG_CAL3 = 66,     //       --- this is used by TCS3472 for selecting cycles (0 .. 256)
 	CONFIG_CAL4 = 67,
 	CONFIG_CAL5 = 68,
 	CONFIG_CAL6 = 69,
@@ -51,20 +51,21 @@ typedef struct {
 	uint32_t magic;
 	uint32_t major_version;
 	uint32_t minor_version;
-
-	uint16_t server[8];
+	uint32_t device_type;
 	uint32_t sensor_interval;
 	uint32_t max_failures;
 	uint32_t retry_interval;
 
+	uint16_t server[8];
 	uint16_t local_calibration[8];
 } config_t;
 
 
 
 void config_init( unsigned int dev_type );
-void config_read( );
-void config_write( );
+int config_read(config_t *config);
+int config_write(config_t *config);
+void config_list( );
 
 void config_set_magic(uint32_t magic);
 uint32_t config_get_magic( );
@@ -84,6 +85,7 @@ uint32_t config_get_minor_version( );
 int config_get_devtype( );
 
 void config_set(const int configID, const int value);
+int config_get (const int configID);
 
 void config_get_receiver(uip_ip6addr_t *receiver);
 void config_set_receiver(const uip_ip6addr_t *receiver);
@@ -95,8 +97,12 @@ void config_set_maxfailures(uint32_t max);
 uint32_t config_get_retry_interval();
 void config_set_retry_interval(uint32_t seconds);
 
+void config_clear_calbration_changed( );
+int config_did_calibration_change( );
+void config_set_calibration (int cal_num, uint16_t value);
 
 void config_set_calibration(int cal_num, uint16_t value);
 uint16_t config_get_calibration(int cal_num);
 
 #endif /* CONFIG_H_ */
+

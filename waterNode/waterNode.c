@@ -64,6 +64,9 @@
 
 #include "devtype.h"
 
+#include "config_nvs.h"
+#include "config.h"
+
 #define LOG_MODULE "SENSOR"
 #define LOG_LEVEL LOG_LEVEL_SENSOR
 
@@ -95,12 +98,19 @@ void send_calibration_data ()
 	ms5637_caldata_t data =
 				{ 0 };
 
+	// Si7210 calibration data
+	si7210_calibration_t si7210_cal = { 0 };
+
 	//TODO get the remaining calibration data
 
 	vaux_enable ();
 
 	if (ms5637_readcalibration_data (&data) == 0) {
 		LOG_ERR("Error - could not read cal data, aborting.\n");
+	}
+
+	if (si7210_read_cal(&si7210_cal) == 0) {
+		LOG_ERR("Error - could not read Si7210 cal data\n");
 	}
 
 	vaux_disable ();
@@ -116,7 +126,7 @@ void send_calibration_data ()
 	message.caldata[4] = data.tref;
 	message.caldata[5] = data.temp;
 
-	message.resistorVals[0] = config_get_calibration (0);
+	message.resistorVals[0] = config_get_calibration (0);  // si7210 compensation range
 	message.resistorVals[1] = config_get_calibration (1);
 	message.resistorVals[2] = config_get_calibration (2);
 	message.resistorVals[3] = config_get_calibration (3);
@@ -314,6 +324,8 @@ PROCESS_THREAD(water_process, ev, data)
 	// radio should have begun initialization in the background
 
 	// initialize the configuration module - used for non-volatile config
+	nvs_init( );
+
 	config_init ( WATER_SENSOR_DEVTYPE);
 	config_get_receiver (&serverAddr);
 
@@ -352,7 +364,7 @@ PROCESS_THREAD(water_process, ev, data)
 					leds_single_on (LEDS_CONF_GREEN);
 				}
 				else {
-					LOG_DBG("unexpected event received... %d", ev);
+					//LOG_DBG("unexpected event received... %d", ev);
 				}
 				break;
 
@@ -366,6 +378,7 @@ PROCESS_THREAD(water_process, ev, data)
 						leds_single_off (LEDS_CONF_GREEN);
 
 						failure_counter = 0;
+						config_clear_calbration_changed( );
 						state = SEND_DATA;
 					}
 				}
@@ -395,9 +408,9 @@ PROCESS_THREAD(water_process, ev, data)
 					state = WAIT_OK_DATA;
 					leds_single_on (LEDS_CONF_GREEN);
 				}
-				else {
-					LOG_DBG("unexpected event received... %d", ev);
-				}
+//				else {
+//					LOG_DBG("unexpected event received... %d", ev);
+//				}
 				break;
 
 			case WAIT_OK_DATA:
@@ -429,7 +442,10 @@ PROCESS_THREAD(water_process, ev, data)
 
 					else {
 						// resending ....
-						state = SEND_DATA;
+						if (config_did_calibration_change())
+							state = SEND_CAL;
+						else
+							state = SEND_DATA;
 						process_poll (&water_process);
 					}
 				}

@@ -34,7 +34,7 @@ static void command_handle_set(const command_set_t *const req, command_ret_t *re
 		ret->value.uivalue = config_get_ctime_offset( );
 		ret->valid = (ret->value.uivalue == req->value.intval) ? 1 : 0;
 		ret->length = 4;
-		config_write( );
+
 		break;
 
 	case CONFIG_ROUTER:
@@ -46,7 +46,7 @@ static void command_handle_set(const command_set_t *const req, command_ret_t *re
 		config_get_receiver(&ret->value.ipaddr);
 		ret->valid = uip_ipaddr_cmp(&ret->value.ipaddr, &req->value.address);
 		ret->length = sizeof(uip_ipaddr_t);
-		config_write( );
+
 		break;
 
 	case CONFIG_SENSOR_INTERVAL:
@@ -55,7 +55,7 @@ static void command_handle_set(const command_set_t *const req, command_ret_t *re
 		ret->value.uivalue = config_get_sensor_interval( );
 		ret->valid = (ret->value.uivalue == req->value.intval) ? 1 : 0;
 		ret->length = 4;
-		config_write( );
+
 		break;
 
 	case CONFIG_MAX_FAILURES:
@@ -64,7 +64,7 @@ static void command_handle_set(const command_set_t *const req, command_ret_t *re
 		ret->value.uivalue = config_get_maxfailures();
 		ret->valid = (ret->value.uivalue == req->value.intval) ? 1 : 0;
 		ret->length = 4;
-		config_write( );
+
 		break;
 
 	case CONFIG_RETRY_INTERVAL:
@@ -73,7 +73,7 @@ static void command_handle_set(const command_set_t *const req, command_ret_t *re
 			ret->value.uivalue = config_get_retry_interval();
 			ret->valid = (ret->value.uivalue == req->value.intval) ? 1 : 0;
 			ret->length = 4;
-			config_write( );
+
 			break;
 
 	case CONFIG_CAL1:
@@ -91,7 +91,7 @@ static void command_handle_set(const command_set_t *const req, command_ret_t *re
 			ret->value.uivalue = config_get_retry_interval();
 			ret->valid = (ret->value.uivalue == req->value.intval) ? 1 : 0;
 			ret->length = 4;
-			config_write( );
+
 			break;
 
 

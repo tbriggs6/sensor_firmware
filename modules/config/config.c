@@ -29,6 +29,7 @@ config_t config;
 #define SECONDS(x) (x * CLOCK_SECOND)
 
 static unsigned int config_dev_type = 0;
+static unsigned int calibration_changed = 0;
 
 void config_init (unsigned int dev_type)
 {
@@ -36,14 +37,14 @@ void config_init (unsigned int dev_type)
 	config_dev_type = dev_type;
 
 	// handled by target / platform
-	config_read ();
+	config_read (&config);
 
-	if (config.magic != CONFIG_MAGIC) {
+	if ((config.magic != CONFIG_MAGIC) || (config.device_type != dev_type)) {
 		LOG_INFO("Configuration magic (%-8.8X != %-8.8X) not found, using defaults\r\n", (unsigned int ) config.magic,
 							(unsigned int)CONFIG_MAGIC);
 
 		config.magic = CONFIG_MAGIC;
-
+		config.device_type = dev_type;
 		config_set_major_version (VERSION_MAJOR);
 		config_set_minor_version (VERSION_MINOR);
 
@@ -55,9 +56,14 @@ void config_init (unsigned int dev_type)
 		uiplib_ip6addrconv ("fd00::1", &server);
 		config_set_receiver (&server);
 
-//		printf("Writing config\n");
-//		config_write();
-//		config_read();
+
+		config_set_calibration(0, 2); // Si7210 set 20mT, Neodymium magnet
+		config_set_calibration(1, 0); // TCS3472 gain of 1
+		config_set_calibration(2, 64); //
+
+
+		printf("Writing config\n");
+		config_write(&config);
 	}
 
 	// print config
@@ -152,6 +158,31 @@ int config_get_devtype ()
 {
 	return config_dev_type;
 }
+
+int config_get (const int configID)
+{
+
+	switch (configID)
+		{
+		case CONFIG_DEVTYPE: return config_get_devtype();
+		case CONFIG_CTIME: return config_get_ctime_offset( );
+		case CONFIG_SENSOR_INTERVAL: return config_get_sensor_interval( );
+		case CONFIG_MAX_FAILURES: return config_get_maxfailures ( );
+		case CONFIG_RETRY_INTERVAL: return config_get_retry_interval ( );
+		case CONFIG_CAL1:	return config_get_calibration (0);
+		case CONFIG_CAL2: return config_get_calibration (1);
+		case CONFIG_CAL3: return config_get_calibration (2);
+		case CONFIG_CAL4: return config_get_calibration (3);
+		case CONFIG_CAL5: return config_get_calibration (4);
+		case CONFIG_CAL6: return config_get_calibration (5);
+		case CONFIG_CAL7: return config_get_calibration (6);
+		case CONFIG_CAL8: return config_get_calibration (7);
+		default:
+			LOG_DBG("Error - unknown config ID: %d\r\n", configID);
+		}
+	return -1;
+}
+
 
 void config_set (const int configID, const int value)
 {
@@ -256,12 +287,23 @@ void config_set_retry_interval (uint32_t seconds)
 	config.retry_interval = seconds;
 }
 
+void config_clear_calbration_changed( )
+{
+	calibration_changed = 0;
+}
+
+int config_did_calibration_change( )
+{
+	return calibration_changed;
+}
+
 void config_set_calibration (int cal_num, uint16_t value)
 {
 	if ((cal_num < 0) || (cal_num >= 16))
 		return;
 
 	config.local_calibration[cal_num] = value;
+	calibration_changed = 1;
 }
 
 uint16_t config_get_calibration (int cal_num)
