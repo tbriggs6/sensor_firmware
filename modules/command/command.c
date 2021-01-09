@@ -56,6 +56,8 @@ static void command_handle_set(const command_set_t *const req, command_ret_t *re
 		ret->valid = (ret->value.uivalue == req->value.intval) ? 1 : 0;
 		ret->length = 4;
 
+		// poke sensor server
+		config_timeout_change();
 		break;
 
 	case CONFIG_MAX_FAILURES:
@@ -74,6 +76,8 @@ static void command_handle_set(const command_set_t *const req, command_ret_t *re
 			ret->valid = (ret->value.uivalue == req->value.intval) ? 1 : 0;
 			ret->length = 4;
 
+			// poke sensor server
+			config_timeout_change();
 			break;
 
 	case CONFIG_CAL1:

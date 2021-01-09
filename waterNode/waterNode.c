@@ -357,8 +357,9 @@ PROCESS_THREAD(water_process, ev, data)
 
 			// send calibration data, retry every 15 seconds until success / ACK by remote
 			case SEND_CAL:
-				if (etimer_expired (&timer)) {
+				if (etimer_expired (&timer) || (ev == PROCESS_EVENT_POLL)) {
 					send_calibration_data ();
+
 					etimer_set (&timer, config_get_retry_interval () * CLOCK_CONF_SECOND);
 					state = WAIT_OK_CAL;
 					leds_single_on (LEDS_CONF_GREEN);
@@ -382,7 +383,7 @@ PROCESS_THREAD(water_process, ev, data)
 						state = SEND_DATA;
 					}
 				}
-				else if (etimer_expired (&timer)) {
+				else if (etimer_expired (&timer) || (ev == PROCESS_EVENT_POLL)) {
 					failure_counter++;
 					LOG_DBG("timeout waiting for remote, failures: %u\n", (unsigned int ) failure_counter);
 
@@ -400,12 +401,19 @@ PROCESS_THREAD(water_process, ev, data)
 				break;
 
 			case SEND_DATA:
-				if (etimer_expired (&timer)) {
-					send_sensor_data ();
+				if (etimer_expired (&timer) || (ev == PROCESS_EVENT_POLL)) {
+
+					if (config_did_calibration_change())
+					{
+						send_calibration_data();
+						state = WAIT_OK_CAL;
+					}
+					else {
+						send_sensor_data ();
+						state = WAIT_OK_DATA;
+					}
 
 					etimer_set (&timer, config_get_retry_interval () * CLOCK_CONF_SECOND);
-
-					state = WAIT_OK_DATA;
 					leds_single_on (LEDS_CONF_GREEN);
 				}
 //				else {
@@ -423,6 +431,7 @@ PROCESS_THREAD(water_process, ev, data)
 
 						// get ready for next sensor push
 						failure_counter = 0;
+						// resending ....
 						state = SEND_DATA;
 						etimer_set (&timer, config_get_sensor_interval () * CLOCK_SECOND);
 
@@ -442,10 +451,7 @@ PROCESS_THREAD(water_process, ev, data)
 
 					else {
 						// resending ....
-						if (config_did_calibration_change())
-							state = SEND_CAL;
-						else
-							state = SEND_DATA;
+						state = SEND_DATA;
 						process_poll (&water_process);
 					}
 				}
@@ -464,3 +470,8 @@ PROCESS_THREAD(water_process, ev, data)
 	PROCESS_END();
 }
 
+
+void config_timeout_change( )
+{
+	process_poll(&water_process);
+}

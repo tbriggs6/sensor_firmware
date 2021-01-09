@@ -98,27 +98,16 @@ int config_is_magic ()
 
 void config_set_sensor_interval (const int seconds)
 {
-	int interval = SECONDS(seconds);
 
-	if (interval < SECONDS(5)) {
-		LOG_INFO("Error - interval too small (5...3600) seconds\r\n");
-	}
-	else if (interval > SECONDS(3600)) {
-		LOG_INFO("Error - interval too large (5...3600) seconds\r\n");
-		return;
-	}
-
-	config.sensor_interval = interval;
-
+	config.sensor_interval = (seconds < 5) ? 5 :
+													 (seconds > 7200) ? 7200 :
+													 seconds;
 	return;
 }
 
 int config_get_sensor_interval ()
 {
-	if (config.sensor_interval < (SECONDS(5)))
-		return SECONDS(5);
-
-	return config.sensor_interval / CLOCK_SECOND;
+	return config.sensor_interval;
 }
 
 void config_set_ctime_offset (const int ctime)
@@ -281,10 +270,9 @@ uint32_t config_get_retry_interval ()
 
 void config_set_retry_interval (uint32_t seconds)
 {
-	if (seconds < 1)
-		seconds = 1;
-
-	config.retry_interval = seconds;
+	config.retry_interval = (seconds < 5) ? 5 :
+			(seconds > 30) ? 30 :
+					seconds;
 }
 
 void config_clear_calbration_changed( )
@@ -302,6 +290,7 @@ void config_set_calibration (int cal_num, uint16_t value)
 	if ((cal_num < 0) || (cal_num >= 16))
 		return;
 
+	LOG_DBG("Set calibration: %d = %u\n", cal_num, (unsigned int) value);
 	config.local_calibration[cal_num] = value;
 	calibration_changed = 1;
 }
@@ -312,5 +301,11 @@ uint16_t config_get_calibration (int cal_num)
 		return 0xffff;
 
 	return config.local_calibration[cal_num];
+}
+
+
+void config_timeout_change( )
+{
+
 }
 

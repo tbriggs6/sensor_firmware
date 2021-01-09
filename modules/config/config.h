@@ -104,5 +104,7 @@ void config_set_calibration (int cal_num, uint16_t value);
 void config_set_calibration(int cal_num, uint16_t value);
 uint16_t config_get_calibration(int cal_num);
 
+void config_timeout_change( ) __attribute__((weak));
+
 #endif /* CONFIG_H_ */
 
