@@ -23,13 +23,14 @@
 #include <contiki-net.h>
 #include <net/ipv6/tcpip.h>
 
-#define DEBUG
+
 
 // contiki-ism for logging the data -
 #include "sys/log.h"
 #define LOG_MODULE "SENDER"
 #define LOG_LEVEL LOG_LEVEL_INFO
 
+#define DEBUG
 #ifdef DEBUG
 #undef LOG_LEVEL
 #define LOG_LEVEL LOG_LEVEL_DBG
@@ -110,12 +111,7 @@ int messenger_last_result_okack ()
 {
 	// an ACK looks like 4 bytes with values ... ????
 	//TODO make this better than just 4 bytes....
-
-	if (recv_length == 4) {
-		printf ("server response: %-2.2x %-2.2x %-2.2x %-2.2x\n", rcv_buffer[0], rcv_buffer[1], rcv_buffer[2], rcv_buffer[3]);
-	}
-
-	if (send_length < 0)
+		if (send_length < 0)
 		return 0;
 
 	if (recv_length != 4)

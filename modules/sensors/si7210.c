@@ -10,9 +10,12 @@
 #include "ms5637.h"
 
 #include "../modules/command/message.h"
+#include "../modules/config/config.h"
+
 #include <Board.h>
 #include <dev/i2c-arch.h>
 #include "sys/log.h"
+
 
 #define LOG_MODULE "Si7210"
 #define LOG_LEVEL LOG_LEVEL_SENSOR
@@ -107,6 +110,45 @@ static bool si7210_readreg(I2C_Handle i2c_handle, uint8_t reg, uint8_t *value)
 	rc = i2c_arch_write_read(i2c_handle, SLV_ADDR, &reg, 1, value, 1);
 	return rc;
 }
+
+/**
+ * @brief Read a single-byte register
+ */
+
+static bool si7210_read_otp_reg(I2C_Handle i2c_handle, uint8_t reg, uint8_t *value)
+{
+	bool rc = false;
+	uint8_t bytes_out[2];
+	uint8_t byte_in = 0;
+
+	bytes_out[0] = OTP_ADDR;
+	bytes_out[1] = reg;
+	rc = i2c_arch_write(i2c_handle, SLV_ADDR, &bytes_out, 2);
+
+	bytes_out[0] = OTP_CTRL;
+	bytes_out[1] = 1 << 1;
+	rc &= i2c_arch_write(i2c_handle, SLV_ADDR, &bytes_out, 2);
+
+	// wait for it to be NOT busy
+	do {
+		bytes_out[0] = OTP_CTRL;
+		rc &= i2c_arch_write_read(i2c_handle, SLV_ADDR, &bytes_out, 1, &byte_in, 1);
+	} while ((rc == true) && ((byte_in & 0x01) == 1));
+
+
+	bytes_out[0] = OTP_DATA;
+	rc &= i2c_arch_write_read(i2c_handle, SLV_ADDR, &bytes_out, 1, &byte_in, 1);
+
+	*value = byte_in;
+
+	if (rc == false) {
+		LOG_ERR("Could not access OTP register %x\n", reg);
+	}
+
+	return rc;
+}
+
+
 
 /**
  * @brief Write a single byte register
@@ -208,8 +250,8 @@ static bool si7210_field_strength(I2C_Handle handle, int32_t *field)
 
 	// configure for measurement mode
 	//TODO play with these values for better results
-	uint8_t burstSize = 8; // collect 8 samples
-	uint8_t bw = 3; // avg of 8 samples
+	uint8_t burstSize = 7; // collect 8 samples
+	uint8_t bw = 6; // avg of 8 samples
 	uint8_t iir = 0; // FIR mode
 
 	rc = si7210_writereg(handle, CTRL4, burstSize << 5 | bw << 1 | iir);
@@ -232,15 +274,15 @@ static bool si7210_field_strength(I2C_Handle handle, int32_t *field)
 		return false;
 	}
 
-	count = 5;
+	count = 1 << (bw+2);
 	do {
 		rc = si7210_readreg(handle, DSPSIGM, &val);
 		if (rc == false) {
 			clock_delay_usec(10000);
 		}
-	} while ((--count > 0) && (rc == false));
+	} while ((--count > 0) && ((val & DSP_SIGM_DATA_FLAG) == 0));
 
-	if (rc == false) {
+	if (count == 0) {
 		LOG_WARN("timed out waiting for result.\n");
 		return false;
 	}
@@ -269,6 +311,43 @@ static bool si7210_field_strength(I2C_Handle handle, int32_t *field)
 }
 
 
+int si7210_read_cal(si7210_calibration_t *cal)
+{
+	//TODO promote this to a named configuration value
+	cal->config_range = config_get_calibration(0);
+
+	return true;
+}
+
+
+static int si7210_apply_compensation(I2C_Handle handle, uint8_t compRange)
+{
+	uint8_t startRegs[6] = { 0x21, 0x27, 0x2d, 0x33, 0x39 };
+	uint8_t destRegs[6] = { 0xCA, 0xCB, 0xCC, 0xCE, 0xCF, 0xD0 };
+	int i = 0;
+	int rc = true;
+	uint8_t regVal;
+	uint8_t srcReg;
+	uint8_t dstReg;
+
+	LOG_DBG("Applying compensation %d\n", (int) compRange);
+
+	for (i = 0; i < 6; i++) {
+
+		srcReg = startRegs[compRange] + i;
+		dstReg = destRegs[i];
+
+		rc &= si7210_read_otp_reg(handle, srcReg, &regVal);
+		if (rc == false) {
+			LOG_ERR("could not set OTP regs\n");
+			return false;
+		}
+		printf("R[%x] = R[%x]/%x\n", dstReg, srcReg, regVal);
+		rc &= si7210_writereg(handle, dstReg, regVal);
+	}
+
+	return rc;
+}
 
 int si7210_read (int16_t *magfield)
 {
@@ -287,6 +366,12 @@ int si7210_read (int16_t *magfield)
 		goto error;
 	}
 
+	//TODO promote to named parameter
+	int compRange = config_get_calibration(0);
+	if ((compRange < 0) || (compRange >= 6)) compRange = 0;
+
+	si7210_apply_compensation(handle, compRange);
+
 
 	int32_t raw_field = 0;
 	rc = si7210_field_strength(handle, &raw_field);
@@ -298,6 +383,11 @@ int si7210_read (int16_t *magfield)
 	else {
 		*magfield = (int16_t) raw_field;
 	}
+
+
+	// No need to read temperature - comes from other
+	// sensors, AND, this value is already compensated.
+
 	si7210_deinit(handle);
 
 

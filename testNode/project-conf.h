@@ -27,8 +27,10 @@
 #define TI_SPI_CONF_SPI0_ENABLE							  1
 #define TI_SPI_CONF_SPI1_ENABLE								0
 #define TI_SPI_CONF_I2C0_ENABLE								0
-#define TI_NVS_CONF_NVS_INTERNAL_ENABLE		    1
-#define TI_NVS_CONF_NVS_EXTERNAL_ENABLE			  0
+#define TI_NVS_CONF_ENABLE			  						1
+#define TI_NVS_CONF_NVS_INTERNAL_ENABLE		    0
+#define TI_NVS_CONF_NVS_EXTERNAL_ENABLE			  1
+
 
 /* Do not start TSCH at init, wait for NETSTACK_MAC.on() */
 #define TSCH_CONF_AUTOSTART 0
