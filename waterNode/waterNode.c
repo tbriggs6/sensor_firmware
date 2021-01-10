@@ -153,6 +153,10 @@ void send_calibration_data ()
 	messenger_send (&addr, (void*) &message, sizeof(message));
 }
 
+
+/*---------------------------------------------------------------------------*/
+
+
 /**
  * \brief read sensors and send data to server
  *

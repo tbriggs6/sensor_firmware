@@ -30,15 +30,18 @@ int pic32drvr_read(conductivity_t *conduct)
 	unsigned int i = 0;
 	int rc = 0;
 
-	I2C_Handle handle = i2c_arch_acquire (I2CBUS);
-	if (handle == NULL) {
-		LOG_ERR("could not acquire i2c handle...\n");
-		return 0;
-	}
+	I2C_Handle handle;
+
 
 	count = RETRY_COUNT;
 	do {
 		clock_delay_usec(10000);
+
+		handle = i2c_arch_acquire (I2CBUS);
+			if (handle == NULL) {
+				LOG_ERR("could not acquire i2c handle...\n");
+				return 0;
+			}
 
 		bytes_out[0] = 0;
 		bytes_in[0] = 0;
@@ -47,6 +50,8 @@ int pic32drvr_read(conductivity_t *conduct)
 		rc = i2c_arch_write_read(handle, DEVICE_ADDR, &bytes_out, 1, &bytes_in, 2);
 		if (rc == false)
 			continue;
+
+		i2c_arch_release(handle);
 
 		uint16_t value = bytes_in[0] << 8 | bytes_in[1];
 		if (value > 0) {
@@ -57,13 +62,19 @@ int pic32drvr_read(conductivity_t *conduct)
 
 	if (count == 0) {
 		LOG_ERR("did not get a completion in %d attempts\n", RETRY_COUNT);
-		i2c_arch_release(handle);
 		return 0;
 	}
+
+	handle = i2c_arch_acquire (I2CBUS);
+			if (handle == NULL) {
+				LOG_ERR("could not acquire i2c handle...\n");
+				return 0;
+			}
 
 
 	for (i = 0; i < 4; i++) {
 		bytes_out[0] = (i+1) * 2;
+
 
 		rc = i2c_arch_write_read(handle, DEVICE_ADDR, &bytes_out, 1,&bytes_in, 2);
 		if (rc == 0) {

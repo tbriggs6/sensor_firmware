@@ -44,8 +44,16 @@ int tcs3472_read (color_t *color)
 		goto error;
 	}
 
+	i2c_arch_release(handle);
+
 	// delay 2400 usec for the device to turn on
 	clock_delay_usec(2400);
+
+	handle = i2c_arch_acquire (I2CBUS);
+		if (handle == NULL) {
+			LOG_ERR("could not acquiare I2C bus\n");
+			return 0;
+		}
 
 	// set gain
 	bytes_out[0] = 0xa0 | 0x0f;
@@ -80,6 +88,8 @@ int tcs3472_read (color_t *color)
 		goto error;
 	}
 
+	i2c_arch_release(handle);
+
 	// poll the status
 	count = 1000;
 	done = 0;
@@ -88,12 +98,21 @@ int tcs3472_read (color_t *color)
 
 		clock_delay_usec(2400 * cycles);
 
+		handle = i2c_arch_acquire (I2CBUS);
+			if (handle == NULL) {
+				LOG_ERR("could not acquiare I2C bus\n");
+				return 0;
+			}
+
 		count = count - 1;
 
 		bytes_out[0] = 0xa0 | 0x13;
 		rc = i2c_arch_write_read(handle,  ADDR, &bytes_out, 1, &bytes_in, 1);
 		if (rc == false)
 			continue;
+
+
+		i2c_arch_release(handle);
 
 		if (bytes_in[0] & 0x01) {
 			done = 1;
@@ -109,6 +128,13 @@ int tcs3472_read (color_t *color)
 		goto error;
 	}
 
+
+	handle = i2c_arch_acquire (I2CBUS);
+	if (handle == NULL) {
+		LOG_ERR("could not acquiare I2C bus\n");
+		return 0;
+	}
+
 	// read the four values
 	bytes_out[0] = 0xa0 | 0x14;
 	rc = i2c_arch_write_read(handle, ADDR, &bytes_out, 1, &bytes_in, 8);
@@ -117,6 +143,8 @@ int tcs3472_read (color_t *color)
 		goto error;
 	}
 
+	i2c_arch_release(handle);
+
 	color->clear = bytes_in[1] << 8 | bytes_in[0];
 	color->red = bytes_in[3] << 8 | bytes_in[2];
 	color->green = bytes_in[5] << 8 | bytes_in[4];
@@ -124,6 +152,5 @@ int tcs3472_read (color_t *color)
 
 
 error:
-	i2c_arch_release(handle);
 	return rc;
 }

@@ -93,8 +93,6 @@ static int ms5637_cvt_and_read (enum sampletype type, uint32_t *value)
 	uint8_t bytes[3] = { 0 };
 
 
-	printf("Reading ms5637 data\n");
-
 	I2C_Handle handle = i2c_arch_acquire (I2CBUS);
 	if (handle == NULL) {
 		return 0;
@@ -106,8 +104,18 @@ static int ms5637_cvt_and_read (enum sampletype type, uint32_t *value)
 		return 0;
 	}
 
+
+	i2c_arch_release(handle);
+
+
 	// sleep 3 ms
 	ClockP_usleep(3000);
+
+
+	handle = i2c_arch_acquire (I2CBUS);
+	if (handle == NULL) {
+		return 0;
+	}
 
 	regnum = REG_DATA;
 
@@ -132,3 +140,5 @@ int ms5637_read_temperature (uint32_t *value)
 {
 	return ms5637_cvt_and_read(TEMP, value);
 }
+
+

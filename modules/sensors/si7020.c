@@ -33,6 +33,7 @@ int si7020_read_humidity(uint32_t *humidity)
 	reg = 0xF5;
 	i2c_arch_write(handle, addr,  &reg, 1);
 
+	i2c_arch_release(handle);
 
 	// wait until the sampling has finished...
 
@@ -40,12 +41,20 @@ int si7020_read_humidity(uint32_t *humidity)
 	int count = 1000;
 	uint8_t bytes[2] = { 0 };
 	do {
+		clock_delay_usec(1000);
+
+		handle = i2c_arch_acquire (I2CBUS);
+			if (handle == NULL) {
+				return 0;
+			}
+
 		result = i2c_arch_read(handle, addr, &bytes, 2);
+
+		i2c_arch_release(handle);
+
 	} while ((result == false) && (--count > 0));
 
 	*humidity = bytes[0] << 8 | bytes[1];
-
-	i2c_arch_release(handle);
 
 	return result;
 }
