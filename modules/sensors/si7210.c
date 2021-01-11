@@ -87,6 +87,9 @@
 
 
 
+#define CLOCK_TIME_MS( x ) \
+	((x <= (1000 / CLOCK_SECOND)) ? 1 : ((x * CLOCK_SECOND) / 1000))
+
 
 /**
  * @brief Wake device up
@@ -138,16 +141,22 @@ static bool si7210_readreg(uint8_t reg, uint8_t *value)
  * @brief Read a single-byte register
  */
 
-static bool si7210_read_otp_reg(uint8_t reg, uint8_t *value)
+static PT_THREAD(si7210_read_otp_reg(struct pt *pt, uint8_t reg, bool *rc, uint8_t *value))
 {
-	bool rc = false;
-	uint8_t bytes_out[2];
-	uint8_t byte_in = 0;
+
+	static uint8_t bytes_out[2] = { 0 };
+	static uint8_t byte_in = 0;
+	static struct etimer timer = { 0 };
+
+	PT_BEGIN(pt);
+
+	*rc = true;
 
 	I2C_Handle handle = i2c_arch_acquire (I2CBUS);
 		if (handle == NULL) {
 			LOG_ERR("Could not aquiare I2C bus.\n");
-			return false;
+			*rc = false;
+			PT_EXIT(pt);
 		}
 
 
@@ -163,12 +172,15 @@ static bool si7210_read_otp_reg(uint8_t reg, uint8_t *value)
 
 	// wait for it to be NOT busy
 	do {
-		clock_delay_usec(1000);
+
+			etimer_set(&timer, CLOCK_TIME_MS(2));
+			PT_WAIT_UNTILpt, etimer_expired(&timer));
 
 			handle = i2c_arch_acquire (I2CBUS);
 			if (handle == NULL) {
 				LOG_ERR("Could not aquiare I2C bus.\n");
-				return false;
+				*rc = false;
+				PT_EXIT(pt);
 			}
 
 		bytes_out[0] = OTP_CTRL;
@@ -181,7 +193,8 @@ static bool si7210_read_otp_reg(uint8_t reg, uint8_t *value)
 	handle = i2c_arch_acquire (I2CBUS);
 			if (handle == NULL) {
 				LOG_ERR("Could not aquiare I2C bus.\n");
-				return false;
+				*rc = false;
+				PT_EXIT(pt);
 			}
 
 	bytes_out[0] = OTP_DATA;
@@ -189,14 +202,9 @@ static bool si7210_read_otp_reg(uint8_t reg, uint8_t *value)
 
 	*value = byte_in;
 
-	if (rc == false) {
-		LOG_ERR("Could not access OTP register %x\n", reg);
-	}
-
-
 	i2c_arch_release(handle);
 
-	return rc;
+	PT_EXIT(pt);
 }
 
 
@@ -244,38 +252,42 @@ static bool si72020_check()
 /**
  * @brief Check communications and configure the device.
  */
-static bool si7210_init()
+static PT_THREAD(si7210_init(struct pt *pt, bool *rc))
 {
-	int count = 0;
-	bool rc = false;
+
+	static int count = 0;
+	static etimer timer = { 0 };
+
+	PT_BEGIN(pt);
 
 	si7210_wakeup();
 
-
 	count = 5;
 	do {
-		rc = si72020_check();
+		*rc = si72020_check();
 
 		// unit can take a long time to start up depending
 		// on its state.  If its not ready, try again after
 		// a 10ms delay.
-		if (rc == false) {
-			clock_delay_usec(10000);
+		if (*rc == false) {
+			etimer_set(&timer, CLOCK_TIMER_MS(10));
+			PT_WAIT_UNTIL(pt, etimer_expired(&timer));
 		}
-	} while ((--count > 0) && (rc == false));
+	} while ((--count > 0) && (*rc == false));
 
-	if (rc == false) {
+	if (*rc == false) {
 		LOG_WARN("Could not init Si7210\n");
-		return false;
+		PT_EXIT(pt);
 	}
 
 	// CTRL3 - disable periodic auto-wakeup & tamper detect
-	rc = si7210_writereg(CTRL3, TAMPER_DISABLE | FAST_DISABLE | AUTOWAKE_DISABLE);
-	if (rc == false) {
+	*rc = si7210_writereg(CTRL3, TAMPER_DISABLE | FAST_DISABLE | AUTOWAKE_DISABLE);
+	if (*rc == false) {
 		LOG_WARN("could not write ctrl3\n");
-		return false;
+		PT_EXIT(pt);
 	}
-	return true;
+
+	PT_EXIT(pt);
 }
 
 
@@ -292,12 +304,13 @@ static bool si7210_deinit()
 }
 
 
-static bool si7210_field_strength(int32_t *field)
+static PT_THREAD(si7210_field_strength(struct pt *pt, bool *rc, int32_t *field))
 {
-	int count = 0;
-	bool rc = false;
-	int32_t raw_measurement = 0;
-	uint8_t val = 0;
+	static int count = 0;
+	static int32_t raw_measurement = 0;
+	static uint8_t val = 0;
+
+	PT_BEGIN(pt);
 
 	// stop the unit's control loop
 	rc = si7210_writereg(POWERCTL, MEAS_MASK | UCESTORE_MASK | STOP_MASK);
@@ -306,7 +319,6 @@ static bool si7210_field_strength(int32_t *field)
 		return false;
 	}
 
-	//TODO load compensation values from OTP
 
 	// configure for measurement mode
 	//TODO play with these values for better results
