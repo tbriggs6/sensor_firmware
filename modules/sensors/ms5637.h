@@ -1,6 +1,7 @@
 #ifndef SENSOR_MS5637_H
 #define SENSOR_MS5637_H
 
+#include <contiki.h>
 #include <stdint.h>
 
 typedef struct {
@@ -12,8 +13,15 @@ typedef struct {
 	uint16_t temp;
 } ms5637_caldata_t;
 
+typedef struct {
+	int status;
+	uint32_t pressure;
+	uint32_t temperature;
+} ms5637_data_t;
+
 int ms5637_readcalibration_data(ms5637_caldata_t *caldata);
-int ms5637_read_pressure (uint32_t *value);
-int ms5637_read_temperature (uint32_t *value);
+
+PROCESS_NAME(ms5637_proc);
+
 
 #endif
