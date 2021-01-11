@@ -20,6 +20,8 @@
 #include "../modules/sensors/ms5637.h"
 #include "../modules/sensors/si7210.h"
 #include "../modules/sensors/vaux.h"
+#include "../modules/sensors/tcs3472.h"
+
 /*---------------------------------------------------------------------------*/
 PROCESS(hello_world_process, "Hello world process");
 AUTOSTART_PROCESSES(&hello_world_process);
@@ -31,6 +33,8 @@ PROCESS_THREAD(hello_world_process, ev, data)
   static unsigned int completions = 0;
   static ms5637_data_t mdata = { 0 };
   static si7210_data_t sdata = { 0 };
+  static tcs3472_data_t cdata = { 0 };
+
   static clock_t start = 0;
   static clock_t now = 0;
 
@@ -38,11 +42,12 @@ PROCESS_THREAD(hello_world_process, ev, data)
 
   // show a millisecond in clock ticks
   start = clock_time( );
-  clock_delay_usec(1000);
+  for (int i = 0; i < 10; i++)
+  	clock_delay_usec(10000);
   now = clock_time( );
 
 
-  printf("1ms = %u\n", (unsigned)(now - start));
+
 
   config_init(000);
 
@@ -50,8 +55,6 @@ PROCESS_THREAD(hello_world_process, ev, data)
   start = clock_time( );
 
 
-
-  printf("1ms = %u\n", (unsigned)(now - start));
 
   etimer_set(&et,  5);
   PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
@@ -63,10 +66,26 @@ PROCESS_THREAD(hello_world_process, ev, data)
   process_start(&si7210_proc, (void *)&sdata);
   completions |= (1 << 1);
 
+  process_start(&tcs3472_proc, (void *)&cdata);
+  completions |= (1 << 2);
+
   while (completions != 0) {
   	PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_EXITED);
-  	if (data == &ms5637_proc) completions &= ~(1 << 0);
-  	if (data == &si7210_proc) completions &= ~(1 << 1);
+  	if (data == &ms5637_proc) {
+  		completions &= ~(1 << 0);
+  		now = clock_time();
+  	  printf("ms5637 %lu ticks\n", (now-start));
+  	}
+  	if (data == &si7210_proc) {
+  		completions &= ~(1 << 1);
+  		now = clock_time();
+  		printf("si7210 %lu ticks\n", (now-start));
+  	}
+  	if (data == &tcs3472_proc) {
+  		completions &= ~(1 << 2);
+  		now = clock_time();
+  		printf("tcs3472 %lu ticks\n", (now-start));
+  	}
   }
 
   now = clock_time( );
@@ -81,6 +100,10 @@ PROCESS_THREAD(hello_world_process, ev, data)
   printf("***********************\n");
   printf("RC: %d\n", sdata.rc);
   printf("Field: %d\n", sdata.magfield);
+  printf("***********************\n");
+  printf("RC: %d\n", cdata.rc);
+  printf("ptr %p\n", &cdata);
+  printf("RGBC: <%d,%d,%d,%d>\n", (int)cdata.red,(int)cdata.green,(int)cdata.blue,(int)cdata.clear);
   printf("***********************\n");
 
   vaux_disable();

@@ -21,18 +21,33 @@
 #define ADDR 0x29
 #define I2CBUS Board_I2C0
 
-int tcs3472_read (color_t *color)
+
+#define CLOCK_TIME_MS( x ) \
+	((x <= (1000 / CLOCK_SECOND)) ? 1 : ((x * CLOCK_SECOND) / 1000))
+
+
+PROCESS(tcs3472_proc,"TCS3472 Sensor");
+PROCESS_THREAD(tcs3472_proc,ev, data)
 {
-	uint8_t bytes_out[4];
-	uint8_t bytes_in[8];
-	uint16_t count, done;
-	bool rc;
+	static uint8_t bytes_out[4] = { 0 };
+	static uint8_t bytes_in[8] = { 0 } ;
+	static uint16_t count, done = 0;
+	static bool rc = true;
+	static struct etimer timer = { 0 };
+	static unsigned int cycles = 0;
+	static tcs3472_data_t *cdata = 0;
+
+	PROCESS_BEGIN( );
+
+	cdata = (tcs3472_data_t *) data;
 
 	I2C_Handle handle = i2c_arch_acquire (I2CBUS);
 	if (handle == NULL) {
 		LOG_ERR("could not acquiare I2C bus\n");
-		return 0;
+		cdata->rc = false;
+		PROCESS_EXIT();
 	}
+
 
 
 	// turn on the device
@@ -41,19 +56,24 @@ int tcs3472_read (color_t *color)
 	rc = i2c_arch_write(handle, ADDR, &bytes_out, 2);
 	if (rc == false) {
 		LOG_ERR("could not set tcs3472 register\n");
-		goto error;
+		cdata->rc = false;
+		PROCESS_EXIT();
 	}
 
 	i2c_arch_release(handle);
 
 	// delay 2400 usec for the device to turn on
-	clock_delay_usec(2400);
+	etimer_set(&timer, CLOCK_TIME_MS(3));
+	PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer));
+
 
 	handle = i2c_arch_acquire (I2CBUS);
 		if (handle == NULL) {
-			LOG_ERR("could not acquiare I2C bus\n");
-			return 0;
+			LOG_ERR("could not acquire I2C bus\n");
+			cdata->rc = false;
+			PROCESS_EXIT();
 		}
+
 
 	// set gain
 	bytes_out[0] = 0xa0 | 0x0f;
@@ -63,20 +83,24 @@ int tcs3472_read (color_t *color)
 	rc = i2c_arch_write(handle, ADDR, &bytes_out, 2);
 	if (rc == false) {
 		LOG_ERR("could not set tcs3472 register\n");
-		goto error;
+		cdata->rc = false;
+		i2c_arch_release(handle);
+		PROCESS_EXIT();
 	}
 
 	// set accumumation time
 	bytes_out[0] = 0xa0 | 0x01;
 	// time C0 = max 65535, but takes 154ms
 	//bytes_out[1] = 0xf0;
-	unsigned int cycles = config_get_calibration(2);
+	cycles = config_get_calibration(2);
 	bytes_out[1] = cycles;
 
 	rc = i2c_arch_write(handle, ADDR, &bytes_out, 2);
 	if (rc == false) {
 		LOG_ERR("could not set tcs3472 register\n");
-		goto error;
+		cdata->rc = false;
+		i2c_arch_release(handle);
+		PROCESS_EXIT();
 	}
 
 	// enable conversion
@@ -85,23 +109,28 @@ int tcs3472_read (color_t *color)
 	rc = i2c_arch_write(handle, ADDR, &bytes_out, 2);
 	if (rc == false) {
 		LOG_ERR("could not set tcs3472 register\n");
-		goto error;
+		cdata->rc = false;
+		i2c_arch_release(handle);
+		PROCESS_EXIT();
 	}
+
 
 	i2c_arch_release(handle);
 
+
 	// poll the status
-	count = 1000;
+	count = 100;
 	done = 0;
 
 	while (done == 0) {
 
-		clock_delay_usec(2400 * cycles);
+		etimer_set(&timer, CLOCK_TIME_MS(3));
+		PROCESS_WAIT_EVENT_UNTIL(etimer_expiration_time(&timer));
 
 		handle = i2c_arch_acquire (I2CBUS);
 			if (handle == NULL) {
 				LOG_ERR("could not acquiare I2C bus\n");
-				return 0;
+				PROCESS_EXIT();
 			}
 
 		count = count - 1;
@@ -125,14 +154,16 @@ int tcs3472_read (color_t *color)
 
 	if (done == 2) {
 		LOG_ERR("did not get finished status in 1000 attempts.\n");
-		goto error;
+
+		PROCESS_EXIT();
 	}
 
 
 	handle = i2c_arch_acquire (I2CBUS);
 	if (handle == NULL) {
 		LOG_ERR("could not acquiare I2C bus\n");
-		return 0;
+		cdata->rc = false;
+		PROCESS_EXIT();
 	}
 
 	// read the four values
@@ -140,17 +171,18 @@ int tcs3472_read (color_t *color)
 	rc = i2c_arch_write_read(handle, ADDR, &bytes_out, 1, &bytes_in, 8);
 	if (rc == false) {
 		LOG_ERR("could not read color values\n");
-		goto error;
+		i2c_arch_release(handle);
+		cdata->rc = false;
+		PROCESS_EXIT();
 	}
 
 	i2c_arch_release(handle);
 
-	color->clear = bytes_in[1] << 8 | bytes_in[0];
-	color->red = bytes_in[3] << 8 | bytes_in[2];
-	color->green = bytes_in[5] << 8 | bytes_in[4];
-	color->blue = bytes_in[7] << 8 | bytes_in[6];
+	cdata->clear = bytes_in[1] << 8 | bytes_in[0];
+	cdata->red = bytes_in[3] << 8 | bytes_in[2];
+	cdata->green = bytes_in[5] << 8 | bytes_in[4];
+	cdata->blue = bytes_in[7] << 8 | bytes_in[6];
+	cdata->rc = rc;
 
-
-error:
-	return rc;
+	PROCESS_END();
 }

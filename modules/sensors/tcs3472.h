@@ -9,10 +9,10 @@
 #define MODULES_SENSORS_TCS3472_H_
 
 typedef struct {
+	bool rc;
 	uint16_t red, green, blue, clear;
-} color_t;
+} tcs3472_data_t;
 
-
-int tcs3472_read (color_t *color);
+PROCESS_NAME(tcs3472_proc);
 
 #endif /* MODULES_SENSORS_TCS3472_H_ */
