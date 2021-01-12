@@ -10,9 +10,10 @@
 #include "../modules/command/message.h"
 #include <Board.h>
 #include <dev/i2c-arch.h>
+#include "sensors.h"
 
-#define LOG_MODULE "SENSOR"
-#define LOG_LEVEL LOG_LEVEL_DBG
+#define LOG_MODULE "MS5637"
+#define LOG_LEVEL LOG_LEVEL_SENSOR
 
 #define DEVICE_ADDR 0x76
 
@@ -36,57 +37,54 @@
 
 int ms5637_readcalibration_data (ms5637_caldata_t *caldata)
 {
-	uint8_t address = DEVICE_ADDR;
-	uint8_t regnum = 0;
+	static uint8_t address = DEVICE_ADDR;
+	static uint8_t regnum = 0;
+	static bool rc = true;
+	static uint8_t vals[2];
 
-	printf("Reading calibration data\n");
+	memset(caldata, 0, sizeof(ms5637_caldata_t));
+
 	I2C_Handle handle = i2c_arch_acquire (I2CBUS);
 	if (handle == NULL) {
+		LOG_ERR("Failed to acquire I2C Bus\n");
 		return 0;
 	}
 
+	rc = true;
+
 	regnum = REG_SENS;
-	uint8_t vals[2];
-	if (!i2c_arch_write_read (handle, address, &regnum, 1, &vals, 2)) {
-		return 0;
-	}
+	rc &= i2c_arch_write_read (handle, address, &regnum, 1, &vals, 2);
 	caldata->sens = vals[0] << 8 | vals[1];
+	if (!rc) LOG_ERR("could not read SENS\n");
 
 
 	regnum = REG_OFF;
-	if (!i2c_arch_write_read (handle, address, &regnum, 1, &vals, 2)) {
-		return 0;
-	}
+	rc &= i2c_arch_write_read (handle, address, &regnum, 1, &vals, 2);
 	caldata->off = vals[0] << 8 | vals[1];
+	if (!rc) LOG_ERR("could not read OFF\n");
 
 	regnum = REG_TCS;
-	if (!i2c_arch_write_read (handle, address, &regnum, 1, &vals, 2)) {
-		return 0;
-	}
+	rc &= i2c_arch_write_read (handle, address, &regnum, 1, &vals, 2);
 	caldata->tcs = vals[0] << 8 | vals[1];
+	if (!rc) LOG_ERR("could not read TCS\n");
 
 	regnum = REG_TCO;
-	if (!i2c_arch_write_read (handle, address, &regnum, 1, &vals, 2)) {
-		return 0;
-	}
+	rc&= i2c_arch_write_read (handle, address, &regnum, 1, &vals, 2);
 	caldata->tco = vals[0] << 8 | vals[1];
+	if (!rc) LOG_ERR("could not read TCO\n");
 
 	regnum = REG_TREF;
-	if (!i2c_arch_write_read (handle, address, &regnum, 1, &vals, 2)) {
-		return 0;
-	}
+	rc &=i2c_arch_write_read (handle, address, &regnum, 1, &vals, 2);
 	caldata->tref = vals[0] << 8 | vals[1];
-
+	if (!rc) LOG_ERR("could not read TREF\n");
 
 	regnum = REG_TEMP;
-	if (!i2c_arch_write_read (handle, address, &regnum, 1, &vals, 2)) {
-		return 0;
-	}
+	rc &= i2c_arch_write_read (handle, address, &regnum, 1, &vals, 2);
 	caldata->temp = vals[0] << 8 | vals[1];
-
+	if (!rc) LOG_ERR("could not read TEMP\n");
 	i2c_arch_release(handle);
 
-	return 1;
+	return rc;
 }
 
 enum sampletype { PRESSURE, TEMP };
@@ -102,44 +100,41 @@ static PT_THREAD(ms5637_cvt_and_read (struct pt *pt, ms5637_data_t *data, enum s
 
 	PT_BEGIN(pt);
 
-	handle = i2c_arch_acquire (I2CBUS);
-	if (handle == NULL) {
-		data->status = false;
-		PT_EXIT(pt);
-	}
+	LOG_DBG("starting %d\n", type);
 
+	data->status = true;
 	regnum = (type == PRESSURE) ? CMD_START_PRESS : CMD_START_TEMP;
 
-	if (!i2c_arch_write (handle, address, &regnum, 1)) {
-		data->status = false;
+	SENSOR_AQ(pt, handle, data->status);
+	data->status &= i2c_arch_write (handle, address, &regnum, 1);
+	SENSOR_REL(pt, handle);
+
+	if (data->status == false) {
+		LOG_ERR("Could not read sensor\n");
 		PT_EXIT(pt);
 	}
 
-
-	i2c_arch_release(handle);
-
-
+	LOG_DBG("Setting timeout\n");
 
 	// delay for at least 3 ms
 	etimer_set(&timer,(clock_time_t) CLOCK_TIME_MS(3));
 	PT_WAIT_UNTIL(pt, etimer_expired(&timer));
 
-	handle = i2c_arch_acquire (I2CBUS);
-	if (handle == NULL) {
-		data->status = false;
-		PT_EXIT(pt);
-	}
+	LOG_DBG("Reading data for type %d\n", type);
 
 	regnum = REG_DATA;
+	SENSOR_AQ(pt, handle, data->status);
+	data->status = i2c_arch_write_read (handle, address, &regnum, 1, &bytes, 3);
+	SENSOR_REL(pt, handle);
 
-	if (!i2c_arch_write_read (handle, address, &regnum, 1, &bytes, 3)) {
-		data->status = false;
+	if (!data->status) {
+		LOG_ERR("Could not read sensor\n");
 		PT_EXIT(pt);
 	}
 
-	i2c_arch_release(handle);
-
 	value = (bytes[0] << 16) | (bytes[1] << 8) | bytes[2];
+
+	LOG_DBG("Setting value in %p for type %d = %d\n", data, type, (int) value);
 
 	if (type == PRESSURE) {
 		data->pressure = value;
@@ -147,6 +142,7 @@ static PT_THREAD(ms5637_cvt_and_read (struct pt *pt, ms5637_data_t *data, enum s
 	else if (type == TEMP) {
 		data->temperature = value;
 	}
+
 
 	PT_END(pt);
 }
@@ -157,13 +153,16 @@ PROCESS(ms5637_proc,"MS5637 Sensor");
 PROCESS_THREAD(ms5637_proc, ev, data)
 {
 	static struct pt child = { 0 };
-	static ms5637_data_t *mdata = 0;
+	static ms5637_data_t *mdata;
+
 	PROCESS_BEGIN( );
 
 	mdata = (ms5637_data_t *) data;
-	mdata->status = true;
+
+	LOG_DBG("MS5637 staring %p\n", data);
 	PROCESS_PT_SPAWN(&child, ms5637_cvt_and_read(&child, mdata, PRESSURE));
 	PROCESS_PT_SPAWN(&child, ms5637_cvt_and_read(&child, mdata, TEMP));
 
+		LOG_DBG("MS5637 finished %p\n", data);
 	PROCESS_END( );
 }
