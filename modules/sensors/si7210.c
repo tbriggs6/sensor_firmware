@@ -15,6 +15,7 @@
 #include <Board.h>
 #include <dev/i2c-arch.h>
 #include "sys/log.h"
+#include "sensors.h"
 
 
 #define LOG_MODULE "Si7210"
@@ -85,17 +86,26 @@
 #define AUTOWAKE_DISABLE (0 << 0)
 
 
+
+
+#define CLOCK_TIME_MS( x ) \
+	((x <= (1000 / CLOCK_SECOND)) ? 1 : ((x * CLOCK_SECOND) / 1000))
+
+
 /**
  * @brief Wake device up
  */
-static bool si7210_wakeup(I2C_Handle handle)
+static bool si7210_wakeup( I2C_Handle handle )
 {
 	// send the device a write request - API call will fail
 	// but it has the side effect of causing device to wake up
 
-	uint8_t byte_out[1] = { 0x00 };
+	static uint8_t byte_out[1] = { 0x00 };
+	static bool rc = 0 ;
 
-	return i2c_arch_write(handle, SLV_ADDR, &byte_out, 1);
+	rc = i2c_arch_write(handle, SLV_ADDR, &byte_out, 1);
+
+	return rc;
 }
 
 
@@ -103,11 +113,13 @@ static bool si7210_wakeup(I2C_Handle handle)
  * @brief Read a single-byte register
  */
 
-static bool si7210_readreg(I2C_Handle i2c_handle, uint8_t reg, uint8_t *value)
+static bool si7210_readreg(I2C_Handle handle, uint8_t reg, uint8_t *value)
 {
-	bool rc = false;
+	static bool rc = false;
 
-	rc = i2c_arch_write_read(i2c_handle, SLV_ADDR, &reg, 1, value, 1);
+	rc = i2c_arch_write_read(handle, SLV_ADDR, &reg, 1, value, 1);
+
+
 	return rc;
 }
 
@@ -115,51 +127,70 @@ static bool si7210_readreg(I2C_Handle i2c_handle, uint8_t reg, uint8_t *value)
  * @brief Read a single-byte register
  */
 
-static bool si7210_read_otp_reg(I2C_Handle i2c_handle, uint8_t reg, uint8_t *value)
+static PT_THREAD(si7210_read_otp_reg(struct pt *pt, uint8_t reg, bool *rc, uint8_t *value))
 {
-	bool rc = false;
-	uint8_t bytes_out[2];
-	uint8_t byte_in = 0;
+
+	static uint8_t bytes_out[2] = { 0 };
+	static uint8_t byte_in = 0;
+	static struct etimer timer = { 0 };
+	static I2C_Handle handle = 0;
+
+	PT_BEGIN(pt);
+
+	*rc = true;
+
+	SENSOR_AQ(pt, handle, *rc)
 
 	bytes_out[0] = OTP_ADDR;
 	bytes_out[1] = reg;
-	rc = i2c_arch_write(i2c_handle, SLV_ADDR, &bytes_out, 2);
+	*rc = i2c_arch_write(handle, SLV_ADDR, &bytes_out, 2);
 
 	bytes_out[0] = OTP_CTRL;
 	bytes_out[1] = 1 << 1;
-	rc &= i2c_arch_write(i2c_handle, SLV_ADDR, &bytes_out, 2);
+	*rc &= i2c_arch_write(handle, SLV_ADDR, &bytes_out, 2);
+
+	SENSOR_REL(pt, handle);
+
 
 	// wait for it to be NOT busy
 	do {
-		bytes_out[0] = OTP_CTRL;
-		rc &= i2c_arch_write_read(i2c_handle, SLV_ADDR, &bytes_out, 1, &byte_in, 1);
-	} while ((rc == true) && ((byte_in & 0x01) == 1));
 
+			etimer_set(&timer, CLOCK_TIME_MS(2));
+			PT_WAIT_UNTIL(pt, etimer_expired(&timer));
+
+		SENSOR_AQ(pt, handle, rc);
+
+		bytes_out[0] = OTP_CTRL;
+		*rc &= i2c_arch_write_read(handle, SLV_ADDR, &bytes_out, 1, &byte_in, 1);
+
+		SENSOR_REL(pt, handle);
+
+	} while ((*rc == true) && ((byte_in & 0x01) == 1));
+
+	SENSOR_AQ(pt, handle, rc);
 
 	bytes_out[0] = OTP_DATA;
-	rc &= i2c_arch_write_read(i2c_handle, SLV_ADDR, &bytes_out, 1, &byte_in, 1);
+	*rc &= i2c_arch_write_read(handle, SLV_ADDR, &bytes_out, 1, &byte_in, 1);
 
 	*value = byte_in;
 
-	if (rc == false) {
-		LOG_ERR("Could not access OTP register %x\n", reg);
-	}
+	SENSOR_REL(pt, handle);
 
-	return rc;
+	PT_END(pt);
 }
-
 
 
 /**
  * @brief Write a single byte register
  */
 
-static bool si7210_writereg(I2C_Handle i2c_handle, uint8_t reg, uint8_t value)
+static bool si7210_writereg(I2C_Handle handle, uint8_t reg, uint8_t value)
 {
 	bool rc = false;
 
+
 	uint8_t bytes[2] = { reg, value };
-	rc = i2c_arch_write(i2c_handle, SLV_ADDR, &bytes, 2);
+	rc = i2c_arch_write(handle, SLV_ADDR, &bytes, 2);
 
 	return rc;
 }
@@ -176,6 +207,7 @@ static bool si72020_check(I2C_Handle handle)
 
 	rc = si7210_readreg(handle, HREVID, &value);
 
+
 	return rc;
 
 }
@@ -184,101 +216,105 @@ static bool si72020_check(I2C_Handle handle)
 /**
  * @brief Check communications and configure the device.
  */
-static bool si7210_init(I2C_Handle handle)
+static PT_THREAD(si7210_init(struct pt *pt, bool *rc))
 {
-	int count = 0;
-	bool rc = false;
+
+	static int count = 0;
+	static struct etimer timer = { 0 };
+	static I2C_Handle handle;
+
+	PT_BEGIN(pt);
+
+	SENSOR_AQ(pt, handle, *rc);
 
 	si7210_wakeup(handle);
 
+	SENSOR_REL(pt, handle);
 
 	count = 5;
 	do {
-		rc = si72020_check(handle);
+		SENSOR_AQ(pt, handle, *rc);
+
+		*rc = si72020_check(handle);
+
+		SENSOR_REL(pt, handle);
+
 
 		// unit can take a long time to start up depending
 		// on its state.  If its not ready, try again after
 		// a 10ms delay.
-		if (rc == false) {
-			clock_delay_usec(10000);
+		if (*rc == false) {
+			etimer_set(&timer, CLOCK_TIME_MS(10));
+			PT_WAIT_UNTIL(pt, etimer_expired(&timer));
 		}
-	} while ((--count > 0) && (rc == false));
+	} while ((--count > 0) && (*rc == false));
 
-	if (rc == false) {
+	if (*rc == false) {
 		LOG_WARN("Could not init Si7210\n");
-		return false;
+		PT_EXIT(pt);
 	}
+
+	SENSOR_AQ(pt, handle, *rc);
 
 	// CTRL3 - disable periodic auto-wakeup & tamper detect
-	rc = si7210_writereg(handle, CTRL3, TAMPER_DISABLE | FAST_DISABLE | AUTOWAKE_DISABLE);
-	if (rc == false) {
+	*rc = si7210_writereg(handle, CTRL3, TAMPER_DISABLE | FAST_DISABLE | AUTOWAKE_DISABLE);
+
+	SENSOR_REL(pt, handle);
+
+	if (*rc == false) {
 		LOG_WARN("could not write ctrl3\n");
-		return false;
+		PT_EXIT(pt);
 	}
-	return true;
+
+
+	PT_END(pt);
 }
 
 
-/**
- * @brief Check communications and configure the device.
- */
-static bool si7210_deinit(I2C_Handle handle)
-{
-	bool rc = si7210_writereg(handle, POWERCTL, MEAS_MASK | SLEEP_MASK);
-	if (rc == false) {
-			LOG_WARN("could not write power control register.\n");
-		}
-	return rc;
-}
 
 
-static bool si7210_field_strength(I2C_Handle handle, int32_t *field)
+static PT_THREAD(si7210_field_strength(struct pt *pt, bool *rc, int32_t *field))
 {
-	int count = 0;
-	bool rc = false;
-	int32_t raw_measurement = 0;
-	uint8_t val = 0;
+	static int count = 0;
+	static int32_t raw_measurement = 0;
+	static uint8_t val = 0;
+
+	static uint8_t burstSize = 7; // collect 8 samples
+	static uint8_t bw = 6; // avg of 8 samples
+	static uint8_t iir = 0; // FIR mode
+	static I2C_Handle handle;
+
+	static struct etimer timer = { 0 };
+
+	PT_BEGIN(pt);
+
+	SENSOR_AQ(pt, handle, *rc);
 
 	// stop the unit's control loop
-	rc = si7210_writereg(handle, POWERCTL, MEAS_MASK | UCESTORE_MASK | STOP_MASK);
-	if (rc == false) {
-		LOG_WARN("could not write power control register.\n");
-		return false;
+	*rc = si7210_writereg(handle, POWERCTL, MEAS_MASK | UCESTORE_MASK | STOP_MASK);
+	*rc &= si7210_writereg(handle, POWERCTL, MEAS_MASK | UCESTORE_MASK | STOP_MASK);
+	*rc &= si7210_writereg(handle, CTRL4, burstSize << 5 | bw << 1 | iir);
+	*rc &= si7210_writereg(handle, DSPSIGSEL, 0);
+	*rc = si7210_writereg(handle, POWERCTL, MEAS_MASK | UCESTORE_MASK | ONEBURST_MASK);
+
+	SENSOR_REL(pt, handle);
+
+	if (*rc == false) {
+		LOG_WARN("setup measurement values.\n");
+		PT_EXIT(pt);
 	}
 
-	//TODO load compensation values from OTP
-
-	// configure for measurement mode
-	//TODO play with these values for better results
-	uint8_t burstSize = 7; // collect 8 samples
-	uint8_t bw = 6; // avg of 8 samples
-	uint8_t iir = 0; // FIR mode
-
-	rc = si7210_writereg(handle, CTRL4, burstSize << 5 | bw << 1 | iir);
-	if (rc == false) {
-		LOG_WARN("could not write burst configuration.");
-		return false;
-	}
-
-	// configure for field strength
-	rc = si7210_writereg(handle, DSPSIGSEL, 0);
-	if (rc == false) {
-		LOG_WARN("could not write measurement selection\n");
-			return false;
-	}
-
-	// configure for a measurement
-	rc = si7210_writereg(handle, POWERCTL, MEAS_MASK | UCESTORE_MASK | ONEBURST_MASK);
-	if (rc == false) {
-		LOG_WARN("could not start measurementr.\n");
-		return false;
-	}
 
 	count = 1 << (bw+2);
 	do {
-		rc = si7210_readreg(handle, DSPSIGM, &val);
-		if (rc == false) {
-			clock_delay_usec(10000);
+		SENSOR_AQ(pt, handle, *rc);
+		*rc = si7210_readreg(handle,DSPSIGM, &val);
+		SENSOR_REL(pt, handle);
+
+		if (*rc == false) {
+			etimer_set(&timer, CLOCK_TIME_MS(10));
+			PT_WAIT_UNTIL(pt, etimer_expired(&timer));
+
 		}
 	} while ((--count > 0) && ((val & DSP_SIGM_DATA_FLAG) == 0));
 
@@ -295,7 +331,10 @@ static bool si7210_field_strength(I2C_Handle handle, int32_t *field)
 	// take high bytes
 	raw_measurement = (val & DSP_SIGM_DATA_MASK) << 8;
 
-	rc = si7210_readreg(handle, DSPSIGL, &val);
+	SENSOR_AQ(pt, handle, *rc);
+	*rc = si7210_readreg(handle, DSPSIGL, &val);
+	SENSOR_REL(pt, handle);
+
 	if (rc == false) {
 		LOG_WARN("could not read low bits of result\n");
 		return false;
@@ -307,7 +346,9 @@ static bool si7210_field_strength(I2C_Handle handle, int32_t *field)
 	LOG_DBG("Raw measurement: %d / %x\n", (int) raw_measurement, (int) raw_measurement);
 	*field = raw_measurement;
 
-	return true;
+	*rc = true;
+
+	PT_END(pt);
 }
 
 
@@ -320,15 +361,18 @@ int si7210_read_cal(si7210_calibration_t *cal)
 }
 
 
-static int si7210_apply_compensation(I2C_Handle handle, uint8_t compRange)
+static PT_THREAD(si7210_apply_compensation(struct pt *pt, bool *rc, uint8_t compRange))
 {
-	uint8_t startRegs[6] = { 0x21, 0x27, 0x2d, 0x33, 0x39 };
-	uint8_t destRegs[6] = { 0xCA, 0xCB, 0xCC, 0xCE, 0xCF, 0xD0 };
-	int i = 0;
-	int rc = true;
-	uint8_t regVal;
-	uint8_t srcReg;
-	uint8_t dstReg;
+	static uint8_t startRegs[6] = { 0x21, 0x27, 0x2d, 0x33, 0x39 };
+	static uint8_t destRegs[6] = { 0xCA, 0xCB, 0xCC, 0xCE, 0xCF, 0xD0 };
+	static int i = 0;
+	static uint8_t regVal = 0;
+	static uint8_t srcReg;
+	static uint8_t dstReg;
+	static struct pt child;
+	static I2C_Handle handle;
+
+	PT_BEGIN(pt);
 
 	LOG_DBG("Applying compensation %d\n", (int) compRange);
 
@@ -337,63 +381,66 @@ static int si7210_apply_compensation(I2C_Handle handle, uint8_t compRange)
 		srcReg = startRegs[compRange] + i;
 		dstReg = destRegs[i];
 
-		rc &= si7210_read_otp_reg(handle, srcReg, &regVal);
-		if (rc == false) {
+		// invoke this protothread
+		PT_SPAWN(pt, &child, si7210_read_otp_reg(&child, srcReg, rc, &regVal));
+		// this supposedly waits until the thread finishes??
+
+		if (*rc == false) {
 			LOG_ERR("could not set OTP regs\n");
-			return false;
+			PT_EXIT(pt);
 		}
-		printf("R[%x] = R[%x]/%x\n", dstReg, srcReg, regVal);
-		rc &= si7210_writereg(handle, dstReg, regVal);
+
+		SENSOR_AQ(pt, handle, *rc);
+		*rc &= si7210_writereg(handle, dstReg, regVal);
+		SENSOR_REL(pt, handle);
 	}
 
-	return rc;
+	PT_END(pt);
 }
 
-int si7210_read (int16_t *magfield)
+PROCESS(si7210_proc, "Si7210 Sensor");
+PROCESS_THREAD(si7210_proc,ev, data)
 {
-	bool rc = false;
+	static si7210_data_t *sdata = 0;
+	static struct pt init_thrd = { 0 };
+	static struct pt comp_thrd = { 0 };
+	static struct pt fs_thrd = { 0 };
+	static int32_t raw_field = 0;
+	static int compRange = 0;
 
-	I2C_Handle handle = i2c_arch_acquire (I2CBUS);
-	if (handle == NULL) {
-		LOG_ERR("Could not aquiare I2C bus.\n");
-		return false;
-	}
+	PROCESS_BEGIN( );
 
+	sdata = (si7210_data_t *) data;
 
-	rc = si7210_init(handle);
-	if (rc == false) {
+	PROCESS_PT_SPAWN(&init_thrd, si7210_init(&init_thrd, &(sdata->rc)));
+	if (sdata->rc == false) {
 		LOG_ERR("could not init\n");
-		goto error;
+		PROCESS_EXIT();
 	}
 
 	//TODO promote to named parameter
-	int compRange = config_get_calibration(0);
+	compRange = config_get_calibration(0);
 	if ((compRange < 0) || (compRange >= 6)) compRange = 0;
 
-	si7210_apply_compensation(handle, compRange);
+	PROCESS_PT_SPAWN(&comp_thrd, si7210_apply_compensation(&comp_thrd, &(sdata->rc), compRange));
+	if (sdata->rc  == false) {
+		LOG_ERR("Error in compensation\n");
+		PROCESS_EXIT();
+	}
 
 
-	int32_t raw_field = 0;
-	rc = si7210_field_strength(handle, &raw_field);
-	if (rc == false) {
-		*magfield = 0;
+	PROCESS_PT_SPAWN(&fs_thrd, si7210_field_strength(&fs_thrd, &(sdata->rc), &raw_field));
+	if (sdata->rc == false) {
+		sdata->magfield = 0;
 		LOG_ERR("could not read mag file\n");
-		goto error;
+		PROCESS_EXIT();
 	}
 	else {
-		*magfield = (int16_t) raw_field;
+		sdata->magfield = (int16_t) raw_field;
 	}
 
 
-	// No need to read temperature - comes from other
-	// sensors, AND, this value is already compensated.
 
-	si7210_deinit(handle);
-
-
-
-error:
-	i2c_arch_release(handle);
-	return rc;
+	PROCESS_END();
 }
 

@@ -59,10 +59,13 @@
 #include "../modules/sensors/vaux.h"
 #include "../modules/sensors/si7020.h"
 #include "../modules/sensors/analog.h"
-
+#include "../modules/sensors/sensors.h"
 #include "devtype.h"
 
-#define LOG_MODULE "SENSOR"
+#include "config_nvs.h"
+#include "config.h"
+
+#define LOG_MODULE "AIR"
 #define LOG_LEVEL LOG_LEVEL_SENSOR
 
 // used to track the current message number
@@ -137,69 +140,111 @@ void send_calibration_data ()
 	messenger_send (&addr, (void*) &message, sizeof(message));
 }
 
+
 /**
  * \brief read sensors and send data to server
  *
  * Read from the integrated sensors and report their values to the server.
  * This function should be called periodically to report sensor values.
  */
-void send_sensor_data ()
+/*---------------------------------------------------------------------------*/
+PROCESS(send_sensor_proc, "Send Data");
+/*---------------------------------------------------------------------------*/
+PROCESS_THREAD(send_sensor_proc, ev, data)
 {
-	// the message to be sent to the server
-	airborne_t message;
+	PROCESS_BEGIN( );
 
-	// values read from the sensors
-	uint32_t pressure = 0, temperature = 0;
-	uint32_t si7020_humid = 0, si7020_temp = 0;
+	// the message to send to the server
+	static struct etimer et = { 0 };
+  static unsigned int completions = 0;
+  static volatile ms5637_data_t mdata = { 0 };
+  static volatile si7020_data_t sdata = { 0 };
+	static airborne_t message = { 0 };
 
-	// turn on the vaux bus to enable sensors & delay 50ms to settle
-	vaux_enable ();
-	clock_delay_usec(50000);
+	static clock_t start = 0;
+	static clock_t now = 0;
 
-	// read the pressure sensor & temperature
-	if (ms5637_read_pressure (&pressure) == 0) {
-		LOG_ERR("Error - could not read pressure data, aborting.\n");
-	}
-
-	if (ms5637_read_temperature (&temperature) == 0) {
-		LOG_ERR("Error - could not read temperature data, aborting.\n");
-	}
-
-	// read the humditiy and temperature
-	si7020_read_humidity (&si7020_humid);
-	si7020_read_temperature (&si7020_temp);
-
-	// done reading sensors, turn off the vaux bus
-	vaux_disable ();
-
-	// prepare the message
+	// start preparing the message to send
 	memset (&message, 0, sizeof(message));
 	message.header = AIRBORNE_HEADER;
 	message.sequence = sequence++;
-	message.ms5637_temp = temperature;
-	message.ms5637_pressure = pressure;
-	message.si7020_humid = si7020_humid;
-	message.si7020_temp = si7020_temp;
-	message.battery = vbat_millivolts (vbat_read ());
 
-	LOG_INFO("************************************\n");
-	LOG_INFO("* Data -    seq: %10u    *\n", (unsigned int ) message.sequence);
-	LOG_INFO("* Pressure   : %10u      *\n", (unsigned int ) message.ms5637_pressure);
-	LOG_INFO("* Temperature: %10u      *\n", (unsigned int ) message.ms5637_temp);
-	LOG_INFO("* Humidity   : %10u      *\n", (unsigned int ) message.si7020_humid);
-	LOG_INFO("* Temperature: %10u      *\n", (unsigned int ) message.si7020_temp);
-	LOG_INFO("* Battery    : %10u      *\n", (unsigned int ) message.battery);
-	LOG_INFO("***********************************\n");
+	// turn on the auxillary bus
+	vaux_enable ();
 
-	// send the message
+	// 1 period = 1/32 of a second
+	etimer_set(&et, 1);
+	PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
+
+  start = clock_time( );
+
+  completions = 0;
+
+  // start the sensor readings
+  process_start(&ms5637_proc, (void *)&mdata);
+  completions |= (1 << 0);
+
+  process_start(&si7020_proc, (void *)&sdata);
+  completions |= (1 << 1);
+
+
+  etimer_set(&et, CLOCK_SECOND);
+
+  while (completions != 0) {
+  	PROCESS_WAIT_EVENT_UNTIL(ev == PROCESS_EVENT_EXIT || etimer_expired(&et));
+
+  	if ((completions & (1 << 0)) && !process_is_running(&ms5637_proc)) {
+  		completions &= ~(1 << 0);
+  		now = clock_time();
+
+  		message.ms5637_pressure = mdata.pressure;
+  		message.ms5637_temp = mdata.temperature;
+  	}
+
+  	if ((completions & (1 << 1)) && !process_is_running(&si7020_proc)) {
+  		completions &= ~(1 << 1);
+  		now = clock_time();
+
+  		message.si7020_humid = sdata.humidity;
+  		message.si7020_temp = sdata.temperature;
+
+  		LOG_DBG("si7010 %lu ticks, still running: %x\n", (now-start), completions);
+  	}
+
+  	if (etimer_expired(&et)) {
+  		etimer_set(&et, CLOCK_SECOND);
+  		LOG_WARN("Sensor timeout...\n");
+  		if (completions & (1 << 0)) LOG_WARN("ms5637 still running: %d\n", process_is_running(&ms5637_proc));
+  		if (completions & (1 << 1)) LOG_WARN("si7010 still running: %d\n", process_is_running(&si7020_proc));
+  	}
+  }
+
+  now = clock_time( );
+
+	message.battery = vbat_read( );
+
+	vaux_disable ();
+
+		LOG_INFO("************************************\n");
+		LOG_INFO("* Data -    seq: %10u    *\n", (unsigned int ) message.sequence);
+		LOG_INFO("* Pressure   : %10u      *\n", (unsigned int ) message.ms5637_pressure);
+		LOG_INFO("* Temperature: %10u      *\n", (unsigned int ) message.ms5637_temp);
+		LOG_INFO("* Humidity   : %10u      *\n", (unsigned int ) message.si7020_humid);
+		LOG_INFO("* Temperature: %10u      *\n", (unsigned int ) message.si7020_temp);
+		LOG_INFO("* Battery    : %10u      *\n", (unsigned int ) message.battery);
+		LOG_INFO("***********************************\n");
+
+	// dispatch the message to the messenger service for delivery
 	static uip_ip6addr_t addr;
 	config_get_receiver (&addr);
 
-	// post the message to the messenger service, it will take over sending
-	// the message and posting a result asynchronously
 	messenger_send (&addr, (void*) &message, sizeof(message));
 
+PROCESS_END( );
 }
+
+
+
 
 // // // // // // // // // // // // // // // // // // // // // // //
 /*---------------------------------------------------------------------------*/
@@ -209,22 +254,23 @@ AUTOSTART_PROCESSES(&airborne_process);
 PROCESS_THREAD(airborne_process, ev, data)
 {
 	// event timer - used to configure data intervals and retransmits
-	static struct etimer timer =	{ 0 };
+		static struct etimer timer = { 0 };
 
-	// the IPv6 address of the server, usually fd00::1
-	static uip_ip6addr_t serverAddr =	{ 0 };
+		// the IPv6 address of the server, usually fd00::1
+		static uip_ip6addr_t serverAddr = { 0 };
 
-	// failure  counter
-	static int failure_counter = 0;
+		// failure  counter
+		static int failure_counter = 0;
 
-	// state machine control
-	static enum sender_states
-	{
-		INIT, SEND_CAL, WAIT_OK_CAL, SEND_DATA, WAIT_OK_DATA
-	} state = INIT;
+		// state machine control
+		static enum sender_states
+		{
+			INIT, SEND_CAL, WAIT_OK_CAL, SEND_DATA, WAIT_OK_DATA
+		} state = INIT;
 
-	// begin the airborne contiki process
-	PROCESS_BEGIN();
+		// begin the contiki process
+
+		PROCESS_BEGIN()	;
 
 		// this node is NOT a coordinator (only the spinet / router is)
 		tsch_set_coordinator (0);
@@ -239,11 +285,22 @@ PROCESS_THREAD(airborne_process, ev, data)
 		etimer_set (&timer, CLOCK_SECOND);
 		PROCESS_WAIT_EVENT_UNTIL(etimer_expired (&timer));
 
+
+		sensors_init();
+
 		// radio should have begun initialization in the background
 
 		// initialize the configuration module - used for non-volatile config
-		config_init ( AIRBORNE_SENSOR_DEVTYPE);
+		nvs_init( );
+
+		config_init ( AIRBORNE_SENSOR_DEVTYPE );
 		config_get_receiver (&serverAddr);
+
+		if (LOG_LEVEL >= LOG_LEVEL_DBG) {
+			LOG_INFO("Stored destination address: ");
+			LOG_6ADDR(LOG_LEVEL_INFO, &serverAddr);
+			LOG_INFO_("\n");
+		}
 
 		// initialize the messenger service - used for bidirectional comms with server
 		messenger_init ();
@@ -258,58 +315,50 @@ PROCESS_THREAD(airborne_process, ev, data)
 		while (1) {
 
 			PROCESS_WAIT_EVENT();
+
 			switch (state)
 				{
-				// initial state for the state machine - set the timeout for sending calibration data
 				case INIT:
 					etimer_set (&timer, 15 * CLOCK_SECOND);
 					state = SEND_CAL;
 
-					// send calibration data, retry every 15 seconds until success / ACK by remote
+				// send calibration data, retry every 15 seconds until success / ACK by remote
 				case SEND_CAL:
-					if (etimer_expired (&timer)) {
+					if (etimer_expired (&timer) || (ev == PROCESS_EVENT_POLL)) {
 						send_calibration_data ();
+
 						etimer_set (&timer, config_get_retry_interval () * CLOCK_CONF_SECOND);
 						state = WAIT_OK_CAL;
 						leds_single_on (LEDS_CONF_GREEN);
 					}
 					else {
-						LOG_DBG("unexpected event received... %d", ev);
+						//LOG_DBG("unexpected event received... %d", ev);
 					}
 					break;
 
 					// wait for the send to finish - retry on timeout
 				case WAIT_OK_CAL:
-
 					// messenger responded...
 					if (ev == PROCESS_EVENT_MSG) {
-
-						// sending data was OK (server said so!)
 						if (messenger_last_result_okack ()) {
 							LOG_INFO("calibration data sent OK\n");
+
 							leds_single_off (LEDS_CONF_GREEN);
 
-							// get ready to enter the normal send data loop
 							failure_counter = 0;
+							config_clear_calbration_changed( );
 							state = SEND_DATA;
 						}
 					}
-					// server didn't respond before the timer expired :-(
-					else if (etimer_expired (&timer)) {
-
-						// increment failure counter
+					else if (etimer_expired (&timer) || (ev == PROCESS_EVENT_POLL)) {
 						failure_counter++;
 						LOG_DBG("timeout waiting for remote, failures: %u\n", (unsigned int ) failure_counter);
 
-						// if too many in a row, reboot the system to hopefully fix the problem
 						if (failure_counter >= config_get_maxfailures ()) {
 							LOG_ERR("too many consecutive failures, need to restart system\n");
 							leds_single_on (LEDS_CONF_RED);
-
-							// use the watchdog to reboot the system
 							watchdog_reboot ();
 						}
-						// otherwise, just resend
 						else {
 							// resending ....
 							state = SEND_CAL;
@@ -318,30 +367,34 @@ PROCESS_THREAD(airborne_process, ev, data)
 					}
 					break;
 
-
-				// sending data
 				case SEND_DATA:
+					if (etimer_expired (&timer) || (ev == PROCESS_EVENT_POLL)) {
 
-					if (etimer_expired (&timer)) {
-						// trigger reading sensors and adding a message to the outgoing queue
-						send_sensor_data ();
+						if (config_did_calibration_change())
+						{
+							send_calibration_data();
+							state = WAIT_OK_CAL;
+						}
+						else {
+							process_start(&send_sensor_proc, NULL);
+							state = WAIT_OK_DATA;
+						}
 
-						// set the retry / timeout interval
 						etimer_set (&timer, config_get_retry_interval () * CLOCK_CONF_SECOND);
-
-						// enter the wait for ACK state
-						state = WAIT_OK_DATA;
 						leds_single_on (LEDS_CONF_GREEN);
 					}
+	//				else {
+	//					LOG_DBG("unexpected event received... %d", ev);
+	//				}
 					break;
 
-					// awaitng the response from the server or a timeout
 				case WAIT_OK_DATA:
-
 					// messenger responded...
-					if (ev == PROCESS_EVENT_MSG) {
+					if (process_is_running(&send_sensor_proc)) {
+						state = SEND_DATA;
+					}
 
-						// its good!  2 points for the field goal!
+					else if (ev == PROCESS_EVENT_MSG) {
 						if (messenger_last_result_okack ()) {
 							LOG_INFO("sensor data sent OK\n");
 
@@ -349,32 +402,24 @@ PROCESS_THREAD(airborne_process, ev, data)
 
 							// get ready for next sensor push
 							failure_counter = 0;
+							// resending ....
 							state = SEND_DATA;
-
-							// use the configuration sensor interval to select the next clock time
 							etimer_set (&timer, config_get_sensor_interval () * CLOCK_SECOND);
 
 						}
 					}
 
-					// its not good!
 					else if (etimer_expired (&timer)) {
-
 						failure_counter++;
 						LOG_DBG("timeout waiting for remote, failures: %u\n", (unsigned int ) failure_counter);
 
-						// check to see if we've had a bad run
 						if (failure_counter >= config_get_maxfailures ()) {
 
-							// fire the kicker
 							LOG_ERR("too many consecutive failures, need to restart system\n");
 							leds_single_on (LEDS_CONF_RED);
-
-							// use the watchdog to reboot
 							watchdog_reboot ();
 						}
 
-						// the occaisonal failure happens, its OK
 						else {
 							// resending ....
 							state = SEND_DATA;
@@ -393,7 +438,10 @@ PROCESS_THREAD(airborne_process, ev, data)
 
 		LOG_ERR("This while loop must never end, something went wrong, rebooting.\n");
 		watchdog_reboot ();
+		PROCESS_END();
+	}
 
-	PROCESS_END();
+void config_timeout_change( )
+{
+	process_poll(&airborne_process);
 }
-

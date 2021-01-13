@@ -61,14 +61,14 @@
 #include "../modules/sensors/si7210.h"
 #include "../modules/sensors/tcs3472.h"
 #include "../modules/sensors/vaux.h"
-
+#include "../modules/sensors/sensors.h"
 #include "devtype.h"
 
 #include "config_nvs.h"
 #include "config.h"
 
-#define LOG_MODULE "SENSOR"
-#define LOG_LEVEL LOG_LEVEL_SENSOR
+#define LOG_MODULE "H20"
+#define LOG_LEVEL LOG_LEVEL_DBG
 
 static int sequence = 0;
 
@@ -101,16 +101,17 @@ void send_calibration_data ()
 	// Si7210 calibration data
 	si7210_calibration_t si7210_cal = { 0 };
 
-	//TODO get the remaining calibration data
-
 	vaux_enable ();
 
+	// delay to let everything settle.
+	clock_delay_usec(3500);
+
 	if (ms5637_readcalibration_data (&data) == 0) {
-		LOG_ERR("Error - could not read cal data, aborting.\n");
+		LOG_ERR("Error - ms5637 could not read cal data, aborting.\n");
 	}
 
 	if (si7210_read_cal(&si7210_cal) == 0) {
-		LOG_ERR("Error - could not read Si7210 cal data\n");
+		LOG_ERR("Error - si7210 could not read Si7210 cal data\n");
 	}
 
 	vaux_disable ();
@@ -153,23 +154,34 @@ void send_calibration_data ()
 	messenger_send (&addr, (void*) &message, sizeof(message));
 }
 
+
+/*---------------------------------------------------------------------------*/
+
+
 /**
  * \brief read sensors and send data to server
  *
  * Read from the integrated sensors and report their values to the server.
  * This function should be called periodically to report sensor values.
  */
-void send_sensor_data ()
+/*---------------------------------------------------------------------------*/
+PROCESS(send_sensor_proc, "Send Data");
+/*---------------------------------------------------------------------------*/
+PROCESS_THREAD(send_sensor_proc, ev, data)
 {
-	// the message to send to the server
-	water_data_t message;
+	PROCESS_BEGIN( );
 
-	// values read from sensors
-	uint32_t pressure = 0, temperature = 0;
-	conductivity_t conduct =
-				{ 0 };
-	color_t color =
-				{ 0 };
+	// the message to send to the server
+	static struct etimer et = { 0 };
+  static unsigned int completions = 0;
+  static volatile ms5637_data_t mdata = { 0 };
+	static volatile si7210_data_t sdata = { 0 };
+	static volatile tcs3472_data_t cdata = { 0 };
+	static volatile conductivity_t pdata = { 0 } ;
+	static water_data_t message = { 0 };
+
+	static clock_t start = 0;
+	static clock_t now = 0;
 
 	// start preparing the message to send
 	memset (&message, 0, sizeof(message));
@@ -178,78 +190,114 @@ void send_sensor_data ()
 
 	// turn on the auxillary bus
 	vaux_enable ();
+	daylight_enable();
 
-	// add a 50ms delay to give everything a chance to settle
-	clock_delay_usec (50000);
+	// 1 period = 1/32 of a second
+	etimer_set(&et, 1);
+	PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
 
-	// read pressure & pressure from ms5637
-	if (ms5637_read_pressure (&pressure) == 1) {
-		message.pressure = pressure;
-	}
-	else {
-		LOG_ERR("Error - could not read pressure data\n");
-	}
+  start = clock_time( );
 
-	if (ms5637_read_temperature (&temperature) == 1) {
-		message.temppressure = temperature;
-	}
-	else {
-		LOG_ERR("Error - could not read temperature data.\n");
-	}
+  completions = 0;
 
-	// read battery level
-	message.battery = vbat_millivolts (vbat_read ());
+  // start the sensor readings
+  process_start(&ms5637_proc, (void *)&mdata);
+  completions |= (1 << 0);
 
-	// read hall sensor
-	int16_t magfield;
-	if (si7210_read (&magfield) == 1) {
-		message.hall = (int16_t) magfield;
-	}
-	else {
-		LOG_ERR("Error - could not read depth / hall sensor\n");
-	}
+  process_start(&si7210_proc, (void *)&sdata);
+  completions |= (1 << 1);
 
-	// read conductivity
-	if (pic32drvr_read (&conduct) == 1) {
-		message.range1 = conduct.range[0];
-		message.range2 = conduct.range[1];
-		message.range3 = conduct.range[2];
-		message.range4 = conduct.range[3];
-		message.range5 = conduct.range[4];
-	}
-	else {
-		LOG_ERR("Error - could not read conductivity data\n");
-	}
+  process_start(&tcs3472_proc, (void *)&cdata);
+  completions |= (1 << 2);
 
-	// read color sensor, delay 5ms to stablize
-	daylight_enable ();
-	clock_delay_usec (5000);
+  process_start(&pic32_proc, (void *) &pdata);
+  completions |= (1 << 3);
 
-	// read color sensor value
-	if (tcs3472_read (&color) == 1) {
-		message.color_red = color.red;
-		message.color_green = color.green;
-		message.color_blue = color.blue;
-		message.color_clear = color.clear;
-	}
-	else {
-		LOG_ERR("Error - could not read from color sensor\n");
-	}
+  etimer_set(&et, CLOCK_SECOND);
+
+  while (completions != 0) {
+  	PROCESS_YIELD( );
+  	if ((completions & (1 << 0)) && !process_is_running(&ms5637_proc)) {
+  		completions &= ~(1 << 0);
+  		now = clock_time();
+
+  		message.pressure = mdata.pressure;
+  		message.temppressure = mdata.temperature;
+
+  		LOG_DBG("Pressure: %d, Temp: %d\n", (int) message.pressure, (int) message.temppressure);
+
+  	  LOG_DBG("ms5637 %lu ticks, still running: %x\n", (now-start), completions);
+  	}
+
+  	if ((completions & (1 << 1)) && !process_is_running(&si7210_proc)) {
+  		completions &= ~(1 << 1);
+  		now = clock_time();
+
+  		message.hall = sdata.magfield;
+
+  		LOG_DBG("si7210 %lu ticks, still running: %x\n", (now-start), completions);
+  	}
+  	if ((completions & (1 << 2)) && !process_is_running(&tcs3472_proc)) {
+  		completions &= ~(1 << 2);
+  		now = clock_time();
+
+  		message.color_red = cdata.red;
+  		message.color_green = cdata.green;
+  		message.color_blue = cdata.blue;
+  		message.color_clear = cdata.clear;
+
+  		LOG_DBG("tcs3472 %lu ticks, still running: %x\n", (now-start), completions);
+  	}
+
+  	if ((completions & (1 << 3)) && !process_is_running(&pic32_proc)) {
+    	completions &= ~(1 << 3);
+    	now = clock_time();
+
+    	message.range1 = pdata.range[0];
+    	message.range2 = pdata.range[1];
+    	message.range3 = pdata.range[2];
+    	message.range4 = pdata.range[3];
+    	message.range5 = pdata.range[4];
+
+    	LOG_DBG("pic32 %lu ticks, still running: %x\n", (now-start), completions);
+    }
+
+  	if (etimer_expired(&et)) {
+  		etimer_set(&et, CLOCK_SECOND);
+  		LOG_WARN("Sensor timeout...\n");
+  		if (completions & (1 << 0)) LOG_WARN("ms5637 still running: %d\n", process_is_running(&ms5637_proc));
+  		if (completions & (1 << 1)) LOG_WARN("si7210 still running: %d\n", process_is_running(&si7210_proc));
+  		if (completions & (1 << 2)) LOG_WARN("tcs3472 still running: %d\n", process_is_running(&tcs3472_proc));
+  		if (completions & (1 << 3)) LOG_WARN("pic32 still running: %d\n", process_is_running(&pic32_proc));
+  	}
+  }
+
+  now = clock_time( );
+
 
 	daylight_disable ();
 
-	// read color again with light turned of to get ambient / "clear" value
-	if (tcs3472_read (&color) == 1) {
-		message.ambient = color.clear;
-	}
-	else {
-		LOG_ERR("Error - could not read from color sensor (again)\n");
+	// There are pending events -- the previous loop could end in the main exec thread
+	// and if the sending process hasn't finished cleaning up.... race conditions abound.
+
+	etimer_set(&et, 3);
+	while(! etimer_expired(&et)) {
+		PROCESS_WAIT_EVENT();
 	}
 
-	// read thermistor
-	message.temperature = thermistor_read ();
+	// capture ambient light
+	memset((void *) &cdata, 0, sizeof(cdata));
+	process_start(&tcs3472_proc, (void *)&cdata);
 
-	daylight_disable ();
+	message.battery = vbat_read( );
+	message.temperature = thermistor_read( );
+
+	while(process_is_running(&tcs3472_proc)) {
+		PROCESS_YIELD();
+	}
+
+	message.ambient = cdata.clear;
+
 	vaux_disable ();
 
 	// this is the end, display stuff
@@ -265,7 +313,7 @@ void send_sensor_data ()
 	LOG_INFO("*            5] : %10u      *\n", (unsigned int ) message.range5);
 
 	LOG_INFO("* Thermistor    : %10u      *\n", (unsigned int ) message.temperature);
-
+	LOG_INFO("* Hall          : %10u      *\n", (unsigned int) message.hall);
 	LOG_INFO("* Color                           *\n");
 	LOG_INFO("*           Red : %10u      *\n", (unsigned int ) message.color_red);
 	LOG_INFO("*         Green : %10u      *\n", (unsigned int ) message.color_green);
@@ -281,7 +329,146 @@ void send_sensor_data ()
 	config_get_receiver (&addr);
 
 	messenger_send (&addr, (void*) &message, sizeof(message));
+
+PROCESS_END( );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//
+//
+//
+//	// add a 50ms delay to give everything a chance to settle
+//	clock_delay_usec (50000);
+//
+//	// read pressure & pressure from ms5637
+//	if (ms5637_read_pressure (&pressure) == 1) {
+//		message.pressure = pressure;
+//	}
+//	else {
+//		LOG_ERR("Error - could not read pressure data\n");
+//	}
+//
+//	if (ms5637_read_temperature (&temperature) == 1) {
+//		message.temppressure = temperature;
+//	}
+//	else {
+//		LOG_ERR("Error - could not read temperature data.\n");
+//	}
+//
+//	// read battery level
+//	message.battery = vbat_millivolts (vbat_read ());
+//
+//	// read hall sensor
+//	int16_t magfield;
+//	if (si7210_read (&magfield) == 1) {
+//		message.hall = (int16_t) magfield;
+//	}
+//	else {
+//		LOG_ERR("Error - could not read depth / hall sensor\n");
+//	}
+//
+//	// read conductivity
+//	if (pic32drvr_read (&conduct) == 1) {
+//		message.range1 = conduct.range[0];
+//		message.range2 = conduct.range[1];
+//		message.range3 = conduct.range[2];
+//		message.range4 = conduct.range[3];
+//		message.range5 = conduct.range[4];
+//	}
+//	else {
+//		LOG_ERR("Error - could not read conductivity data\n");
+//	}
+//
+//	// read color sensor, delay 5ms to stablize
+//	daylight_enable ();
+//	clock_delay_usec (5000);
+//
+//	// read color sensor value
+//	if (tcs3472_read (&color) == 1) {
+//		message.color_red = color.red;
+//		message.color_green = color.green;
+//		message.color_blue = color.blue;
+//		message.color_clear = color.clear;
+//	}
+//	else {
+//		LOG_ERR("Error - could not read from color sensor\n");
+//	}
+//
+//	daylight_disable ();
+//
+//	// read color again with light turned of to get ambient / "clear" value
+//	if (tcs3472_read (&color) == 1) {
+//		message.ambient = color.clear;
+//	}
+//	else {
+//		LOG_ERR("Error - could not read from color sensor (again)\n");
+//	}
+//
+//	// read thermistor
+//	message.temperature = thermistor_read ();
+//
+//	daylight_disable ();
+//	vaux_disable ();
+//
+//	// this is the end, display stuff
+//	LOG_INFO("***********  WATER SENSOR *********\n");
+//	LOG_INFO("* Data Pkt   seq: %10u      *\n", (unsigned int ) message.sequence);
+//	LOG_INFO("* Battery       : %10u      *\n", (unsigned int ) message.battery);
+//
+//	LOG_INFO("* Ranges                          *\n");
+//	LOG_INFO("*            1] : %10u      *\n", (unsigned int ) message.range1);
+//	LOG_INFO("*            2] : %10u      *\n", (unsigned int ) message.range2);
+//	LOG_INFO("*            3] : %10u      *\n", (unsigned int ) message.range3);
+//	LOG_INFO("*            4] : %10u      *\n", (unsigned int ) message.range4);
+//	LOG_INFO("*            5] : %10u      *\n", (unsigned int ) message.range5);
+//
+//	LOG_INFO("* Thermistor    : %10u      *\n", (unsigned int ) message.temperature);
+//
+//	LOG_INFO("* Color                           *\n");
+//	LOG_INFO("*           Red : %10u      *\n", (unsigned int ) message.color_red);
+//	LOG_INFO("*         Green : %10u      *\n", (unsigned int ) message.color_green);
+//	LOG_INFO("*          Blue : %10u      *\n", (unsigned int ) message.color_blue);
+//	LOG_INFO("*         Clear : %10u      *\n", (unsigned int ) message.color_clear);
+//	LOG_INFO("* Ambient       : %10u      *\n", (unsigned int ) message.ambient);
+//	LOG_INFO("* Pressure      : %10u      *\n", (unsigned int ) message.pressure);
+//	LOG_INFO("* Internal Temp : %10u      *\n", (unsigned int ) message.temppressure);
+//	LOG_INFO("***********************************\n");
+//
+//	// dispatch the message to the messenger service for delivery
+//	static uip_ip6addr_t addr;
+//	config_get_receiver (&addr);
+//
+//	messenger_send (&addr, (void*) &message, sizeof(message));
+//}
 
 /*---------------------------------------------------------------------------*/
 PROCESS(water_process, "Water process");
@@ -320,6 +507,9 @@ PROCESS_THREAD(water_process, ev, data)
 	// let things settle for 1 second.
 	etimer_set (&timer, CLOCK_SECOND);
 	PROCESS_WAIT_EVENT_UNTIL(etimer_expired (&timer));
+
+
+	sensors_init();
 
 	// radio should have begun initialization in the background
 
@@ -409,7 +599,7 @@ PROCESS_THREAD(water_process, ev, data)
 						state = WAIT_OK_CAL;
 					}
 					else {
-						send_sensor_data ();
+						process_start(&send_sensor_proc, NULL);
 						state = WAIT_OK_DATA;
 					}
 
@@ -423,7 +613,11 @@ PROCESS_THREAD(water_process, ev, data)
 
 			case WAIT_OK_DATA:
 				// messenger responded...
-				if (ev == PROCESS_EVENT_MSG) {
+				if (process_is_running(&send_sensor_proc)) {
+					state = SEND_DATA;
+				}
+
+				else if (ev == PROCESS_EVENT_MSG) {
 					if (messenger_last_result_okack ()) {
 						LOG_INFO("sensor data sent OK\n");
 

@@ -9,9 +9,14 @@
 #define MODULES_SENSORS_SI7020_H_
 
 #include <stdint.h>
+#include <contiki.h>
 
-int si7020_read_humidity(uint32_t *humidity);
-int si7020_read_temperature(uint32_t *temperature);
+typedef struct {
+	bool rc;
+	uint32_t humidity;
+	uint32_t temperature;
+} si7020_data_t;
 
+PROCESS_NAME(si7020_proc);
 
 #endif /* MODULES_SENSORS_SI7020_H_ */

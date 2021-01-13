@@ -1,7 +1,7 @@
 
 PROJECTDIRS += ../modules/sensors
 
-PROJECT_SOURCEFILES += vaux.c analog.c daylight.c
+PROJECT_SOURCEFILES += sensors.c vaux.c analog.c daylight.c
 
 #ifdef SENSOR_MS5637
 PROJECT_SOURCEFILES += ms5637.c

@@ -11,76 +11,98 @@
 #include "../modules/command/message.h"
 #include <Board.h>
 #include <dev/i2c-arch.h>
+#include "sensors.h"
+
+#define LOG_MODULE "Si7020"
+#define LOG_LEVEL LOG_LEVEL_DBG
 
 #define DEVICE_ADDR 0x40
 
 #define I2CBUS Board_I2C0
 
-int si7020_read_humidity(uint32_t *humidity)
+#define CLOCK_TIME_MS( x ) \
+	((x <= (1000 / CLOCK_SECOND)) ? 1 : ((x * CLOCK_SECOND) / 1000))
+
+enum si7020_cmd_type {
+	HUMID, TEMP
+};
+
+static PT_THREAD(si7020_read_data(struct pt *pt, enum si7020_cmd_type type, si7020_data_t *sdata))
 {
-	uint8_t addr = DEVICE_ADDR;
-	uint8_t reg;
+	static uint8_t addr = DEVICE_ADDR;
+	static uint8_t reg = 0;
+  static bool rc = true;
+  static I2C_Handle handle = 0;
+  static struct etimer timer = { 0 };
+  static int count = 100;
 
-  bool result;
+  PT_BEGIN(pt);
 
-	I2C_Handle handle = i2c_arch_acquire (I2CBUS);
-	if (handle == NULL) {
-		return 0;
-	}
+  reg = 0;
+  rc = true;
+  handle = 0;
+  count = 100;
 
 
-	// start a single sample
-	reg = 0xF5;
+  LOG_DBG("Reading: %d\n", type);
+
+	reg = (type == HUMID) ? 0xF5 : 0xF3;
+
+	SENSOR_AQ(pt, handle, rc);
 	i2c_arch_write(handle, addr,  &reg, 1);
+	SENSOR_REL(pt, handle)
 
 
 	// wait until the sampling has finished...
 
 	// poll the device until its done
-	int count = 1000;
+	count = 100;
 	uint8_t bytes[2] = { 0 };
 	do {
-		result = i2c_arch_read(handle, addr, &bytes, 2);
-	} while ((result == false) && (--count > 0));
+		etimer_set (&timer, CLOCK_TIME_MS(5));
+		PT_WAIT_UNTIL(pt, etimer_expired (&timer));
 
-	*humidity = bytes[0] << 8 | bytes[1];
+		SENSOR_AQ(pt, handle, rc);
+		rc = i2c_arch_read(handle, addr, &bytes, 2);
+		SENSOR_REL(pt, handle)
 
-	i2c_arch_release(handle);
+	} while ((rc == false) && (--count > 0));
 
-	return result;
+	if (count == 0) {
+		LOG_ERR("Error - did not get data from Si7020\n");
+		sdata->rc = false;
+		PT_EXIT(pt);
+	}
+
+	LOG_DBG("Completed reading from Si7020: %d\n", bytes[0] << 8 | bytes[1]);
+
+	if (type == HUMID)
+		sdata->humidity = bytes[0] << 8 | bytes[1];
+	else
+		sdata->temperature = bytes[0] << 8 | bytes[1];
+
+	sdata->rc = rc;
+
+	PT_END(pt);
 }
 
 
-int si7020_read_temperature(uint32_t *temperature)
+/** Threaded worker to read settings **/
+PROCESS(si7020_proc,"Si7020 Sensor");
+PROCESS_THREAD(si7020_proc, ev, data)
 {
-	uint8_t addr = DEVICE_ADDR;
-	uint8_t reg;
+	static struct pt child = { 0 };
+	static si7020_data_t *sdata;
 
-  bool result;
+	PROCESS_BEGIN( );
 
-	I2C_Handle handle = i2c_arch_acquire (I2CBUS);
-	if (handle == NULL) {
-		return 0;
-	}
+	sdata = (si7020_data_t *) data;
 
 
-	// start a single sample
-	reg = 0xF3;
-	i2c_arch_write(handle, addr,  &reg, 1);
+	PROCESS_PT_SPAWN(&child, si7020_read_data(&child, HUMID, sdata));
+	PROCESS_PT_SPAWN(&child, si7020_read_data(&child, TEMP, sdata));
+	LOG_DBG("Si7020 finished : %d %d\n",(int) sdata->humidity, (int) sdata->temperature);
 
-
-	// wait until the sampling has finished...
-
-	// poll the device until its done
-	int count = 1000;
-	uint8_t bytes[2] = { 0 };
-	do {
-		result = i2c_arch_read(handle, addr, &bytes, 2);
-	} while ((result == false) && (--count > 0));
-
-	*temperature = bytes[0] << 8 | bytes[1];
-
-	i2c_arch_release(handle);
-	return result;
+	PROCESS_END( );
 }
 
