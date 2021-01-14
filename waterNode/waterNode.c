@@ -497,6 +497,9 @@ PROCESS_THREAD(sensor_process, ev, data)
 	// enable the "command" service - respond to remote requests over messenger connections
 	command_init ();
 
+
+	leds_off(LEDS_ALL);
+
 	// enter the main state machine loop
 	state = SEND_CAL;
 	etimer_set(&timer, config_get_sensor_interval() * CLOCK_SECOND);
