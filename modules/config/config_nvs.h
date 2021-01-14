@@ -8,6 +8,7 @@
 #ifndef MODULES_CONFIG_CONFIG_NVS_H_
 #define MODULES_CONFIG_CONFIG_NVS_H_
 
+#include <contiki.h>
 
 int nvs_init( );
 

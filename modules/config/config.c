@@ -31,10 +31,16 @@ config_t config;
 static unsigned int config_dev_type = 0;
 static unsigned int calibration_changed = 0;
 
+process_event_t config_cmd_run;
+
 void config_init (unsigned int dev_type)
 {
 	// store dev_type
 	config_dev_type = dev_type;
+
+	// event for notifying a "hot" config change...
+	config_cmd_run = process_alloc_event( );
+
 
 	// handled by target / platform
 	config_read (&config);
@@ -79,6 +85,9 @@ void config_init (unsigned int dev_type)
 	config_get_receiver (&addr);
 	LOG_6ADDR(LOG_LEVEL_INFO, &addr);
 	LOG_INFO_("\n");
+
+
+
 }
 
 void config_set_magic (uint32_t magic)
@@ -304,6 +313,9 @@ uint16_t config_get_calibration (int cal_num)
 }
 
 
+// weak function, leave this empty, but if
+// you want to have the hot configurtion post
+// then define this in your main code.
 void config_timeout_change( )
 {
 

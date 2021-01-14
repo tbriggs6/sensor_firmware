@@ -21,7 +21,7 @@
 
 /* ----------------------------------------------- */
 // disable watchdog for debugging
-#define WATCHDOG_CONF_DISABLE									1
+#define WATCHDOG_CONF_DISABLE									0
 #define TI_I2C_CONF_ENABLE									  1
 #define TI_UART_CONF_UART1_ENABLE						  0
 #define TI_SPI_CONF_SPI0_ENABLE							  1

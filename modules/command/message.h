@@ -115,7 +115,7 @@ typedef struct __attribute__((packed)) {
     uint16_t i2cerror;
 } airborne_t;
 
-#define DATA_ACK_HEADER (0x45ba32feU)
+#define ACK_HEADER (0x90983323)
 typedef struct __attribute__((packed)) {
         uint32_t header;
         uint32_t sequence;

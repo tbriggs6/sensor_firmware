@@ -32,12 +32,16 @@
 /*
  *  ======== SPIFFSNVS.c ========
  */
+#include <contiki.h>
+
 #include "spiffs_config.h"
 #include "spiffs.h"
 #include "SPIFFSNVS.h"
 
 #include <ti/drivers/NVS.h>
 #include <ti/drivers/dpl/MutexP.h>
+
+
 
 static s32_t spiffs_hal_erase(spiffs *fs, u32_t addr, u32_t size);
 static s32_t spiffs_hal_read(spiffs *fs, u32_t addr, u32_t size, u8_t *dst);
@@ -169,6 +173,8 @@ static s32_t spiffs_hal_erase(spiffs *fs, u32_t addr, u32_t size)
     s32_t      status;
     NVS_Handle handle = ((SPIFFSNVS_Data *) fs->user_data)->nvsHandle;
 
+    watchdog_periodic();
+
     status = NVS_erase(handle, addr, size);
     status = (status == NVS_STATUS_SUCCESS) ? SPIFFS_OK :
         SPIFFS_ERR_ERASE_FAIL;
@@ -184,6 +190,8 @@ static s32_t spiffs_hal_read(spiffs *fs, u32_t addr, u32_t size, u8_t *dst)
     s32_t      status;
     NVS_Handle handle = ((SPIFFSNVS_Data *) fs->user_data)->nvsHandle;
 
+    watchdog_periodic();
+
     status = NVS_read(handle, addr, dst, size);
     status = (status == NVS_STATUS_SUCCESS) ? SPIFFS_OK :
             SPIFFS_ERR_NOT_READABLE;
@@ -198,6 +206,8 @@ static s32_t spiffs_hal_write(spiffs *fs, u32_t addr, u32_t size, u8_t *src)
 {
     s32_t      status;
     NVS_Handle handle = ((SPIFFSNVS_Data *) fs->user_data)->nvsHandle;
+
+    watchdog_periodic();
 
     status = NVS_write(handle, addr, src, size, 0);
     status = (status == NVS_STATUS_SUCCESS) ? SPIFFS_OK :

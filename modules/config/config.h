@@ -14,6 +14,7 @@
 #include <contiki.h>
 #include <contiki-net.h>
 
+extern process_event_t config_cmd_run;
 
 
 // dynamic integer config values handled in config_get( );
