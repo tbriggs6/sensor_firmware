@@ -74,6 +74,46 @@ static int failure_counter = 0;
 static int sensor_done_evt = 0;
 PROCESS_NAME(sensor_process);
 
+static int red = 0;
+static int green = 0;
+
+PROCESS(sysmon, "System Monitor");
+PROCESS_THREAD(sysmon, ev, data)
+{
+	static struct etimer et = { 0 };
+
+	PROCESS_BEGIN( );
+
+	etimer_set(&et, CLOCK_SECOND / 2);
+	while (1) {
+		PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
+		if (red == 1) {
+			leds_single_toggle(LEDS_RED);
+		}
+		else {
+			leds_single_off(LEDS_RED);
+		}
+
+
+		if (green == 1) {
+			leds_single_toggle(LEDS_GREEN);
+		}
+		else {
+			leds_single_off(LEDS_GREEN);
+		}
+
+
+		if (failure_counter >= config_get_maxfailures()) {
+			watchdog_reboot();
+			leds_single_on(LEDS_RED);
+		}
+
+		etimer_set(&et, CLOCK_SECOND / 2);
+	}
+
+	PROCESS_END();
+}
+
 /**
  * \brief sends calibration data to the server
  *
@@ -146,8 +186,6 @@ PROCESS_THREAD(send_cal_proc, ev, data)
 	static uip_ip6addr_t addr;
 	config_get_receiver (&addr);
 
-	leds_single_on (LEDS_CONF_GREEN);
-
 	messenger_send (&addr, (void*) &message, sizeof(message));
 	etimer_set(&et, config_get_retry_interval() * CLOCK_SECOND);
 
@@ -160,7 +198,6 @@ PROCESS_THREAD(send_cal_proc, ev, data)
 
 			if (messenger_last_result_okack ()) {
 				LOG_INFO("calibration data sent OK\n");
-				leds_single_off (LEDS_CONF_GREEN);
 
 				failure_counter = 0;
 				config_clear_calbration_changed( );
@@ -169,7 +206,6 @@ PROCESS_THREAD(send_cal_proc, ev, data)
 			// calibration did not send
 			else {
 				LOG_INFO("calibration data sent, NAK\n");
-				leds_single_on(LEDS_CONF_RED);
 				failure_counter++;
 			}
 
@@ -179,8 +215,6 @@ PROCESS_THREAD(send_cal_proc, ev, data)
 		else if (etimer_expired(&et)) {
 			failure_counter++;
 			LOG_DBG("timeout waiting for remote, failures: %u\n", (unsigned int ) failure_counter);
-			leds_single_on(LEDS_CONF_RED);
-
 			break;
 		}
 
@@ -352,7 +386,6 @@ PROCESS_THREAD(send_data_proc, ev, data)
 		config_get_receiver (&addr);
 
 		// dispatch the message to the messenger service for delivery
-		leds_single_on (LEDS_CONF_GREEN);
 		messenger_send (&addr, (void*) &message, sizeof(message));
 
 
@@ -365,15 +398,14 @@ PROCESS_THREAD(send_data_proc, ev, data)
 
 				if (messenger_last_result_okack ()) {
 					LOG_INFO("sensor data sent OK\n");
-					leds_single_off (LEDS_CONF_GREEN);
-
+					rc = true;
 					failure_counter = 0;
 					config_clear_calbration_changed( );
 				}
 				// calibration did not send
 				else {
 					LOG_INFO("sensor data sent, NAK\n");
-					leds_single_on(LEDS_CONF_RED);
+					rc = false;
 					failure_counter++;
 				}
 
@@ -383,8 +415,7 @@ PROCESS_THREAD(send_data_proc, ev, data)
 			else if (etimer_expired(&et)) {
 				failure_counter++;
 				LOG_DBG("timeout waiting for remote, failures: %u\n", (unsigned int ) failure_counter);
-				leds_single_on(LEDS_CONF_RED);
-
+				rc = false;
 				break;
 			}
 
@@ -462,18 +493,22 @@ PROCESS_THREAD(sensor_process, ev, data)
 		// enable the "command" service - respond to remote requests over messenger connections
 		command_init ();
 
-		leds_off(LEDS_ALL);
+		green = 0 ;
+		red = 0;
 
+		process_start(&sysmon, NULL);
 		// enter the main state machine loop
-			state = SEND_CAL;
-			etimer_set(&timer, config_get_sensor_interval() * CLOCK_SECOND);
+		state = SEND_CAL;
+		etimer_set(&timer, config_get_sensor_interval() * CLOCK_SECOND);
 
 			while (1) {
 
 				PROCESS_WAIT_EVENT( );
 				LOG_DBG("event: %d cal change? %d expire? %d\n", ev, config_did_calibration_change(), etimer_expired(&timer));
+
 				if (ev == config_cmd_run || config_did_calibration_change() || etimer_expired(&timer)) {
 
+					green = 1;
 					if (config_did_calibration_change() || state == SEND_CAL) {
 						process_start(&send_cal_proc, (void *) &result);
 
@@ -484,9 +519,13 @@ PROCESS_THREAD(sensor_process, ev, data)
 						if (result == true) {
 							state = SEND_DATA;
 							etimer_set(&timer, config_get_sensor_interval() * CLOCK_SECOND);
+							red = 0;
+							green = 0;
 						}
 						else {
 							etimer_set(&timer, config_get_retry_interval() * CLOCK_SECOND);
+							red = 1;
+							green = 0;
 						}
 					}
 					else if (state == SEND_DATA) {
@@ -499,9 +538,13 @@ PROCESS_THREAD(sensor_process, ev, data)
 						if (result == true) {
 							state = SEND_DATA;
 							etimer_set(&timer, config_get_sensor_interval() * CLOCK_SECOND);
+							red = 0;
+							green = 0;
 						}
 						else {
 							etimer_set(&timer, config_get_retry_interval() * CLOCK_SECOND);
+							red = 1;
+							green = 0;
 						}
 					}
 				}
