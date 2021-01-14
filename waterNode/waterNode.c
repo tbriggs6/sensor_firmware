@@ -71,6 +71,10 @@
 #define LOG_LEVEL LOG_LEVEL_DBG
 
 static int sequence = 0;
+static int failure_counter = 0;
+
+static int sensor_done_evt = 0;
+PROCESS_NAME(sensor_process);
 
 /**
  * \brief sends calibration data to the server
@@ -88,29 +92,38 @@ static int sequence = 0;
  *TODO implement sending calibration data when configuration changes
  */
 
-void send_calibration_data ()
+PROCESS(send_cal_proc, "Send Data");
+PROCESS_THREAD(send_cal_proc, ev, data)
 {
 	// calibration message to send to server
-	water_cal_t message =
-				{ 0 };
+	static water_cal_t message = { 0 };
 
 	// MS5637 pressure sensor data
-	ms5637_caldata_t data =
-				{ 0 };
+	static ms5637_caldata_t mcal =	{ 0 };
 
 	// Si7210 calibration data
-	si7210_calibration_t si7210_cal = { 0 };
+	static si7210_calibration_t scal = { 0 };
+
+	// event timer for delays
+	static struct etimer et = { 0 };
+
+	// result
+	static bool rc = false;
 
 	vaux_enable ();
 
-	// delay to let everything settle.
-	clock_delay_usec(3500);
 
-	if (ms5637_readcalibration_data (&data) == 0) {
+	PROCESS_BEGIN( );
+
+
+	// delay to let everything settle.
+	etimer_set(&et, 3);
+
+	if (ms5637_readcalibration_data (&mcal) == 0) {
 		LOG_ERR("Error - ms5637 could not read cal data, aborting.\n");
 	}
 
-	if (si7210_read_cal(&si7210_cal) == 0) {
+	if (si7210_read_cal(&scal) == 0) {
 		LOG_ERR("Error - si7210 could not read Si7210 cal data\n");
 	}
 
@@ -120,12 +133,12 @@ void send_calibration_data ()
 	message.header = WATER_CAL_HEADER;
 	message.sequence = sequence++;
 
-	message.caldata[0] = data.sens;
-	message.caldata[1] = data.off;
-	message.caldata[2] = data.tcs;
-	message.caldata[3] = data.tco;
-	message.caldata[4] = data.tref;
-	message.caldata[5] = data.temp;
+	message.caldata[0] = mcal.sens;
+	message.caldata[1] = mcal.off;
+	message.caldata[2] = mcal.tcs;
+	message.caldata[3] = mcal.tco;
+	message.caldata[4] = mcal.tref;
+	message.caldata[5] = mcal.temp;
 
 	message.resistorVals[0] = config_get_calibration (0);  // si7210 compensation range
 	message.resistorVals[1] = config_get_calibration (1);
@@ -139,11 +152,12 @@ void send_calibration_data ()
 	if (LOG_LEVEL >= LOG_LEVEL_DBG) {
 		LOG_INFO("**************************\n");
 		LOG_INFO("* Cal Data - %6.4u      *\n", (unsigned int ) message.sequence);
-		LOG_INFO("* TCO: %-6.4u           *\n", (unsigned int ) data.tco);
-		LOG_INFO("* TCS: %-6.4u           *\n", (unsigned int ) data.tcs);
-		LOG_INFO("* Off: %-6.4u           *\n", (unsigned int ) data.off);
-		LOG_INFO("* Sens: %-6.4u          *\n", (unsigned int ) data.sens);
-		LOG_INFO("* Temp: %-6.4u          *\n", (unsigned int ) data.temp);
+		LOG_INFO("* Sens: %-6.4u          *\n", (unsigned int ) mcal.sens);
+		LOG_INFO("* Off: %-6.4u           *\n", (unsigned int ) mcal.off);
+		LOG_INFO("* TCO: %-6.4u           *\n", (unsigned int ) mcal.tco);
+		LOG_INFO("* TCS: %-6.4u           *\n", (unsigned int ) mcal.tcs);
+		LOG_INFO("* Tref: %-6.4u          *\n", (unsigned int ) mcal.tref);
+		LOG_INFO("* Temp: %-6.4u          *\n", (unsigned int ) mcal.temp);
 		LOG_INFO("**************************\n");
 	}
 
@@ -151,7 +165,53 @@ void send_calibration_data ()
 	static uip_ip6addr_t addr;
 	config_get_receiver (&addr);
 
+	leds_single_on (LEDS_CONF_GREEN);
+
 	messenger_send (&addr, (void*) &message, sizeof(message));
+	etimer_set(&et, config_get_retry_interval() * CLOCK_SECOND);
+
+
+	while(1) {
+		PROCESS_WAIT_EVENT();
+
+		// messenger responded...
+		if (ev == PROCESS_EVENT_MSG) {
+			if (messenger_last_result_okack ()) {
+				LOG_INFO("calibration data sent OK\n");
+				leds_single_off (LEDS_CONF_GREEN);
+
+				failure_counter = 0;
+				config_clear_calbration_changed( );
+				rc = true;
+			}
+			// calibration did not send
+			else {
+				LOG_INFO("calibration data sent, NAK\n");
+				leds_single_on(LEDS_CONF_RED);
+				failure_counter++;
+			}
+
+			break;
+		}
+
+		else if (etimer_expired(&et)) {
+			failure_counter++;
+			LOG_DBG("timeout waiting for remote, failures: %u\n", (unsigned int ) failure_counter);
+			leds_single_on(LEDS_CONF_RED);
+
+			break;
+		}
+
+		else {
+			LOG_DBG("Unknown event, ignoring\n");
+			continue;
+		}
+
+	} // end while ... event processing loop
+
+	process_post(&sensor_process, sensor_done_evt, &rc);
+
+	PROCESS_END( );
 }
 
 
@@ -165,9 +225,9 @@ void send_calibration_data ()
  * This function should be called periodically to report sensor values.
  */
 /*---------------------------------------------------------------------------*/
-PROCESS(send_sensor_proc, "Send Data");
+PROCESS(send_data_proc, "Send Data");
 /*---------------------------------------------------------------------------*/
-PROCESS_THREAD(send_sensor_proc, ev, data)
+PROCESS_THREAD(send_data_proc, ev, data)
 {
 	PROCESS_BEGIN( );
 
@@ -182,6 +242,10 @@ PROCESS_THREAD(send_sensor_proc, ev, data)
 
 	static clock_t start = 0;
 	static clock_t now = 0;
+
+	static uip_ip6addr_t addr;
+	static bool rc = false;
+
 
 	// start preparing the message to send
 	memset (&message, 0, sizeof(message));
@@ -324,172 +388,77 @@ PROCESS_THREAD(send_sensor_proc, ev, data)
 	LOG_INFO("* Internal Temp : %10u      *\n", (unsigned int ) message.temppressure);
 	LOG_INFO("***********************************\n");
 
-	// dispatch the message to the messenger service for delivery
-	static uip_ip6addr_t addr;
 	config_get_receiver (&addr);
 
+	// dispatch the message to the messenger service for delivery
+	leds_single_on (LEDS_CONF_GREEN);
 	messenger_send (&addr, (void*) &message, sizeof(message));
+
+
+	while(1) {
+		PROCESS_WAIT_EVENT();
+
+		// messenger responded...
+		if (ev == PROCESS_EVENT_MSG) {
+
+
+			if (messenger_last_result_okack ()) {
+				LOG_INFO("sensor data sent OK\n");
+				leds_single_off (LEDS_CONF_GREEN);
+
+				failure_counter = 0;
+				config_clear_calbration_changed( );
+			}
+			// calibration did not send
+			else {
+				LOG_INFO("sensor data sent, NAK\n");
+				leds_single_on(LEDS_CONF_RED);
+				failure_counter++;
+			}
+
+			break;
+		}
+
+		else if (etimer_expired(&et)) {
+			failure_counter++;
+			LOG_DBG("timeout waiting for remote, failures: %u\n", (unsigned int ) failure_counter);
+			leds_single_on(LEDS_CONF_RED);
+
+			break;
+		}
+
+		else {
+			LOG_DBG("Unknown event, ignoring\n");
+			continue;
+		}
+
+	} // end while ... event processing loop
+
+	// report our success
+	process_post(&sensor_process, sensor_done_evt, &rc);
 
 PROCESS_END( );
 }
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//
-//
-//
-//	// add a 50ms delay to give everything a chance to settle
-//	clock_delay_usec (50000);
-//
-//	// read pressure & pressure from ms5637
-//	if (ms5637_read_pressure (&pressure) == 1) {
-//		message.pressure = pressure;
-//	}
-//	else {
-//		LOG_ERR("Error - could not read pressure data\n");
-//	}
-//
-//	if (ms5637_read_temperature (&temperature) == 1) {
-//		message.temppressure = temperature;
-//	}
-//	else {
-//		LOG_ERR("Error - could not read temperature data.\n");
-//	}
-//
-//	// read battery level
-//	message.battery = vbat_millivolts (vbat_read ());
-//
-//	// read hall sensor
-//	int16_t magfield;
-//	if (si7210_read (&magfield) == 1) {
-//		message.hall = (int16_t) magfield;
-//	}
-//	else {
-//		LOG_ERR("Error - could not read depth / hall sensor\n");
-//	}
-//
-//	// read conductivity
-//	if (pic32drvr_read (&conduct) == 1) {
-//		message.range1 = conduct.range[0];
-//		message.range2 = conduct.range[1];
-//		message.range3 = conduct.range[2];
-//		message.range4 = conduct.range[3];
-//		message.range5 = conduct.range[4];
-//	}
-//	else {
-//		LOG_ERR("Error - could not read conductivity data\n");
-//	}
-//
-//	// read color sensor, delay 5ms to stablize
-//	daylight_enable ();
-//	clock_delay_usec (5000);
-//
-//	// read color sensor value
-//	if (tcs3472_read (&color) == 1) {
-//		message.color_red = color.red;
-//		message.color_green = color.green;
-//		message.color_blue = color.blue;
-//		message.color_clear = color.clear;
-//	}
-//	else {
-//		LOG_ERR("Error - could not read from color sensor\n");
-//	}
-//
-//	daylight_disable ();
-//
-//	// read color again with light turned of to get ambient / "clear" value
-//	if (tcs3472_read (&color) == 1) {
-//		message.ambient = color.clear;
-//	}
-//	else {
-//		LOG_ERR("Error - could not read from color sensor (again)\n");
-//	}
-//
-//	// read thermistor
-//	message.temperature = thermistor_read ();
-//
-//	daylight_disable ();
-//	vaux_disable ();
-//
-//	// this is the end, display stuff
-//	LOG_INFO("***********  WATER SENSOR *********\n");
-//	LOG_INFO("* Data Pkt   seq: %10u      *\n", (unsigned int ) message.sequence);
-//	LOG_INFO("* Battery       : %10u      *\n", (unsigned int ) message.battery);
-//
-//	LOG_INFO("* Ranges                          *\n");
-//	LOG_INFO("*            1] : %10u      *\n", (unsigned int ) message.range1);
-//	LOG_INFO("*            2] : %10u      *\n", (unsigned int ) message.range2);
-//	LOG_INFO("*            3] : %10u      *\n", (unsigned int ) message.range3);
-//	LOG_INFO("*            4] : %10u      *\n", (unsigned int ) message.range4);
-//	LOG_INFO("*            5] : %10u      *\n", (unsigned int ) message.range5);
-//
-//	LOG_INFO("* Thermistor    : %10u      *\n", (unsigned int ) message.temperature);
-//
-//	LOG_INFO("* Color                           *\n");
-//	LOG_INFO("*           Red : %10u      *\n", (unsigned int ) message.color_red);
-//	LOG_INFO("*         Green : %10u      *\n", (unsigned int ) message.color_green);
-//	LOG_INFO("*          Blue : %10u      *\n", (unsigned int ) message.color_blue);
-//	LOG_INFO("*         Clear : %10u      *\n", (unsigned int ) message.color_clear);
-//	LOG_INFO("* Ambient       : %10u      *\n", (unsigned int ) message.ambient);
-//	LOG_INFO("* Pressure      : %10u      *\n", (unsigned int ) message.pressure);
-//	LOG_INFO("* Internal Temp : %10u      *\n", (unsigned int ) message.temppressure);
-//	LOG_INFO("***********************************\n");
-//
-//	// dispatch the message to the messenger service for delivery
-//	static uip_ip6addr_t addr;
-//	config_get_receiver (&addr);
-//
-//	messenger_send (&addr, (void*) &message, sizeof(message));
-//}
-
 /*---------------------------------------------------------------------------*/
-PROCESS(water_process, "Water process");
-AUTOSTART_PROCESSES(&water_process);
+PROCESS(sensor_process, "Water process");
+AUTOSTART_PROCESSES(&sensor_process);
 /*---------------------------------------------------------------------------*/
-PROCESS_THREAD(water_process, ev, data)
+PROCESS_THREAD(sensor_process, ev, data)
 {
 	// event timer - used to configure data intervals and retransmits
 	static struct etimer timer = { 0 };
 
-	// the IPv6 address of the server, usually fd00::1
-	static uip_ip6addr_t serverAddr = { 0 };
-
-	// failure  counter
-	static int failure_counter = 0;
+	// result from the previous send
+	static bool result = false;
 
 	// state machine control
 	static enum sender_states
 	{
-		INIT, SEND_CAL, WAIT_OK_CAL, SEND_DATA, WAIT_OK_DATA
-	} state = INIT;
+		SEND_CAL, SEND_DATA
+	} state = SEND_CAL;
 
 	// begin the contiki process
 
@@ -508,6 +477,7 @@ PROCESS_THREAD(water_process, ev, data)
 	etimer_set (&timer, CLOCK_SECOND);
 	PROCESS_WAIT_EVENT_UNTIL(etimer_expired (&timer));
 
+	sensor_done_evt = process_alloc_event();
 
 	sensors_init();
 
@@ -517,13 +487,6 @@ PROCESS_THREAD(water_process, ev, data)
 	nvs_init( );
 
 	config_init ( WATER_SENSOR_DEVTYPE);
-	config_get_receiver (&serverAddr);
-
-	if (LOG_LEVEL >= LOG_LEVEL_DBG) {
-		LOG_INFO("Stored destination address: ");
-		LOG_6ADDR(LOG_LEVEL_INFO, &serverAddr);
-		LOG_INFO_("\n");
-	}
 
 	// initialize the messenger service - used for bidirectional comms with server
 	messenger_init ();
@@ -535,137 +498,56 @@ PROCESS_THREAD(water_process, ev, data)
 	command_init ();
 
 	// enter the main state machine loop
+	state = SEND_CAL;
+	etimer_set(&timer, config_get_sensor_interval() * CLOCK_SECOND);
+
 	while (1) {
 
-		PROCESS_WAIT_EVENT();
+		PROCESS_WAIT_EVENT( );
+		LOG_DBG("event: %d cal change? %d expire? %d\n", ev, config_did_calibration_change(), etimer_expired(&timer));
+		if (ev == config_cmd_run || config_did_calibration_change() || etimer_expired(&timer)) {
 
-		switch (state)
-			{
-			case INIT:
-				etimer_set (&timer, 15 * CLOCK_SECOND);
-				state = SEND_CAL;
+			if (config_did_calibration_change() || state == SEND_CAL) {
+				process_start(&send_cal_proc, (void *) &result);
 
-			// send calibration data, retry every 15 seconds until success / ACK by remote
-			case SEND_CAL:
-				if (etimer_expired (&timer) || (ev == PROCESS_EVENT_POLL)) {
-					send_calibration_data ();
+				PROCESS_WAIT_EVENT_UNTIL(ev == sensor_done_evt);
+				result = *(bool *) data;
 
-					etimer_set (&timer, config_get_retry_interval () * CLOCK_CONF_SECOND);
-					state = WAIT_OK_CAL;
-					leds_single_on (LEDS_CONF_GREEN);
+				LOG_DBG("Previous cal send result: %d\n", result);
+				if (result == true) {
+					state = SEND_DATA;
+					etimer_set(&timer, config_get_sensor_interval() * CLOCK_SECOND);
 				}
 				else {
-					//LOG_DBG("unexpected event received... %d", ev);
+					etimer_set(&timer, config_get_retry_interval() * CLOCK_SECOND);
 				}
-				break;
+			}
+			else if (state == SEND_DATA) {
+				process_start(&send_data_proc, (void *) result);
 
-				// wait for the send to finish - retry on timeout
-			case WAIT_OK_CAL:
-				// messenger responded...
-				if (ev == PROCESS_EVENT_MSG) {
-					if (messenger_last_result_okack ()) {
-						LOG_INFO("calibration data sent OK\n");
+				PROCESS_WAIT_EVENT_UNTIL(ev == sensor_done_evt);
+				result = *(bool *) data;
 
-						leds_single_off (LEDS_CONF_GREEN);
-
-						failure_counter = 0;
-						config_clear_calbration_changed( );
-						state = SEND_DATA;
-					}
-				}
-				else if (etimer_expired (&timer) || (ev == PROCESS_EVENT_POLL)) {
-					failure_counter++;
-					LOG_DBG("timeout waiting for remote, failures: %u\n", (unsigned int ) failure_counter);
-
-					if (failure_counter >= config_get_maxfailures ()) {
-						LOG_ERR("too many consecutive failures, need to restart system\n");
-						leds_single_on (LEDS_CONF_RED);
-						watchdog_reboot ();
-					}
-					else {
-						// resending ....
-						state = SEND_CAL;
-						process_poll (&water_process);
-					}
-				}
-				break;
-
-			case SEND_DATA:
-				if (etimer_expired (&timer) || (ev == PROCESS_EVENT_POLL)) {
-
-					if (config_did_calibration_change())
-					{
-						send_calibration_data();
-						state = WAIT_OK_CAL;
-					}
-					else {
-						process_start(&send_sensor_proc, NULL);
-						state = WAIT_OK_DATA;
-					}
-
-					etimer_set (&timer, config_get_retry_interval () * CLOCK_CONF_SECOND);
-					leds_single_on (LEDS_CONF_GREEN);
-				}
-//				else {
-//					LOG_DBG("unexpected event received... %d", ev);
-//				}
-				break;
-
-			case WAIT_OK_DATA:
-				// messenger responded...
-				if (process_is_running(&send_sensor_proc)) {
+				LOG_DBG("Previous data send result: %d\n", result);
+				if (result == true) {
 					state = SEND_DATA;
+					etimer_set(&timer, config_get_sensor_interval() * CLOCK_SECOND);
 				}
-
-				else if (ev == PROCESS_EVENT_MSG) {
-					if (messenger_last_result_okack ()) {
-						LOG_INFO("sensor data sent OK\n");
-
-						leds_single_off (LEDS_CONF_GREEN);
-
-						// get ready for next sensor push
-						failure_counter = 0;
-						// resending ....
-						state = SEND_DATA;
-						etimer_set (&timer, config_get_sensor_interval () * CLOCK_SECOND);
-
-					}
+				else {
+					etimer_set(&timer, config_get_retry_interval() * CLOCK_SECOND);
 				}
-
-				else if (etimer_expired (&timer)) {
-					failure_counter++;
-					LOG_DBG("timeout waiting for remote, failures: %u\n", (unsigned int ) failure_counter);
-
-					if (failure_counter >= config_get_maxfailures ()) {
-
-						LOG_ERR("too many consecutive failures, need to restart system\n");
-						leds_single_on (LEDS_CONF_RED);
-						watchdog_reboot ();
-					}
-
-					else {
-						// resending ....
-						state = SEND_DATA;
-						process_poll (&water_process);
-					}
-				}
-				break;
-
-			default:
-				LOG_ERR("error - hit an invalid / unknown state in FSM, rebooting\n");
-				watchdog_reboot ();
-
-			} // end state machine
-
+			}
+		}
 	} // end while loop;
 
 	LOG_ERR("This while loop must never end, something went wrong, rebooting.\n");
 	watchdog_reboot ();
 	PROCESS_END();
+
 }
 
 
 void config_timeout_change( )
 {
-	process_poll(&water_process);
+	process_post(&sensor_process, config_cmd_run, 0);
 }

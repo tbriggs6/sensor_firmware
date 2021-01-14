@@ -13,6 +13,7 @@
 #define DEBUG
 
 #include "../../modules/messenger/message-service.h"
+#include "../../modules/command/message.h"
 
 #include <contiki.h>
 #include <sys/clock.h>
@@ -97,27 +98,22 @@ void messenger_send (const uip_ipaddr_t *remote_addr, const void *data, int leng
 	process_post_synch (&messenger_sender, sender_start_event, NULL);
 }
 
-void messenger_get_last_result (int *sendlen, int *recvlen, int maxlen, void *dest)
-{
-	if (maxlen > recv_length)
-		maxlen = recv_length;
+//void messenger_get_last_result (int *sendlen, int *recvlen, int maxlen, void *dest)
+//{
+//	if (maxlen > recv_length)
+//		maxlen = recv_length;
+//
+//	memcpy (dest, rcv_buffer, maxlen);
+//	*sendlen = send_length;
+//	*recvlen = recv_length;
+//}
 
-	memcpy (dest, rcv_buffer, maxlen);
-	*sendlen = send_length;
-	*recvlen = recv_length;
-}
+static bool received_valid_ACK = false;
 
 int messenger_last_result_okack ()
 {
-	// an ACK looks like 4 bytes with values ... ????
-	//TODO make this better than just 4 bytes....
-		if (send_length < 0)
-		return 0;
-
-	if (recv_length != 4)
-		return 0;
-
-	return  1;
+	LOG_DBG("last result OK? %d\n", received_valid_ACK);
+	return  received_valid_ACK;
 }
 
 /* ****************************************************************
@@ -129,10 +125,35 @@ static int sender_recv_bytes (struct tcp_socket *s, void *ptr,
 															const uint8_t *inputptr,
 															int inputdatalen)
 {
-	if (inputdatalen > 0) {
-		LOG_DBG("Sender got %d bytes back from remote\n", inputdatalen);
-		recv_length = inputdatalen;
+
+	uint32_t *vals = (uint32_t *) inputptr;
+	recv_length = inputdatalen;
+
+	LOG_DBG("sender_recv_bytes: %p %p %p %d\n", s, ptr, inputptr, inputdatalen);
+	if (send_length <= 0) {
+		LOG_DBG("not OK, send_length <= 0\n");
+	}
+
+	else if (inputdatalen == 0) {
+		LOG_DBG("not OK, recv_length %d <= 16\n", inputdatalen);
+		return 0;
+	}
+	else if (inputdatalen != 16) {
+		LOG_DBG("not OK, recv_length %d <= 16\n", inputdatalen);
+	}
+
+	else if (vals[0] == ACK_HEADER) {
+		LOG_DBG("found header, val = %d\n", (unsigned) vals[3]);
+		received_valid_ACK = vals[3];
 		tcp_socket_close (s);
+	}
+
+	else if (inputdatalen > 0) {
+		LOG_DBG("Sender got %d bytes back from remote\n", inputdatalen);
+		for (int i = 0; i < inputdatalen; i++) {
+			printf("%-2.2x ", inputptr[i]);
+		}
+		printf("\n");
 	}
 
 	return 0;
@@ -145,8 +166,13 @@ static void sender_recv_event (struct tcp_socket *s, void *ptr, tcp_socket_event
 		{
 		// start of connection
 		case TCP_SOCKET_CONNECTED:		// 0
-			LOG_DBG_("Socket connected event, sending data\n");
-			tcp_socket_send (s, send_buffer, send_length);
+			if ((send_length > 0) && (send_length <= MAX_SEND_BUFFER)) {
+				LOG_DBG_("Socket connected event, sending data %p, %d\n", s, send_length);
+				tcp_socket_send (s, send_buffer, send_length);
+
+				// start of a new connection...
+				received_valid_ACK = false;
+			}
 			break;
 
 			// during connection
@@ -184,8 +210,7 @@ PROCESS_THREAD(messenger_sender, ev, data)
 	static struct etimer timer;
 	int rc;
 
-	PROCESS_BEGIN()
-	;
+	PROCESS_BEGIN()	;
 
 	rc = tcp_socket_register (&snd_socket, NULL,
 														send_buffer,
@@ -214,6 +239,8 @@ PROCESS_THREAD(messenger_sender, ev, data)
 		rc = tcp_socket_connect (&snd_socket, &message_addr, MESSAGE_SERVER_PORT);
 		if (rc < 0) {
 			LOG_ERR("Error - socket could not connect: %d\n", rc);
+			tcp_socket_close(&snd_socket);
+
 			send_started = 0;
 			send_length = -1;
 		}
@@ -227,6 +254,7 @@ PROCESS_THREAD(messenger_sender, ev, data)
 
 				if (etimer_expired(&timer)) {
 					LOG_INFO("Error - connect timed out\n");
+					tcp_socket_close(&snd_socket);
 					send_started = 0;
 					send_length = -1;
 					break;
