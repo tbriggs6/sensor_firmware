@@ -65,7 +65,7 @@
 #include "config_nvs.h"
 #include "config.h"
 
-#define LOG_MODULE "H20"
+#define LOG_MODULE "AIR"
 #define LOG_LEVEL LOG_LEVEL_DBG
 
 static int sequence = 0;

@@ -77,7 +77,7 @@ static int sensor_done_evt = 0;
 PROCESS_NAME(sensor_process);
 
 
-static volatile int red = 0;
+static volatile int red = 1;
 static volatile int green = 0;
 
 PROCESS(sysmon, "System Monitor");
@@ -152,14 +152,13 @@ PROCESS_THREAD(send_cal_proc, ev, data)
 	// result
 	static bool rc = false;
 
-	vaux_enable ();
-
-
 	PROCESS_BEGIN( );
 
+	vaux_enable ();
 
 	// delay to let everything settle.
-	etimer_set(&et, 3);
+	etimer_set(&et, 1);
+	PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
 
 	if (ms5637_readcalibration_data (&mcal) == 0) {
 		LOG_ERR("Error - ms5637 could not read cal data, aborting.\n");
@@ -531,9 +530,7 @@ PROCESS_THREAD(sensor_process, ev, data)
 	// enable the "command" service - respond to remote requests over messenger connections
 	command_init ();
 
-
-	green = 0;
-	red = 0;
+	process_start(&sysmon, NULL);
 
 	// enter the main state machine loop
 	state = SEND_CAL;
