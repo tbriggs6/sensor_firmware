@@ -1,0 +1,20 @@
+diff --git a/arch/cpu/simplelink-cc13xx-cc26xx/rf/prop-mode.c b/arch/cpu/simplelink-cc13xx-cc26xx/rf/prop-mode.c
+index 236b5fc93..e2a2faef7 100644
+--- a/arch/cpu/simplelink-cc13xx-cc26xx/rf/prop-mode.c
++++ b/arch/cpu/simplelink-cc13xx-cc26xx/rf/prop-mode.c
+@@ -765,6 +765,14 @@ get_value(radio_param_t param, radio_value_t *value)
+            ? RADIO_RESULT_ERROR
+            : RADIO_RESULT_OK;
+ 
++  case RADIO_PARAM_LAST_RSSI:
++     *value = prop_radio.last.rssi;
++     return RADIO_RESULT_OK;
++
++  case RADIO_PARAM_LAST_LINK_QUALITY:
++     *value = prop_radio.last.corr_lqi;
++     return RADIO_RESULT_OK;
++
+   case RADIO_CONST_CHANNEL_MIN:
+     *value = DOT_15_4G_CHAN_MIN;
+     return RADIO_RESULT_OK;
+

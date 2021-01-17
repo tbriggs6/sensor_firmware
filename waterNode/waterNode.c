@@ -173,6 +173,7 @@ PROCESS_THREAD(send_cal_proc, ev, data)
 	memset (&message, 0, sizeof(message));
 	message.header = WATER_CAL_HEADER;
 	message.sequence = sequence++;
+	message.rssi = messenger_recvd_rssi();
 
 	message.caldata[0] = mcal.sens;
 	message.caldata[1] = mcal.off;
@@ -286,6 +287,7 @@ PROCESS_THREAD(send_data_proc, ev, data)
 	memset (&message, 0, sizeof(message));
 	message.header = WATER_DATA_HEADER;
 	message.sequence = sequence++;
+	message.rssi = messenger_recvd_rssi();
 
 	// turn on the auxillary bus
 	vaux_enable ();

@@ -23,7 +23,7 @@
 #include <stdint.h>
 #include <contiki-net.h>
 #include <net/ipv6/tcpip.h>
-
+#include <net/packetbuf.h>
 
 
 // contiki-ism for logging the data -
@@ -51,6 +51,8 @@ static volatile int send_started = 0;
 static struct tcp_socket snd_socket;
 static uip_ip6addr_t message_addr;
 static struct process *requestor;
+
+static radio_value_t last_dag_rssi = 0;
 
 process_event_t sender_start_event;
 process_event_t sender_fin_event;
@@ -129,7 +131,9 @@ static int sender_recv_bytes (struct tcp_socket *s, void *ptr,
 	uint32_t *vals = (uint32_t *) inputptr;
 	recv_length = inputdatalen;
 
-	LOG_DBG("sender_recv_bytes: %p %p %p %d\n", s, ptr, inputptr, inputdatalen);
+	NETSTACK_RADIO.get_value(RADIO_PARAM_LAST_RSSI, &last_dag_rssi);
+
+	LOG_DBG("sender_recv_bytes: %p %p %p %d RSSI=%d\n", s, ptr, inputptr, inputdatalen, (int) last_dag_rssi);
 	if (send_length <= 0) {
 		LOG_DBG("not OK, send_length <= 0\n");
 	}
@@ -143,7 +147,6 @@ static int sender_recv_bytes (struct tcp_socket *s, void *ptr,
 	}
 
 	else if (vals[0] == ACK_HEADER) {
-		LOG_DBG("found header, val = %d\n", (unsigned) vals[3]);
 		received_valid_ACK = vals[3];
 		tcp_socket_close (s);
 	}
@@ -156,7 +159,13 @@ static int sender_recv_bytes (struct tcp_socket *s, void *ptr,
 		printf("\n");
 	}
 
+
 	return 0;
+}
+
+int messenger_recvd_rssi( )
+{
+	return last_dag_rssi;
 }
 
 static void sender_recv_event (struct tcp_socket *s, void *ptr, tcp_socket_event_t ev)

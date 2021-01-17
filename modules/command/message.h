@@ -51,6 +51,8 @@ typedef struct __attribute__((__packed__)) {
 typedef struct __attribute__((packed)) {
     uint32_t header;
     uint32_t sequence;
+    int32_t rssi;
+
     uint16_t caldata[6];
     uint16_t resistorVals[8];
     uint16_t si7210_offset;
@@ -62,6 +64,7 @@ typedef struct __attribute__((packed)) {
 typedef struct __attribute__((packed)) {
         uint32_t header;
         uint32_t sequence;
+        int32_t rssi;
 
         // put 32-bits first, then 16... then 8...
         // temperature and pressure
@@ -100,6 +103,8 @@ typedef struct __attribute__((packed)) {
 typedef struct {
     uint32_t header;
     uint32_t sequence;
+    int rssi;
+
     uint16_t caldata[6];
 } airborne_cal_t;
 
@@ -107,6 +112,8 @@ typedef struct {
 typedef struct __attribute__((packed)) {
     uint32_t header;
     uint32_t sequence;
+    int32_t rssi;
+
     uint32_t ms5637_pressure;
     uint32_t ms5637_temp;
     uint32_t si7020_humid;
