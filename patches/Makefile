@@ -4,9 +4,7 @@ CONTIKI = /home/contiki/contiki-ng
 SHELL := /bin/bash
 
 
-patches+=cc1310-config.patch
-patches+=cc1310-custom.patch
-patches+=cc1310-lrm.patch
+patches+=cc1352-rssi.patch
 
 dir=$(shell pwd)
 

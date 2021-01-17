@@ -65,7 +65,7 @@
 #include "config_nvs.h"
 #include "config.h"
 
-#define LOG_MODULE "H20"
+#define LOG_MODULE "AIR"
 #define LOG_LEVEL LOG_LEVEL_DBG
 
 static int sequence = 0;
@@ -74,7 +74,7 @@ static int failure_counter = 0;
 static int sensor_done_evt = 0;
 PROCESS_NAME(sensor_process);
 
-static int red = 0;
+static int red = 1;
 static int green = 0;
 
 PROCESS(sysmon, "System Monitor");
@@ -151,7 +151,8 @@ PROCESS_THREAD(send_cal_proc, ev, data)
 	vaux_enable ();
 
 	// delay to let everything settle.
-	etimer_set(&et, 3);
+	etimer_set(&et, 1);
+	PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
 
 	if (ms5637_readcalibration_data (&mcal) == 0) {
 		LOG_ERR("Error - ms5637 could not read cal data, aborting.\n");
@@ -162,6 +163,7 @@ PROCESS_THREAD(send_cal_proc, ev, data)
 	memset (&message, 0, sizeof(message));
 	message.header = AIRBORNE_CAL_HEADER;
 	message.sequence = sequence++;
+	message.rssi = messenger_recvd_rssi();
 
 	message.caldata[0] = mcal.sens;
 	message.caldata[1] = mcal.off;
@@ -316,6 +318,7 @@ PROCESS_THREAD(send_data_proc, ev, data)
 	memset (&message, 0, sizeof(message));
 	message.header = AIRBORNE_HEADER;
 	message.sequence = sequence++;
+	message.rssi = messenger_recvd_rssi();
 
 	// turn on the auxillary bus
 	vaux_enable ();
@@ -492,9 +495,6 @@ PROCESS_THREAD(sensor_process, ev, data)
 
 		// enable the "command" service - respond to remote requests over messenger connections
 		command_init ();
-
-		green = 0 ;
-		red = 0;
 
 		process_start(&sysmon, NULL);
 		// enter the main state machine loop

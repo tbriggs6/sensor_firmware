@@ -51,5 +51,6 @@ void messenger_add_handler(uint32_t header, uint32_t min_len, uint32_t max_len, 
 // remove a callback handler from the list
 void messenger_remove_handler(handler_t handler);
 
+int messenger_recvd_rssi( );
 
 #endif /* APPS_MESSAGE_SERVICE_UDP_MESSAGE_SERVICE_H_ */
