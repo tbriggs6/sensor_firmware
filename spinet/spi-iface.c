@@ -82,14 +82,14 @@ process_event_t spi_event;
 
 static void raise_spi_intr ()
 {
-	GPIO_setDio(Board_GPIO_SPIRQ);
+	GPIO_setDio(IOID_26);
 
 
 }
 
 static void clear_spi_intr ()
 {
-	GPIO_clearDio(Board_GPIO_SPIRQ);
+	GPIO_clearDio(IOID_26);
 }
 
 static void toggle_spi_intr ()
@@ -118,6 +118,14 @@ void spi_init( )
 	 clear_spi_intr( );
 
 	 LOG_DBG("SPI module initialize started\n");
+
+	 IOCPinTypeGpioOutput(IOID_26);
+	 IOCIOPortPullSet(IOID_26, IOC_IOPULL_DOWN);
+	 uint32_t rc = GPIO_getOutputEnableDio(IOID_26);
+	 if (rc != GPIO_OUTPUT_ENABLE) {
+	 	printf("Error! could not enable aux voltage for output!\n");
+	 }
+
 
 	SPI_Params_init(&spiParams);
 	spiParams.bitRate = 1000000;
