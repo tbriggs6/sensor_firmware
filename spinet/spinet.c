@@ -54,7 +54,7 @@
 #include "net/routing/routing.h"
 
 #define LOG_MODULE "spinet"
-#define LOG_LEVEL LOG_LEVEL_INFO
+#define LOG_LEVEL LOG_LEVEL_ERR
 //
 ///*---------------------------------------------------------------------------*/
 //PROCESS(spinet, "spinet");

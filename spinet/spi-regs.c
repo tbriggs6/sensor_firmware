@@ -8,7 +8,7 @@
 #include "net/ipv6/uiplib.h"
 #include "spi-regs.h"
 #include "spi-iface.h"
-
+#include "net/mac/tsch/tsch.h"
 static int regs[16];
 
 int register_read(int regnum)
@@ -18,6 +18,7 @@ int register_read(int regnum)
 	else if (regnum < 16) return regs[regnum];
 	else if (regnum == 16) return 0x12345789;
 	else if (regnum == 17) return to_pi_pktlen();
+	else if (regnum == 18) return tsch_queue_global_packet_count( );
 	else return -1;
 }
 
