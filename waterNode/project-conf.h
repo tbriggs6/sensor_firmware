@@ -32,11 +32,11 @@
 #define TI_NVS_CONF_NVS_EXTERNAL_ENABLE			  1
 
 /* Do not start TSCH at init, wait for NETSTACK_MAC.on() */
-#define TSCH_CONF_AUTOSTART 0
+//#define TSCH_CONF_AUTOSTART 0
 
 /* 6TiSCH minimal schedule length.
  * Larger values result in less frequent active slots: reduces capacity and saves energy. */
-#define TSCH_SCHEDULE_CONF_DEFAULT_LENGTH 3
+//#define TSCH_SCHEDULE_CONF_DEFAULT_LENGTH 3
 
 /*******************************************************/
 /************* Other system configuration **************/

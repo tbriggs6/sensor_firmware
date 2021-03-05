@@ -45,7 +45,7 @@
 #include <contiki.h>
 #include <string.h>
 
-#include <net/mac/tsch/tsch.h>
+//#include <net/mac/tsch/tsch.h>
 #include <dev/leds.h>
 #include <sys/energest.h>
 
@@ -500,7 +500,7 @@ PROCESS_THREAD(sensor_process, ev, data)
 	PROCESS_BEGIN()	;
 
 	// this node is NOT a coordinator (only the spinet / router is)
-	tsch_set_coordinator (0);
+	//tsch_set_coordinator (0);
 
 	// initialize the energest module
 	energest_init ();

@@ -98,7 +98,7 @@ PROCESS_THREAD(spinet, ev, data)
   static struct etimer timer;
   static uip_ipaddr_t prefix;
   PROCESS_BEGIN();
-  tsch_set_coordinator(0);
+  //tsch_set_coordinator(0);
 
 
   energest_init( );
@@ -109,8 +109,8 @@ PROCESS_THREAD(spinet, ev, data)
 
   // wait a few seconds
   PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer));
-  tsch_set_pan_secured(0);
-  tsch_set_coordinator(1);
+//  tsch_set_pan_secured(0);
+//  tsch_set_coordinator(1);
 
   etimer_set(&timer, 1 * CLOCK_SECOND);
 
@@ -118,6 +118,7 @@ PROCESS_THREAD(spinet, ev, data)
 	PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer));
   const uip_ipaddr_t *default_prefix = uip_ds6_default_prefix();
   uip_ip6addr_copy(&prefix, default_prefix);
+
   printf("Setting as DAG root\n");
   NETSTACK_ROUTING.root_set_prefix(&prefix, NULL);
   NETSTACK_ROUTING.root_start();
