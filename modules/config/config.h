@@ -90,7 +90,7 @@ int config_get (const int configID);
 
 void config_get_receiver(uip_ip6addr_t *receiver);
 void config_set_receiver(const uip_ip6addr_t *receiver);
-
+uint16_t config_get_remote_port( );
 
 uint32_t config_get_maxfailures();
 void config_set_maxfailures(uint32_t max);

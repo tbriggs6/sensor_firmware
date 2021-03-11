@@ -1,3 +1,9 @@
 
 PROJECTDIRS += ../modules/messenger
-PROJECT_SOURCEFILES += message-service.c message-sender.c
+PROJECT_SOURCEFILES += message-service.c 
+
+ifdef USE_TCP
+PROJECT_SOURCEFILES += message-sender-tcp.c
+else
+PROJECT_SOURCEFILES += message-sender-udp.c
+endif

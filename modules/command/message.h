@@ -128,7 +128,7 @@ typedef struct __attribute__((packed)) {
         uint32_t sequence;
         uint32_t ack_seq;
         uint32_t ack_value;
-} airborne_ack_t;
+} ack_t;
 
 
 

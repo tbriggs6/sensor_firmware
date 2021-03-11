@@ -175,21 +175,42 @@ PROCESS_THREAD(send_cal_proc, ev, data)
 	message.sequence = sequence++;
 	message.rssi = messenger_recvd_rssi();
 
-	message.caldata[0] = mcal.sens;
-	message.caldata[1] = mcal.off;
-	message.caldata[2] = mcal.tcs;
-	message.caldata[3] = mcal.tco;
-	message.caldata[4] = mcal.tref;
-	message.caldata[5] = mcal.temp;
+//	message.caldata[0] = mcal.sens;
+//	message.caldata[1] = mcal.off;
+//	message.caldata[2] = mcal.tcs;
+//	message.caldata[3] = mcal.tco;
+//	message.caldata[4] = mcal.tref;
+//	message.caldata[5] = mcal.temp;
+//
+//	message.resistorVals[0] = config_get_calibration (0);  // si7210 compensation range
+//	message.resistorVals[1] = config_get_calibration (1);
+//	message.resistorVals[2] = config_get_calibration (2);
+//	message.resistorVals[3] = config_get_calibration (3);
+//	message.resistorVals[4] = config_get_calibration (4);
+//	message.resistorVals[5] = config_get_calibration (5);
+//	message.resistorVals[6] = config_get_calibration (6);
+//	message.resistorVals[7] = config_get_calibration (7);
 
-	message.resistorVals[0] = config_get_calibration (0);  // si7210 compensation range
-	message.resistorVals[1] = config_get_calibration (1);
-	message.resistorVals[2] = config_get_calibration (2);
-	message.resistorVals[3] = config_get_calibration (3);
-	message.resistorVals[4] = config_get_calibration (4);
-	message.resistorVals[5] = config_get_calibration (5);
-	message.resistorVals[6] = config_get_calibration (6);
-	message.resistorVals[7] = config_get_calibration (7);
+		message.caldata[0] = 1;
+		message.caldata[1] = 2;
+		message.caldata[2] = 3;
+		message.caldata[3] = 4;
+		message.caldata[4] = 5;
+		message.caldata[5] = 6;
+
+		message.resistorVals[0] = 7;
+		message.resistorVals[1] = 8;
+		message.resistorVals[2] = 9;
+		message.resistorVals[3] = 10;
+		message.resistorVals[4] = 11;
+		message.resistorVals[5] = 12;
+		message.resistorVals[6] = 13;
+		message.resistorVals[7] = 14;
+
+		message.si7210_gain = 15;
+		message.si7210_offset = 16;
+
+
 
 	if (LOG_LEVEL >= LOG_LEVEL_DBG) {
 		LOG_INFO("**************************\n");
@@ -207,15 +228,22 @@ PROCESS_THREAD(send_cal_proc, ev, data)
 	static uip_ip6addr_t addr;
 	config_get_receiver (&addr);
 
-	messenger_send (&addr, (void*) &message, sizeof(message));
+	LOG_DBG("This process: %p\n", &send_cal_proc);
+
+	messenger_send (&addr, message.sequence, (void*) &message, sizeof(message));
 	etimer_set(&et, config_get_retry_interval() * CLOCK_SECOND);
 
 
 	while(1) {
 		PROCESS_WAIT_EVENT();
 
+		LOG_DBG("Process %p was poked, ev=%d\n", &send_cal_proc, ev);
+
 		// messenger responded...
 		if (ev == PROCESS_EVENT_MSG) {
+
+			LOG_DBG("Found event message\n");
+
 			if (messenger_last_result_okack ()) {
 				LOG_INFO("calibration data sent OK\n");
 
@@ -245,6 +273,7 @@ PROCESS_THREAD(send_cal_proc, ev, data)
 
 	} // end while ... event processing loop
 
+	LOG_DBG("Cal process is done.\n");
 	process_post(&sensor_process, sensor_done_evt, &rc);
 
 	PROCESS_END( );
@@ -429,7 +458,7 @@ PROCESS_THREAD(send_data_proc, ev, data)
 
 	// dispatch the message to the messenger service for delivery
 	green = 1;
-	messenger_send (&addr, (void*) &message, sizeof(message));
+	messenger_send (&addr, message.sequence, (void*) &message, sizeof(message));
 
 
 	while(1) {

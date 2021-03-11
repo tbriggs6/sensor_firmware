@@ -259,6 +259,12 @@ void config_set_receiver (const uip_ipaddr_t *receiver)
 	}
 }
 
+
+uint16_t config_get_remote_port( )
+{
+	return 5323;
+}
+
 uint32_t config_get_maxfailures ()
 {
 	return config.max_failures;
