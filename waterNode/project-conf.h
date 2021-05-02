@@ -49,6 +49,6 @@
 #define LOG_CONF_LEVEL_6LOWPAN                     LOG_LEVEL_WARN
 #define LOG_CONF_LEVEL_MAC                         LOG_LEVEL_WARN
 
-#define LOG_LEVEL_SENSOR													LOG_LEVEL_INFO
+#define LOG_LEVEL_SENSOR													LOG_LEVEL_DBG
 
 #endif /* SHARED_PROJECT_CONF_H_ */

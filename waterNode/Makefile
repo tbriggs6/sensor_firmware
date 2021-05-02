@@ -1,8 +1,9 @@
 ######################################
-# airborneNode 
+# waterNode 
 ######################################
 MAKE_MAC = MAKE_MAC_CSMA
 DOT_15_4G_CONF_FREQ_BAND_ID = DOT_15_4G_CONF_FREQ_BAND_915 
+
 
 ######################################
 ifndef TARGET

@@ -175,40 +175,25 @@ PROCESS_THREAD(send_cal_proc, ev, data)
 	message.sequence = sequence++;
 	message.rssi = messenger_recvd_rssi();
 
-//	message.caldata[0] = mcal.sens;
-//	message.caldata[1] = mcal.off;
-//	message.caldata[2] = mcal.tcs;
-//	message.caldata[3] = mcal.tco;
-//	message.caldata[4] = mcal.tref;
-//	message.caldata[5] = mcal.temp;
-//
-//	message.resistorVals[0] = config_get_calibration (0);  // si7210 compensation range
-//	message.resistorVals[1] = config_get_calibration (1);
-//	message.resistorVals[2] = config_get_calibration (2);
-//	message.resistorVals[3] = config_get_calibration (3);
-//	message.resistorVals[4] = config_get_calibration (4);
-//	message.resistorVals[5] = config_get_calibration (5);
-//	message.resistorVals[6] = config_get_calibration (6);
-//	message.resistorVals[7] = config_get_calibration (7);
+	message.caldata[0] = mcal.sens;
+	message.caldata[1] = mcal.off;
+	message.caldata[2] = mcal.tcs;
+	message.caldata[3] = mcal.tco;
+	message.caldata[4] = mcal.tref;
+	message.caldata[5] = mcal.temp;
 
-		message.caldata[0] = 1;
-		message.caldata[1] = 2;
-		message.caldata[2] = 3;
-		message.caldata[3] = 4;
-		message.caldata[4] = 5;
-		message.caldata[5] = 6;
+	message.resistorVals[0] = config_get_calibration (0);  // si7210 compensation range
+	message.resistorVals[1] = config_get_calibration (1);
+	message.resistorVals[2] = config_get_calibration (2);
+	message.resistorVals[3] = config_get_calibration (3);
+	message.resistorVals[4] = config_get_calibration (4);
+	message.resistorVals[5] = config_get_calibration (5);
+	message.resistorVals[6] = config_get_calibration (6);
+	message.resistorVals[7] = config_get_calibration (7);
 
-		message.resistorVals[0] = 7;
-		message.resistorVals[1] = 8;
-		message.resistorVals[2] = 9;
-		message.resistorVals[3] = 10;
-		message.resistorVals[4] = 11;
-		message.resistorVals[5] = 12;
-		message.resistorVals[6] = 13;
-		message.resistorVals[7] = 14;
 
-		message.si7210_gain = 15;
-		message.si7210_offset = 16;
+		message.si7210_gain = scal.config_range;
+		message.si7210_offset = scal.config_range;
 
 
 
@@ -228,8 +213,6 @@ PROCESS_THREAD(send_cal_proc, ev, data)
 	static uip_ip6addr_t addr;
 	config_get_receiver (&addr);
 
-	LOG_DBG("This process: %p\n", &send_cal_proc);
-
 	messenger_send (&addr, message.sequence, (void*) &message, sizeof(message));
 	etimer_set(&et, config_get_retry_interval() * CLOCK_SECOND);
 
@@ -237,7 +220,7 @@ PROCESS_THREAD(send_cal_proc, ev, data)
 	while(1) {
 		PROCESS_WAIT_EVENT();
 
-		LOG_DBG("Process %p was poked, ev=%d\n", &send_cal_proc, ev);
+
 
 		// messenger responded...
 		if (ev == PROCESS_EVENT_MSG) {
@@ -518,14 +501,6 @@ PROCESS_THREAD(sensor_process, ev, data)
 	// result from the previous send
 	static bool result = false;
 
-	// state machine control
-	static enum sender_states
-	{
-		SEND_CAL, SEND_DATA
-	} state = SEND_CAL;
-
-	// begin the contiki process
-
 	PROCESS_BEGIN()	;
 
 	// this node is NOT a coordinator (only the spinet / router is)
@@ -564,7 +539,8 @@ PROCESS_THREAD(sensor_process, ev, data)
 	process_start(&sysmon, NULL);
 
 	// enter the main state machine loop
-	state = SEND_CAL;
+	config_set_calibration_change( );
+
 	etimer_set(&timer, config_get_sensor_interval() * CLOCK_SECOND);
 
 	while (1) {
@@ -575,7 +551,7 @@ PROCESS_THREAD(sensor_process, ev, data)
 
 			green = 1;
 
-			if (config_did_calibration_change() || state == SEND_CAL) {
+			if (config_did_calibration_change()) {
 				process_start(&send_cal_proc, (void *) &result);
 
 				PROCESS_WAIT_EVENT_UNTIL(ev == sensor_done_evt);
@@ -583,7 +559,6 @@ PROCESS_THREAD(sensor_process, ev, data)
 
 				LOG_DBG("Previous cal send result: %d\n", result);
 				if (result == true) {
-					state = SEND_DATA;
 					etimer_set(&timer, config_get_sensor_interval() * CLOCK_SECOND);
 					red = 0;
 					green = 0;
@@ -593,8 +568,9 @@ PROCESS_THREAD(sensor_process, ev, data)
 					green = 0;
 					red = 1;
 				}
+				config_clear_calbration_changed();
 			}
-			else if (state == SEND_DATA) {
+			else {
 				process_start(&send_data_proc, (void *) result);
 
 				PROCESS_WAIT_EVENT_UNTIL(ev == sensor_done_evt);
@@ -602,7 +578,6 @@ PROCESS_THREAD(sensor_process, ev, data)
 
 				LOG_DBG("Previous data send result: %d\n", result);
 				if (result == true) {
-					state = SEND_DATA;
 					etimer_set(&timer, config_get_sensor_interval() * CLOCK_SECOND);
 					green = 0;
 					red = 0;

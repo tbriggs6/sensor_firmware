@@ -46,7 +46,6 @@
 #include <contiki.h>
 #include <string.h>
 
-#include <net/mac/tsch/tsch.h>
 #include <dev/leds.h>
 #include <sys/energest.h>
 
@@ -188,12 +187,14 @@ PROCESS_THREAD(send_cal_proc, ev, data)
 	static uip_ip6addr_t addr;
 	config_get_receiver (&addr);
 
-	messenger_send (&addr, (void*) &message, sizeof(message));
+	messenger_send (&addr, message.sequence, (void*) &message, sizeof(message));
 	etimer_set(&et, config_get_retry_interval() * CLOCK_SECOND);
 
 
 	while(1) {
 		PROCESS_WAIT_EVENT();
+
+		LOG_DBG("Process %p was poked, ev=%d\n", &send_cal_proc, ev);
 
 		// messenger responded...
 		if (ev == PROCESS_EVENT_MSG) {
@@ -388,8 +389,9 @@ PROCESS_THREAD(send_data_proc, ev, data)
 	// dispatch the message to the messenger service for delivery
 		config_get_receiver (&addr);
 
-		// dispatch the message to the messenger service for delivery
-		messenger_send (&addr, (void*) &message, sizeof(message));
+		//dispatch the message to the messenger service for delivery
+		green = 1;
+		messenger_send (&addr, message.sequence, (void*) &message, sizeof(message));
 
 
 		while(1) {
@@ -464,7 +466,7 @@ PROCESS_THREAD(sensor_process, ev, data)
 		PROCESS_BEGIN()	;
 
 		// this node is NOT a coordinator (only the spinet / router is)
-		tsch_set_coordinator (0);
+		//tsch_set_coordinator (0);
 
 		// initialize the energest module
 		energest_init ();

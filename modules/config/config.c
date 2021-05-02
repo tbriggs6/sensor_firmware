@@ -295,6 +295,11 @@ void config_clear_calbration_changed( )
 	calibration_changed = 0;
 }
 
+void config_set_calibration_change( )
+{
+	calibration_changed = 1;
+}
+
 int config_did_calibration_change( )
 {
 	return calibration_changed;

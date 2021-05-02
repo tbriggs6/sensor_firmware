@@ -1,7 +1,22 @@
 ######################################
 # airborneNode 
 ######################################
-MAKE_MAC = MAKE_MAC_TSCH
+MAKE_MAC = MAKE_MAC_CSMA
+DOT_15_4G_CONF_FREQ_BAND_ID = DOT_15_4G_CONF_FREQ_BAND_915 
+
+######################################
+ifndef TARGET
+$(error TARGET is not set)
+endif
+
+ifndef BOARD
+$(error BOARD is not set)
+endif
+
+ifeq ($(BOARD),launchpad/cc1352p1)
+CFLAGS += -DSET_CCFG_MODE_CONF_XOSC_CAP_MOD=0x0
+CFLAGS += -DSET_CCFG_MODE_CONF_XOSC_CAPARRAY_DELTA=0xC1
+endif
 
 ######################################
 ifndef TARGET
