@@ -13,6 +13,15 @@ endif
 ifndef BOARD
 $(error BOARD is not set)
 endif
+
+CSMA_CONF_ACK_WAIT_TIME=(RIMTER_SECOND / 200)
+CSMA_CONF_AFTER_ACK_DETECTED_WAIT_TIME=(RTIMER_SECOND / 750)
+
+ifeq ($(TARGET),launchpad/cc1352p1)
+CFLAGS += -DSET_CCFG_MODE_CONF_XOSC_CAP_MOD=0x0
+CFLAGS += -DSET_CCFG_MODE_CONF_XOSC_CAPARRAY_DELTA=0xC1
+endif
+
 ######################################
 CONTIKI_PROJECT = testNode
 all: $(CONTIKI_PROJECT)

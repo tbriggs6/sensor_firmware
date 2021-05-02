@@ -90,7 +90,7 @@ int config_get (const int configID);
 
 void config_get_receiver(uip_ip6addr_t *receiver);
 void config_set_receiver(const uip_ip6addr_t *receiver);
-
+uint16_t config_get_remote_port( );
 
 uint32_t config_get_maxfailures();
 void config_set_maxfailures(uint32_t max);
@@ -99,7 +99,9 @@ uint32_t config_get_retry_interval();
 void config_set_retry_interval(uint32_t seconds);
 
 void config_clear_calbration_changed( );
+void config_set_calibration_change( );
 int config_did_calibration_change( );
+
 void config_set_calibration (int cal_num, uint16_t value);
 
 void config_set_calibration(int cal_num, uint16_t value);

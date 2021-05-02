@@ -22,8 +22,9 @@
 #include <string.h>
 #include <stdint.h>
 #include <contiki-net.h>
-#include <net/ipv6/tcpip.h>
+
 #include <net/packetbuf.h>
+#include <net/ipv6/tcpip.h>
 
 
 // contiki-ism for logging the data -

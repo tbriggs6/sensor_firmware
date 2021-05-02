@@ -45,7 +45,7 @@
 #include <contiki.h>
 #include <string.h>
 
-#include <net/mac/tsch/tsch.h>
+//#include <net/mac/tsch/tsch.h>
 #include <dev/leds.h>
 #include <sys/energest.h>
 
@@ -191,6 +191,12 @@ PROCESS_THREAD(send_cal_proc, ev, data)
 	message.resistorVals[6] = config_get_calibration (6);
 	message.resistorVals[7] = config_get_calibration (7);
 
+
+		message.si7210_gain = scal.config_range;
+		message.si7210_offset = scal.config_range;
+
+
+
 	if (LOG_LEVEL >= LOG_LEVEL_DBG) {
 		LOG_INFO("**************************\n");
 		LOG_INFO("* Cal Data - %6.4u      *\n", (unsigned int ) message.sequence);
@@ -207,15 +213,20 @@ PROCESS_THREAD(send_cal_proc, ev, data)
 	static uip_ip6addr_t addr;
 	config_get_receiver (&addr);
 
-	messenger_send (&addr, (void*) &message, sizeof(message));
+	messenger_send (&addr, message.sequence, (void*) &message, sizeof(message));
 	etimer_set(&et, config_get_retry_interval() * CLOCK_SECOND);
 
 
 	while(1) {
 		PROCESS_WAIT_EVENT();
 
+
+
 		// messenger responded...
 		if (ev == PROCESS_EVENT_MSG) {
+
+			LOG_DBG("Found event message\n");
+
 			if (messenger_last_result_okack ()) {
 				LOG_INFO("calibration data sent OK\n");
 
@@ -245,6 +256,7 @@ PROCESS_THREAD(send_cal_proc, ev, data)
 
 	} // end while ... event processing loop
 
+	LOG_DBG("Cal process is done.\n");
 	process_post(&sensor_process, sensor_done_evt, &rc);
 
 	PROCESS_END( );
@@ -429,7 +441,7 @@ PROCESS_THREAD(send_data_proc, ev, data)
 
 	// dispatch the message to the messenger service for delivery
 	green = 1;
-	messenger_send (&addr, (void*) &message, sizeof(message));
+	messenger_send (&addr, message.sequence, (void*) &message, sizeof(message));
 
 
 	while(1) {
@@ -489,18 +501,10 @@ PROCESS_THREAD(sensor_process, ev, data)
 	// result from the previous send
 	static bool result = false;
 
-	// state machine control
-	static enum sender_states
-	{
-		SEND_CAL, SEND_DATA
-	} state = SEND_CAL;
-
-	// begin the contiki process
-
 	PROCESS_BEGIN()	;
 
 	// this node is NOT a coordinator (only the spinet / router is)
-	tsch_set_coordinator (0);
+	//tsch_set_coordinator (0);
 
 	// initialize the energest module
 	energest_init ();
@@ -535,7 +539,8 @@ PROCESS_THREAD(sensor_process, ev, data)
 	process_start(&sysmon, NULL);
 
 	// enter the main state machine loop
-	state = SEND_CAL;
+	config_set_calibration_change( );
+
 	etimer_set(&timer, config_get_sensor_interval() * CLOCK_SECOND);
 
 	while (1) {
@@ -546,7 +551,7 @@ PROCESS_THREAD(sensor_process, ev, data)
 
 			green = 1;
 
-			if (config_did_calibration_change() || state == SEND_CAL) {
+			if (config_did_calibration_change()) {
 				process_start(&send_cal_proc, (void *) &result);
 
 				PROCESS_WAIT_EVENT_UNTIL(ev == sensor_done_evt);
@@ -554,7 +559,6 @@ PROCESS_THREAD(sensor_process, ev, data)
 
 				LOG_DBG("Previous cal send result: %d\n", result);
 				if (result == true) {
-					state = SEND_DATA;
 					etimer_set(&timer, config_get_sensor_interval() * CLOCK_SECOND);
 					red = 0;
 					green = 0;
@@ -564,8 +568,9 @@ PROCESS_THREAD(sensor_process, ev, data)
 					green = 0;
 					red = 1;
 				}
+				config_clear_calbration_changed();
 			}
-			else if (state == SEND_DATA) {
+			else {
 				process_start(&send_data_proc, (void *) result);
 
 				PROCESS_WAIT_EVENT_UNTIL(ev == sensor_done_evt);
@@ -573,7 +578,6 @@ PROCESS_THREAD(sensor_process, ev, data)
 
 				LOG_DBG("Previous data send result: %d\n", result);
 				if (result == true) {
-					state = SEND_DATA;
 					etimer_set(&timer, config_get_sensor_interval() * CLOCK_SECOND);
 					green = 0;
 					red = 0;

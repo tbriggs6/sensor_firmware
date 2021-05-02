@@ -36,15 +36,15 @@
 
 static void raise_rx_intr ()
 {
-	GPIO_setDio(Board_GPIO_RXIRQ);
 
+	GPIO_setDio(IOID_29);
 
 
 }
 
 static void clear_rx_intr ()
 {
-	GPIO_clearDio(Board_GPIO_RXIRQ);
+	GPIO_clearDio(IOID_29);
 }
 
 static void toggle_rx_intr ()
@@ -67,6 +67,12 @@ void rplstat_set_prefix ()
 
 void rpl_init (void)
 {
+	IOCPinTypeGpioOutput(IOID_29);
+	IOCIOPortPullSet(IOID_29, IOC_IOPULL_DOWN);
+	uint32_t rc = GPIO_getOutputEnableDio(IOID_29);
+	if (rc != GPIO_OUTPUT_ENABLE) {
+		printf("Error! could not enable aux voltage for output!\n");
+	}
 
 	clear_rx_intr( );
 

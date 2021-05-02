@@ -234,6 +234,18 @@ static PT_THREAD(cmd_run(struct pt *pt, shell_output_func output, char *args))
 }
 
 
+static PT_THREAD(cmd_skipcal(struct pt *pt, shell_output_func output, char *args))
+{
+
+	PT_BEGIN(pt);
+
+	SHELL_OUTPUT(output,"Clearing calibration request.\n");
+
+	config_clear_calbration_changed();
+
+	PT_END(pt);
+}
+
 
 
 struct shell_command_t config_commands[] = {
@@ -245,6 +257,7 @@ struct shell_command_t config_commands[] = {
 		{ "get", cmd_get, "'>get id' : get config value (no save)" },
 		{ "ids", cmd_ids, "'> ids' : list tokens\n" },
 		{ "run", cmd_run, "'> run : make sensor run now\n" },
+		{ "skipcal", cmd_skipcal, "'> skipcal : skip sensor calibration\n" },
 		{ NULL, NULL, NULL }
 };
 

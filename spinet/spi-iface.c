@@ -82,14 +82,14 @@ process_event_t spi_event;
 
 static void raise_spi_intr ()
 {
-	GPIO_setDio(Board_GPIO_SPIRQ);
+	GPIO_setDio(IOID_28);
 
 
 }
 
 static void clear_spi_intr ()
 {
-	GPIO_clearDio(Board_GPIO_SPIRQ);
+	GPIO_clearDio(IOID_28);
 }
 
 static void toggle_spi_intr ()
@@ -118,6 +118,14 @@ void spi_init( )
 	 clear_spi_intr( );
 
 	 LOG_DBG("SPI module initialize started\n");
+
+	 IOCPinTypeGpioOutput(IOID_28);
+	 IOCIOPortPullSet(IOID_28, IOC_IOPULL_DOWN);
+	 uint32_t rc = GPIO_getOutputEnableDio(IOID_28);
+	 if (rc != GPIO_OUTPUT_ENABLE) {
+	 	printf("Error! could not enable aux voltage for output!\n");
+	 }
+
 
 	SPI_Params_init(&spiParams);
 	spiParams.bitRate = 1000000;
@@ -309,9 +317,11 @@ PROCESS_THREAD(spi_rdreg, ev, data)
 	uint32_t val = register_read (regnum);
 	memcpy(spi_cmd,  &val,  sizeof(val));
 
-	LOG_DBG("spi_rdreg started\n");
+
 	// start the SPI transfer (idle until master starts its side)
 	spi_start_xfer(&spi_cmd, &spi_cmd, 4);
+
+	LOG_DBG("spi_rdreg started %d=%x %-2.2x %-2.2x %-2.2x %-2.2x\n", (int) regnum, (int) val, spi_cmd[0], spi_cmd[1], spi_cmd[2], spi_cmd[3]);
 
 	// raise the SPI interrupt to tell master we're ready
 	toggle_spi_intr ();
