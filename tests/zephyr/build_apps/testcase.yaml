@@ -1,0 +1,21 @@
+# Twister build-only test for Zephyr apps.
+# Run from repo root (as Zephyr app): west twister -T tests/zephyr/build_apps -i
+# Or ensure this path is used as the test root in your workspace.
+
+tests:
+  build_water_node:
+    platform_allow: [native_sim, qemu_cortex_m3, ti_cc1352r1]
+    integration_platforms: [native_sim]
+    build_only: true
+    extra_args: -DBOARD=native_sim
+    tags: build
+  build_airborne_node:
+    platform_allow: [native_sim, qemu_cortex_m3, ti_cc1352r1]
+    integration_platforms: [native_sim]
+    build_only: true
+    tags: build
+  build_spinet_node:
+    platform_allow: [native_sim, qemu_cortex_m3, ti_cc1352r1]
+    integration_platforms: [native_sim]
+    build_only: true
+    tags: build
